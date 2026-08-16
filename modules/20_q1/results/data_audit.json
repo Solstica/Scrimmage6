@@ -1,4 +1,6 @@
 {
+  "description_scope": "all_50000_tasks",
+  "model_diagnostic_scope": "training_hours_0_2351_only",
   "task_count": 50000,
   "train_count": 48963,
   "validation_count": 499,
@@ -15,15 +17,18 @@
   "gpu_source_given_type": {
     "RealTimeInference": {
       "p_value": 0.7443114257046475,
-      "eta2": -4.673875200654314e-05
+      "eta2": 0.0,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
     },
     "BatchInference": {
       "p_value": 0.1095187717404919,
-      "eta2": 8.14719844948017e-05
+      "eta2": 8.14719844948017e-05,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
     },
     "AITraining": {
       "p_value": 0.8240325169832461,
-      "eta2": -5.7646000636189726e-05
+      "eta2": 0.0,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
     }
   },
   "all_deadlines_feasible_at_arrival": true,

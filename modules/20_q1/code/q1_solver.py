@@ -124,16 +124,57 @@ def add_layers(base, vals, hours, split):
     return pd.DataFrame(out)
 
 
-def metric(df, col, split):
-    x = df.loc[df.Level == "System", ["ActualGPU", col]].dropna()
-    err = x[col] - x.ActualGPU
-    return {"Split": split, "Model": col, "MAE": float(err.abs().mean()),
-            "RMSE": float(np.sqrt(np.mean(err ** 2))),
-            "WAPE": float(err.abs().sum() / x.ActualGPU.abs().sum())}
+def metric_rows(df, col, split):
+    rows = []
+    for level, x in df.groupby("Level", sort=False):
+        x = x[["ActualGPU", col]].dropna()
+        if x.empty:
+            continue
+        err = x[col] - x.ActualGPU
+        rows.append({"Split": split, "Level": level, "Model": col,
+                     "MAE": float(err.abs().mean()),
+                     "RMSE": float(np.sqrt(np.mean(err ** 2))),
+                     "WAPE": float(err.abs().sum() / x.ActualGPU.abs().sum())})
+    return rows
+
+
+def interval_rows(df, split):
+    rows = []
+    for level, x in df.groupby("Level", sort=False):
+        x = x[["ActualGPU", "PI05", "PI95"]].dropna()
+        if x.empty:
+            continue
+        y = x.ActualGPU.to_numpy(dtype=float)
+        lo = x.PI05.to_numpy(dtype=float)
+        hi = x.PI95.to_numpy(dtype=float)
+        alpha = 0.10
+        score = hi - lo + (2.0 / alpha) * np.maximum(lo - y, 0.0) + (2.0 / alpha) * np.maximum(y - hi, 0.0)
+        rows.append({"Split": split, "Level": level, "Model": "M3_90PI",
+                     "MAE": np.nan, "RMSE": np.nan, "WAPE": np.nan,
+                     "PICP": float(((y >= lo) & (y <= hi)).mean()),
+                     "MPIW": float((hi - lo).mean()),
+                     "IntervalScore": float(score.mean())})
+    return rows
 
 
 def overlap(start, dur, hour):
     return max(0.0, min(hour + 1.0, start + dur) - max(float(hour), start))
+
+
+def build_carry_in(history, regions, power, start_hour=2376, end_hour=2406):
+    """Reconstruct fixed baseline carry-in from tasks arriving before start_hour."""
+    gpu = np.zeros((len(regions), end_hour - start_hour), dtype=float)
+    ai = np.zeros_like(gpu)
+    for x in history.loc[history.ArrivalHour < start_hour].itertuples(index=False):
+        ri = regions.index(x.SourceRegion)
+        start = float(x.ArrivalHour)
+        dur = float(x.Duration_h)
+        for h in range(start_hour, min(end_hour, math.ceil(start + dur))):
+            j = h - start_hour
+            ov = overlap(start, dur, h)
+            gpu[ri, j] += float(x.GPU_Demand) * ov
+            ai[ri, j] += float(x.GPU_Demand) * power[x.TaskType] * ov
+    return gpu, ai
 
 
 def main():
@@ -186,13 +227,17 @@ def main():
     for k in types:
         groups = [train.loc[(train.TaskType == k) & (train.SourceRegion == r), "GPU_Demand"].to_numpy() for r in regions]
         kw = stats.kruskal(*groups)
-        kv[k] = {"p_value": float(kw.pvalue), "eta2": float((kw.statistic - len(regions) + 1) / (len(train) - len(regions)))}
+        eta2 = (kw.statistic - len(regions) + 1) / (len(train) - len(regions))
+        kv[k] = {"p_value": float(kw.pvalue), "eta2": float(max(0.0, eta2)),
+                 "eta2_formula": "max(0,(H-k+1)/(n-k))"}
     mx = int(total_count.max())
     obs = total_count.value_counts().sort_index().reindex(range(mx + 1), fill_value=0).to_numpy()
     exp = np.array([stats.poisson.pmf(i, total_count.mean()) for i in range(mx + 1)]) * len(total_count)
     exp[-1] += stats.poisson.sf(mx, total_count.mean()) * len(total_count)
     chi = stats.chisquare(obs, f_exp=exp)
     audit = {
+        "description_scope": "all_50000_tasks",
+        "model_diagnostic_scope": "training_hours_0_2351_only",
         "task_count": int(len(work)), "train_count": int(len(train)), "validation_count": int(len(valid)),
         "test_count": int(len(test)), "mean_hourly_arrivals": float(total_count.mean()),
         "fano_total": fano(total_count), "acf": {str(x): acf(total_count, x) for x in [1, 24, 168]},
@@ -257,12 +302,11 @@ def main():
     save_csv(ftest, proc / "forecast_test_2376_2399.csv")
     mt = []
     for col in ["M0", "M1", "M2", "M3"]:
-        mt.append(metric(fval, col, "Validation"))
-        mt.append(metric(ftest, col, "Test"))
+        mt.extend(metric_rows(fval, col, "Validation"))
+        mt.extend(metric_rows(ftest, col, "Test"))
+    mt.extend(interval_rows(fval, "Validation"))
+    mt.extend(interval_rows(ftest, "Test"))
     sys_test = ftest.loc[ftest.Level == "System"].copy()
-    mt.append({"Split": "Test", "Model": "M3_90PI", "MAE": np.nan, "RMSE": np.nan,
-               "WAPE": np.nan, "PICP": float(((sys_test.ActualGPU >= sys_test.PI05) & (sys_test.ActualGPU <= sys_test.PI95)).mean()),
-               "MPIW": float((sys_test.PI95 - sys_test.PI05).mean())})
     metrics = pd.DataFrame(mt)
     save_csv(metrics, tab / "q1_forecast_metrics.csv")
     act = sys_test.ActualGPU.to_numpy(dtype=float)
@@ -291,40 +335,52 @@ def main():
     base_err = ai0 - ref
 
     sub = test.sort_values(["ArrivalHour", "TaskType", "LatestFinishHour", "TaskID"], key=lambda x: x.map(prio) if x.name == "TaskType" else x).copy()
-    gu = np.zeros((6, 30), dtype=float)
-    ai = np.zeros((6, 30), dtype=float)
+    carry_gpu, carry_ai = build_carry_in(work, regions, power)
+    gu = carry_gpu.copy()
+    ai = carry_ai.copy()
     ans = []
     bad = []
     for x in sub.itertuples(index=False):
         dur = float(x.Duration_h)
         src = x.SourceRegion
-        cand = [src] + [r for r in regions if r != src and lmap[(src, r)] <= x.MaxLatency_ms]
+        other = sorted([r for r in regions if r != src and lmap[(src, r)] <= x.MaxLatency_ms],
+                       key=lambda r: (lmap[(src, r)], r))
         first = int(max(x.ArrivalHour, x.EarliestStartHour))
         last = int(math.floor(min(float(x.LatestFinishHour), 2406.0) - dur + 1e-9))
+        starts = [int(x.ArrivalHour)] if x.TaskType == "RealTimeInference" else list(range(first, last + 1))
         chosen = None
-        for st in range(first, last + 1):
-            for r in cand:
-                ri = regions.index(r)
-                ok = True
-                for h in range(st, min(2406, math.ceil(st + dur))):
-                    j = h - 2376
-                    if j < 0 or j >= 30:
+        def find_candidate(candidates):
+            for r in candidates:
+                for st in starts:
+                    if st < first or st > last:
                         continue
-                    ov = overlap(float(st), dur, h)
-                    nonai = float(gidx.loc[(r, h), "NonAI_IT_Load_MW"])
-                    if gu[ri, j] + x.GPU_Demand * ov > float(cfg.loc[r, "Available_GPU"]) + 1e-8:
-                        ok = False
-                    if nonai + ai[ri, j] + x.GPU_Demand * power[x.TaskType] * ov > float(cfg.loc[r, "Max_IT_Power_MW"]) + 1e-8:
-                        ok = False
-                    if float(cfg.loc[r, "PUE"]) * (nonai + ai[ri, j] + x.GPU_Demand * power[x.TaskType] * ov) > float(cfg.loc[r, "Max_Facility_Power_MW"]) + 1e-8:
-                        ok = False
-                    if not ok:
-                        break
-                if ok:
-                    chosen = (r, st)
-                    break
-            if chosen:
-                break
+                    ri = regions.index(r)
+                    ok = True
+                    for h in range(st, min(2406, math.ceil(st + dur))):
+                        j = h - 2376
+                        if j < 0 or j >= 30:
+                            continue
+                        ov = overlap(float(st), dur, h)
+                        nonai = float(gidx.loc[(r, h), "NonAI_IT_Load_MW"])
+                        gpu_add = x.GPU_Demand * ov
+                        ai_add = x.GPU_Demand * power[x.TaskType] * ov
+                        if gu[ri, j] + gpu_add > float(cfg.loc[r, "Available_GPU"]) + 1e-8:
+                            ok = False
+                        if nonai + ai[ri, j] + ai_add > float(cfg.loc[r, "Max_IT_Power_MW"]) + 1e-8:
+                            ok = False
+                        if float(cfg.loc[r, "PUE"]) * (nonai + ai[ri, j] + ai_add) > float(cfg.loc[r, "Max_Facility_Power_MW"]) + 1e-8:
+                            ok = False
+                        if not ok:
+                            break
+                    if ok:
+                        return r, st
+            return None
+
+        # Locality-preserving minimal adjustment: local full time domain first,
+        # then all SLA-feasible remote regions only if local is impossible.
+        chosen = find_candidate([src])
+        if chosen is None:
+            chosen = find_candidate(other)
         if not chosen:
             bad.append(int(x.TaskID))
             continue
@@ -348,14 +404,31 @@ def main():
             nonai = float(gidx.loc[(r, h), "NonAI_IT_Load_MW"])
             it = nonai + ai[ri, j]
             util.append({"Hour": h, "Region": r, "GPUUse_GPUh": gu[ri, j],
+                         "CarryIn_GPUUse_GPUh": carry_gpu[ri, j],
+                         "ScheduledNew_GPUUse_GPUh": gu[ri, j] - carry_gpu[ri, j],
                          "Available_GPU": float(cfg.loc[r, "Available_GPU"]),
                          "GPU_Utilization_Percent": 100.0 * gu[ri, j] / float(cfg.loc[r, "Available_GPU"]),
+                         "CarryIn_AI_IT_Load_MW": carry_ai[ri, j],
+                         "ScheduledNew_AI_IT_Load_MW": ai[ri, j] - carry_ai[ri, j],
                          "AI_IT_Load_MW": ai[ri, j], "IT_Load_MW": it,
                          "Facility_Load_MW": it * float(cfg.loc[r, "PUE"])})
     util = pd.DataFrame(util)
     save_csv(util, proc / "gpu_utilization_2376_2405.csv")
 
     ca = []
+    carry_gpu_expected = np.zeros_like(carry_gpu)
+    carry_ai_expected = np.zeros_like(carry_ai)
+    for x in work.loc[work.ArrivalHour < 2376].itertuples(index=False):
+        ri = regions.index(x.SourceRegion)
+        for h in range(2376, min(2406, math.ceil(float(x.ArrivalHour) + float(x.Duration_h)))):
+            j = h - 2376
+            ov = overlap(float(x.ArrivalHour), float(x.Duration_h), h)
+            carry_gpu_expected[ri, j] += float(x.GPU_Demand) * ov
+            carry_ai_expected[ri, j] += float(x.GPU_Demand) * power[x.TaskType] * ov
+    carry_err = max(float(np.max(np.abs(carry_gpu - carry_gpu_expected))),
+                    float(np.max(np.abs(carry_ai - carry_ai_expected))))
+    ca.append({"Check": "carry_in_consistency", "Passed": carry_err < 1e-10,
+               "MaxViolation": carry_err, "Count": int(carry_err >= 1e-10)})
     ov_err = 0.0
     for x in sch.itertuples(index=False):
         s = sum(overlap(float(x.StartHour), float(x.Duration_h), h) for h in range(int(x.StartHour), math.ceil(x.FinishTime)))
@@ -427,10 +500,20 @@ def main():
 
     out = {"status": "PASS" if ca.Passed.all() else "FAIL", "seed": seed, "lambda_train": lam,
            "baseline_ai_it_max_error": float(np.max(np.abs(base_err))), "scheduled_tasks": int(len(sch)),
-           "unscheduled_tasks": bad, "forecast_metrics": metrics.to_dict(orient="records"),
+           "unscheduled_tasks": bad, "moved_tasks": int(sch.Moved.sum()),
+           "delayed_tasks": int(sch.Delayed.sum()),
+           "max_gpu_util_pct": float(util.GPU_Utilization_Percent.max()),
+           "mean_gpu_util_pct": float(util.GPU_Utilization_Percent.mean()),
+           "max_finish": float(sch.FinishTime.max()),
+           "carry_in_gpu_hour": float(carry_gpu.sum()),
+           "carry_in_ai_it_mwh": float(carry_ai.sum()),
+           "forecast_metrics": metrics.to_dict(orient="records"),
            "outputs": [str(x.relative_to(mod)) for x in [proc / "hourly_arrivals.csv", proc / "forecast_validation.csv", proc / "forecast_test_2376_2399.csv", proc / "schedule_2376_2405.csv", proc / "gpu_utilization_2376_2405.csv", proc / "constraint_audit.csv", tab / "q1_forecast_metrics.csv", tab / "q1_forecast_sensitivity.csv", tab / "q1_schedule_summary.csv"]]}
     (res / "run_summary.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"status": out["status"], "scheduled_tasks": out["scheduled_tasks"], "max_gpu_util_pct": float(util.GPU_Utilization_Percent.max()), "baseline_error": out["baseline_ai_it_max_error"]}, ensure_ascii=False))
+    print(json.dumps({"status": out["status"], "scheduled_tasks": out["scheduled_tasks"],
+                      "moved_tasks": out["moved_tasks"], "delayed_tasks": out["delayed_tasks"],
+                      "max_gpu_util_pct": out["max_gpu_util_pct"],
+                      "baseline_error": out["baseline_ai_it_max_error"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

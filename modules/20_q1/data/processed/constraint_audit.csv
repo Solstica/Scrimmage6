@@ -1,4 +1,5 @@
 ﻿Check,Passed,MaxViolation,Count
+carry_in_consistency,True,0.0,0
 overlap_conservation,True,2.1227464230832993e-13,0
 baseline_ai_it_mae,True,3.333344800182658e-07,0
 all_tasks_scheduled,True,0.0,0
