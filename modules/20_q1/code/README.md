@@ -56,7 +56,16 @@ Q1 不建立多目标优化模型，不使用主观权重，不引入电价、�
 
 主 GPU demand 预测使用该联合分布的 GPU 边际；GPU-hour 使用完整 `(G,D)` 联合 mark。离散均匀分布只作为参数化简化对照，不能写成唯一真实分布。
 
-### 2.4 必做图表
+### 2.4 描述统计与建模诊断的样本口径
+
+必须区分两类用途：
+
+- 对附件本身进行 Q1-1 描述统计时，可以使用全部 50000 条任务；
+- 用于 Q1-2 选择/论证概率模型的 Poisson、ACF、条件独立近似等诊断，只允许使用 `0--2351` 训练段。
+
+不得把全样本描述统计当成训练期选模证据。非参数效应量若因估计公式出现极小负值，不得在论文中解释成“负解释率”；应按所采用效应量定义的理论下界处理并写清公式。
+
+### 2.5 必做图表
 
 - Region×TaskType 任务数热图；
 - Region×TaskType GPU-hour 热图；
@@ -80,7 +89,7 @@ Q1 不建立多目标优化模型，不使用主观权重，不引入电价、�
 
 `N_t ~ Poisson(lambda)`。
 
-当前数据依据：小时任务数均值约 20.8333、方差约 20.1815、Fano≈0.9687，Poisson GOF 未被拒绝，lag 1/24/168 自相关很弱，24 h / weekday 分组未发现稳定差异。因此主模型不加入 LSTM、ARIMA、季节状态或长期动态参数。
+当前数据依据：训练段小时任务数均值与方差接近，Fano≈1，Poisson GOF 未被拒绝，lag 1/24/168 自相关很弱。因此主模型不加入 LSTM、ARIMA、季节状态或长期动态参数。
 
 ### 3.3 联合业务标记
 
@@ -151,7 +160,22 @@ Gamma-Poisson / Dirichlet Bayesian 更新不是主模型必需部分；Monte Car
 
 验证至少比较：历史均值、t-24、t-168、当前齐次标记复合 Poisson。只有官方验证区间明确支持时才增加 24 h 非齐次 Poisson 或局部 quasi-Poisson/dispersion 扩展。
 
-评价：MAE、RMSE、WAPE；若输出概率区间，再给 PICP、MPIW/interval score。
+### 3.8 评价层级与概率区间
+
+不能只评价 System 层。至少分别报告：
+
+- System；
+- Region；
+- TaskType；
+- Region×TaskType。
+
+各层至少给 MAE/WAPE，必要时给 RMSE。这样才能证明结构化 marked compound Poisson 的作用，而不只是系统均值预测。
+
+若输出 90% 预测区间，Validation 和 Test 都应给 PICP、MPIW，建议增加 interval score。Test 区间仅用于一次性评价，任何 PICP 偏差都不能反向调参。
+
+当前齐次 M3 在 **System 点预测** 上与历史均值 M0 相同，这是模型结构的自然结果，不是错误。论文不得声称 M3 提升了系统点预测精度；正确表述是：M3 保持最优基线点预测水平，同时提供 Region×TaskType 一致分解、GPU-hour解释和概率区间。
+
+敏感性中 `lambda ±5%` 只用于稳定性说明；即使 Test 上某一扰动值更优，也不得据此修改已在 Validation 冻结的模型。
 
 ---
 
@@ -159,7 +183,7 @@ Gamma-Poisson / Dirichlet Bayesian 更新不是主模型必需部分；Monte Car
 
 ### 4.1 模型性质
 
-Q1-3 是规则/状态演化模型，不是多目标优化模型。输入是 2376--2399 h **实际到达任务**，不是 Q1-2 预测结果。
+Q1-3 是规则/状态演化模型，不是多目标优化模型。新的调度决策对象是 2376--2399 h **实际到达任务**，不是 Q1-2 预测结果。
 
 ### 4.2 baseline 机制
 
@@ -172,9 +196,24 @@ Q1-3 是规则/状态演化模型，不是多目标优化模型。输入是 2376
 
 因此基础运行解释为：**本地、到达即执行**。只有发生硬约束冲突时才做必要调整。
 
-### 4.3 任务规则
+### 4.3 carry-in 初始状态——必须纳入
 
-RealTimeInference：`StartHour=ArrivalHour`，Region 满足 `Latency<=20 ms`。
+2376 时刻系统不能初始化为零占用。所有满足
+
+- `ArrivalHour < 2376`；
+- 按 baseline 本地、到达即执行后与 `[2376,2406)` 仍有非零 overlap
+
+的历史任务，构成固定 carry-in，占用后续小时的 GPU、AI IT、IT 与 Facility 容量。
+
+因此 Q1-3 的资源状态应为：
+
+`TotalState[r,t] = FixedCarryIn[r,t] + ScheduledNewTasks[r,t]`, `t=2376,...,2405`。
+
+`gpu_utilization_2376_2405.csv` 必须报告这一完整系统状态，而不是仅报告 538 个测试任务彼此产生的占用。carry-in 应由 0--2375 历史任务 overlap 直接重构，并作为 constraint audit 的独立检查项。
+
+### 4.4 任务规则
+
+RealTimeInference：`StartHour=ArrivalHour`，Region 满足 `Latency<=20 ms`；如 SourceRegion 在到达时因完整系统状态触发硬容量冲突，可在同一到达时刻枚举全部 SLA 可行 Region，RT 不允许通过等待消解冲突。
 
 BatchInference：允许等待，Region 满足 `Latency<=80 ms`，必须在 LatestFinish/2406 前完成。
 
@@ -182,11 +221,11 @@ AITraining：允许等待，Region 满足 `Latency<=150 ms`，必须在 LatestFi
 
 全部任务：NonPreemptive、不可拆分、运行中 Region 固定、不得占用 `[2406,2407)`。
 
-### 4.4 候选域
+### 4.5 候选域
 
 不得人为缩小搜索域。只能因为题面硬不可行删除 `(region,start)` 候选，例如 deadline、2406 边界、MaxLatency、单任务自身绝对容量超限。禁止“最多延迟24h”“最近3区”“top-K时段”等人为窗口。
 
-### 4.5 overlap 与资源映射
+### 4.6 overlap 与资源映射
 
 若整数小时开工 `s_i`、持续时间 `p_i=Duration_min/60`：
 
@@ -194,9 +233,9 @@ AITraining：允许等待，Region 满足 `Latency<=150 ms`，必须在 LatestFi
 
 必须验证 `sum_t omega(i,s,t)=p_i`。
 
-`GPUUse[r,t] = sum_i GPU_i * omega_i,t`；
+`GPUUse[r,t] = CarryInGPU[r,t] + sum_i GPU_i * omega_i,t`；
 
-`AI_IT[r,t] = sum_i PowerMap[type_i] * GPU_i * omega_i,t`；
+`AI_IT[r,t] = CarryInAIIT[r,t] + sum_i PowerMap[type_i] * GPU_i * omega_i,t`；
 
 `IT[r,t] = NonAI_IT_Load[r,t] + AI_IT[r,t]`；
 
@@ -204,27 +243,32 @@ AITraining：允许等待，Region 满足 `Latency<=150 ms`，必须在 LatestFi
 
 统一检查 GPU、IT、Facility、Latency、Earliest/LatestFinish、`finish<=2406`。
 
-### 4.6 冲突处理
+### 4.7 冲突处理：冻结为 locality-preserving minimal adjustment
 
-唯一规则顺序尚未冻结。编程手先实现可插拔确定性规则：
+Q1 的基础调度只对 baseline 作必要修正，不以“尽量立即开工”为理由主动迁移弹性任务。规则固定为：
 
-- baseline 本地立即执行；
-- 对弹性任务 earliest-feasible 顺延；
-- 本地无法满足硬约束时枚举全部 SLA 可行 Region；
-- 不使用价格、碳、新能源权重。
+1. RT：到达即开工；先 SourceRegion，若源区在到达时不可行，则枚举全部 SLA 可行 Region；
+2. Batch / AITraining：先在 SourceRegion 的**完整合法时间域**内寻找最早可行开始时刻；
+3. 只有 SourceRegion 在其完整合法时间域内均不可行时，才枚举全部其他 SLA 可行 Region，并选择最早可行候选；
+4. 其他 Region 的确定性枚举顺序建议按 NetworkLatency 从小到大，Region 名作为最终 tie-break；
+5. 不使用价格、碳、新能源权重，不用人为 top-K。
 
-所有规则使用同一可行性检查器，并输出对比结果。
+即弹性任务采用：
+
+`本地立即 -> 本地顺延 -> 必要迁移`。
+
+旧实现的 `for start -> for region` 会在“同一小时迁移”和“本地稍后执行”之间优先迁移，不符合上述冻结规则，必须重跑。旧的 `Moved=4, Delayed=0, MaxGPUUtilPct=99.0166%` 均保持 DRAFT，不得进入正文。
 
 ---
 
 ## 5. 编程文件与机器可读产物
 
-建议代码：
+当前可以继续由 `q1_solver.py` 集成实现，但逻辑上应保持以下模块职责：
 
-- `q1_data_audit.py`：Q1-1 统计结构与模型诊断；
-- `q1_forecast.py`：Q1-2 train/validation/refit/test；
-- `q1_scheduler.py`：Q1-3 overlap、baseline、规则调度、constraint audit；
-- `q1_make_outputs.py`：统一输出图表与 processed data。
+- Q1-1：统计结构与模型诊断；
+- Q1-2：train/validation/refit/test 及层级概率预测；
+- Q1-3：carry-in、overlap、baseline、规则调度、constraint audit；
+- 输出：统一生成图表和 processed data。
 
 processed data 至少包括：
 
@@ -237,5 +281,7 @@ processed data 至少包括：
 - `schedule_2376_2405.csv`；
 - `gpu_utilization_2376_2405.csv`；
 - `constraint_audit.csv`。
+
+本轮重跑必须同步刷新：层级 forecast metrics、Validation 90% interval metrics、schedule summary、GPU utilization、甘特图数据、constraint audit 和 registry 证据。
 
 所有新结果先 `DRAFT / NEEDS_REVIEW`；只有代码可重复、门禁通过、建模手复核后再升级。正文 `q1.tex` 暂不写未经冻结的正式数值。
