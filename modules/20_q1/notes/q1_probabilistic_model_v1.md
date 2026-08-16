@@ -1,14 +1,14 @@
-# Q1-A 概率预测模型 v1（待外部文献审查）
+# Q1-A 概率预测模型 v1（已被正式实现规范取代）
 
-状态：`DRAFT / NEEDS_REVIEW`
+状态：`SUPERSEDED / LEGACY_NOT_CURRENT`
 
-本文件记录问题一前半部分“GPU需求统计与短期预测”的当前正式候选。该版本先落盘，后续依据文献审查与验证结果继续修改，不直接视为 FROZEN。
+> 当前实现真源已经迁移到 `modules/20_q1/code/README.md` 与 `work/tasks/q1.md`。本文件保留用于记录路线演化，不得作为编程手当前实现依据。主要变化：主模型已从“共轭贝叶斯 + 后验 Monte Carlo”收敛为“经验标记复合 Poisson”；Gamma-Poisson/Dirichlet 仅保留为可选扩展；GPU mark 改用 TaskType 条件经验分布，Monte Carlo 降级为概率区间数值工具。
 
-## 1. 模型定位
+## 1. 模型定位（历史版本）
 
 Q1-A 不建立机器学习预测器，也不把预测结果传入 Q1 后半段正式调度。预测只用于第 2376--2399 小时独立评价；正式基础调度仍使用该区间真实到达任务。
 
-当前候选为：
+历史候选为：
 
 **共轭贝叶斯更新的分层标记复合泊松过程 + 后验预测 Monte Carlo。**
 
@@ -36,19 +36,13 @@ Q1-A 不建立机器学习预测器，也不把预测结果传入 Q1 后半段�
 
 ## 4. GPU 与 Duration 条件标记
 
-当前条件检验支持：给定 TaskType 后，GPU_Demand 与 Duration 对 SourceRegion 的附加依赖很弱；GPU 与 Duration 相关近 0。因此候选分解为
+历史版本曾候选分解为
 
 `P(R,K,G,D) = pi_rk * f_k^G(G) * f_k^D(D)`。
 
-现有数据中三类 GPU_Demand 分别与以下离散均匀分布相容：
+现有数据中三类 GPU_Demand 与离散均匀分布相容，但正式版本已改为 TaskType 条件经验 GPU mark；离散均匀只作简化对照。
 
-- RealTimeInference：1--7；
-- BatchInference：4--23；
-- AITraining：16--127。
-
-Duration 三类均在 10--399 min 上与离散均匀分布相容。
-
-正式实现需同时保留“参数化离散均匀 mark”和“历史经验 mark”两种版本做稳健性对照，避免将“未拒绝均匀分布”误写成已证明真实分布唯一为均匀。
+Duration 三类均在 10--399 min 上与离散均匀分布相容；正式版本要求在验证集比较全局经验分布与 TaskType 条件经验分布。
 
 ## 5. GPU demand 与 GPU-hour
 
@@ -62,30 +56,20 @@ Duration 三类均在 10--399 min 上与离散均匀分布相容。
 
 `Var[Y_rk,t | lambda,pi] = lambda*pi_rk*E[G^2|K=k]`。
 
-辅助统计量定义任务工作量 `X_i = G_i*D_i/60` (GPU-hour)，用于解释不同 TaskType 的真实计算量差异，但不与主预测量“新到达 GPU demand”混写。
+辅助统计量定义任务工作量 `X_i = G_i*D_i/60` (GPU-hour)。
 
-## 6. 有限历史的不确定性
+## 6. 历史版本中的有限历史处理
 
-当前数据条数多，但时间跨度只有约 98 天，缺少支持季节/长期趋势的历史长度。因此通过减少时间自由参数并显式传播参数不确定性处理“历史有限”，而不是引入更复杂黑箱。
-
-候选共轭更新：
+历史候选曾采用：
 
 - `lambda`：Gamma--Poisson；
 - `pi`：Dirichlet--Multinomial。
 
-当前先验候选为 Jeffreys/弱信息先验。由于样本量大，需在文献审查后判断是否继续保留 Jeffreys 形式，或改为更直观的经验贝叶斯/弱信息分层 Gamma 结构。
+正式版本考虑到训练阶段已有约 2352 个小时和约 4.9 万个任务，先验影响很小，因此这部分不再作为主模型必需结构，只保留为企业在线更新/参数不确定性扩展。
 
-## 7. 后验预测 Monte Carlo
+## 7. 历史版本中的 Monte Carlo
 
-模型估计完成后，每次模拟依次抽样：
-
-1. `lambda^(b)`；
-2. `pi^(b)`；
-3. `N_rk,t^(b)`；
-4. 任务 GPU mark，必要时抽 Duration mark；
-5. 聚合得到未来 24 h 的 `Y_rk,t^(b)` 与 GPU-hour。
-
-Monte Carlo 输出点预测、中位数、95% 后验预测区间及 Region×TaskType 联合需求分布。均值/方差能解析求解时以解析式为主，模拟主要服务于分位数和联合不确定性传播。
+历史版本计划从 `lambda`、`pi` 后验与 mark 分布重复抽样得到未来 24 h 联合分布。正式版本仍允许 Monte Carlo，但只作为完整离散分位数与可视化的数值实现之一；解析均值/方差优先。
 
 ## 8. 官方时间划分
 
@@ -94,31 +78,20 @@ Monte Carlo 输出点预测、中位数、95% 后验预测区间及 Region×Task
 - 模型确定后用 0--2375 重估；
 - 2376--2399：一次性独立测试。
 
-验证阶段至少比较：齐次 marked compound Poisson、增加 24 h 时间项的非齐次 Poisson、Negative Binomial/Poisson-Gamma 备选，以及历史均值、t-24、t-168 基准。只有验证结果支持时才增加时间结构。
-
 ## 9. 评价指标
 
 点预测：MAE、RMSE、WAPE。
 
-概率预测：PICP（区间覆盖率）、MPIW（平均区间宽度），并在文献审查后考虑加入 proper scoring rule（如 interval score / CRPS），避免概率预测只看点误差。
+概率预测：PICP、MPIW/interval score（若输出区间）。
 
-## 10. 必做可视化
+## 10. 历史可视化候选
 
 - Region×TaskType 任务数热图；
 - Region×TaskType GPU-hour 热图；
-- 三类 GPU_Demand 分布与拟合 PMF；
-- 三类 Duration 分布；
-- GPU--Duration 关系/条件独立性结果；
+- 三类 GPU_Demand 分布；
+- Duration 分布；
 - 每小时任务数直方图 + Poisson PMF；
-- ACF 图（突出 1/24/168 h）；
-- 2376--2399 预测曲线 + 真实值 + 95% 预测区间；
-- 生成机制图：arrival count -> (Region,TaskType) -> GPU/Duration marks -> aggregate demand。
+- ACF；
+- 2376--2399 预测曲线 + 真实值 + 区间。
 
-## 11. 当前风险 / NEEDS_REVIEW
-
-- 聚合 Poisson 拟合良好不保证 18 个子流全部等离散；已知部分稀疏子流可能存在轻微偏离，需做层级诊断。
-- Dirichlet 联合组成假设隐含 `pi_rk` 在当前短期内稳定，需用分段/滚动检验确认。
-- 参数化均匀 mark 可能过度理想化，必须与经验 mark 版本做预测区间与误差对照。
-- Jeffreys 先验在当前大样本下影响很小，是否值得正文保留需依据文献与表达简洁性决定。
-- Monte Carlo 不是模型创新本身；若解析/闭式后验预测足以给出所需区间，则模拟只作为实现工具。
-- 对企业实际运行最重要的风险是 regime shift；当前齐次模型需审查是否加入轻量在线更新/遗忘机制，而不破坏可解释性。
+以上图表已继承到当前正式实现规范。
