@@ -71,7 +71,7 @@
       "branch": "feature/q4",
       "path": "modules/50_q4",
       "task": "work/tasks/q4.md",
-      "active": false,
+      "active": true,
       "merge_order": 80
     },
     {
