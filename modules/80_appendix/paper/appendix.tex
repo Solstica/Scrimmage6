@@ -1,0 +1,28 @@
+\section*{附录：程序及结果文件说明}
+\addcontentsline{toc}{section}{附录：程序及结果文件说明}
+
+\textbf{程序文件清单示例。} 正式附录优先登记实际使用的代码入口和功能，不重复粘贴整份工程代码，也不要列出已经废弃的脚本。
+
+\begingroup\small\sloppy
+\begin{longtable}{p{.38\textwidth}p{.52\textwidth}}
+\toprule
+文件 & 功能\\\midrule
+\endfirsthead
+\toprule 文件 & 功能\\\midrule\endhead
+\path{modules/20_q1/code/solve_q1.py} & 问题一模型求解与主要结果导出。\\
+\path{modules/20_q1/results/registry.csv} & 问题一结果状态、来源与复核记录。\\
+\path{scripts/final_preflight.py} & 终稿引用、结果状态与LaTeX日志检查。\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\textbf{程序代码样式示例。} 只有确有必要展示的核心片段才放入正文附录；大段程序以随论文提交的源文件为准。
+
+\begin{lstlisting}[language=Python,caption={Python程序排版示例}]
+def objective(theta, x, y):
+    """Return the residual sum of squares."""
+    prediction = forward_model(theta, x)
+    return ((y - prediction) ** 2).sum()
+
+best_theta = solve_with_bounds(objective, bounds)
+\end{lstlisting}

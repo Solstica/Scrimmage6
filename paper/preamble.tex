@@ -1,0 +1,164 @@
+% CUMCM paper style baseline extracted from the team's validated competition paper.
+% Public typography/layout belongs to feature/paper-shell only.
+\usepackage[UTF8,fontset=fandol]{ctex}
+\usepackage{fontspec}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable,array,tabularx,multirow,colortbl}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{listings}
+\usepackage[ruled,lined,linesnumbered]{algorithm2e}
+\usepackage{tikz}
+\usepackage{tocloft}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{etoolbox}
+\usepackage{url}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+% ---------- page and body ----------
+\geometry{top=25mm,bottom=25mm,left=25mm,right=25mm}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0pt}
+\renewcommand{\baselinestretch}{1.38}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+% ---------- fonts: Windows competition machine first, portable fallback second ----------
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{TeX Gyre Termes}}
+\IfFontExistsTF{Arial}{\setsansfont{Arial}}{\setsansfont{TeX Gyre Heros}}
+\IfFontExistsTF{SimSun}{%
+  \setCJKmainfont{SimSun}[BoldFont=FandolSong-Bold.otf,ItalicFont=SimSun]
+  \setCJKfamilyfont{zhsong}{SimSun}[BoldFont=FandolSong-Bold.otf,ItalicFont=SimSun]
+}{}
+\AtBeginDocument{\zihao{-4}}
+
+% ---------- colors inherited from the validated paper ----------
+\definecolor{CumcmBlue}{HTML}{2F75B5}
+\definecolor{CumcmLightBlue}{HTML}{DCEAF7}
+\definecolor{CumcmGray}{HTML}{F2F2F2}
+\definecolor{CumcmOrange}{HTML}{E69F00}
+
+% ---------- title / abstract / keywords ----------
+\makeatletter
+\renewcommand{\maketitle}{%
+  \begin{center}
+    {\zihao{3}\bfseries\@title\par}
+  \end{center}
+  \vskip 1ex
+}
+\renewenvironment{abstract}{%
+  \begin{center}
+    {\zihao{4}\bfseries 摘要\par}
+  \end{center}
+  \vspace{-.35em}
+  \begin{list}{}{%
+    \setlength{\listparindent}{2em}%
+    \setlength{\itemindent}{2em}%
+    \setlength{\leftmargin}{0pt}%
+    \setlength{\rightmargin}{0pt}%
+    \setlength{\parsep}{0pt}%
+  }\item\relax\zihao{-4}
+}{\end{list}}
+\makeatother
+\newcommand{\keywords}[1]{%
+  \par\vskip .8ex
+  {\noindent\zihao{-4}\heiti 关键词：}\zihao{-4}#1
+}
+
+% ---------- Chinese section numbering and hierarchy ----------
+\makeatletter
+\def\@seccntformat#1{\csname the#1\endcsname\ }
+\renewcommand\thesection{\chinese{section}、}
+\renewcommand\thesubsection{\arabic{section}.\arabic{subsection}}
+\renewcommand\thesubsubsection{\thesubsection.\arabic{subsubsection}}
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-3.5ex \@plus -1ex \@minus -.2ex}%
+  {2.3ex \@plus .2ex}%
+  {\centering\normalfont\Large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-3.25ex\@plus -1ex \@minus -.2ex}%
+  {1.5ex \@plus .2ex}%
+  {\normalfont\large\bfseries}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+  {-3.25ex\@plus -1ex \@minus -.2ex}%
+  {1.5ex \@plus .2ex}%
+  {\normalfont\normalsize\bfseries}}
+\makeatother
+
+% ---------- table of contents ----------
+\renewcommand{\contentsname}{目录}
+\renewcommand{\cftdot}{$\cdot$}
+\renewcommand{\cftsecdotsep}{1.5}
+\setlength{\cftbeforesecskip}{7pt}
+\setlength{\cftbeforesubsecskip}{3pt}
+\renewcommand{\cftsecfont}{\bfseries\zihao{-4}\songti}
+\renewcommand{\cftsecpagefont}{\bfseries\zihao{-4}\songti}
+\renewcommand{\cftsubsecfont}{\zihao{-4}\songti}
+\renewcommand{\cftsubsecpagefont}{\zihao{-4}\songti}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftsecdotsep}}
+\renewcommand{\cftsecaftersnumb}{\hskip .4em}
+
+% ---------- figures / tables ----------
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
+\DeclareCaptionFont{cumcmsong}{\songti}
+\DeclareCaptionFont{cumcmminusfour}{\zihao{-4}}
+\captionsetup[figure]{format=hang,labelsep=quad,font={cumcmsong,cumcmminusfour,bf},position=bottom}
+\captionsetup[table]{format=hang,labelsep=quad,font={cumcmsong,cumcmminusfour,bf},position=top}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{0.90}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\floatpagefraction}{0.85}
+\AtBeginEnvironment{tabular}{\renewcommand{\arraystretch}{1.38}}
+\AtBeginEnvironment{tabularx}{\renewcommand{\arraystretch}{1.38}}
+
+% Figure-size conventions. Do not hard-code ad-hoc widths in chapter files unless justified.
+\newcommand{\FigureSingleWidth}{0.44\textwidth}
+\newcommand{\FigureDoubleWidth}{0.88\textwidth}
+\newcommand{\FigureFlowWidth}{\textwidth}
+\newcommand{\FigureMechanismWidth}{0.70\textwidth}
+
+% ---------- lists ----------
+\setlist{topsep=.3em,partopsep=0pt,itemsep=.1ex,parsep=0pt,leftmargin=1.5em,rightmargin=0em,labelsep=.5em}
+
+% ---------- pseudocode ----------
+\SetAlgorithmName{算法}{算法}{算法目录}
+\SetAlgoLined
+\SetAlgoNlRelativeSize{-1}
+\SetInd{0.55em}{1.05em}
+
+% ---------- code ----------
+\lstset{
+  frame=single,
+  framerule=.6pt,
+  rulecolor=\color{gray!35},
+  backgroundcolor=\color{gray!5},
+  basicstyle=\small\ttfamily,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{CumcmBlue},
+  commentstyle=\color{gray},
+  stringstyle=\color{CumcmOrange!80!black},
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4
+}
+
+% ---------- links ----------
+\hypersetup{hidelinks,breaklinks=true,pdfstartview=FitH}
+\urlstyle{same}
+
+% ---------- shared helpers ----------
+\newenvironment{ThreeLineTable}[1]{%
+  \begin{table}[!htbp]\centering\caption{#1}\small
+}{%
+  \end{table}
+}

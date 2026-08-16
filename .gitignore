@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# LaTeX build
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+paper/main.pdf
+
+# Generated AI handoff packages
+output/handoff/
+
+# Office temp
+~$*
+*.tmp
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Disposable preview marker
+.cumcm-preview-worktree

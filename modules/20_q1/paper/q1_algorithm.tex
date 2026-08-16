@@ -1,0 +1,27 @@
+\begin{algorithm}[H]
+\SetAlgoLined
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\caption{问题一通用参数求解流程示例}
+\label{alg:q1-demo}
+\KwIn{观测数据$\mathcal D=\{(x_i,y_i)\}_{i=1}^{n}$，参数边界$\Omega$，候选初值集合$\mathcal S$}
+\KwInit{最优目标值$J_{\min}\leftarrow+\infty$，最优参数$\boldsymbol\theta^{*}\leftarrow\varnothing$}
+\For{$\boldsymbol\theta^{(0)}\in\mathcal S$}{
+    在边界$\Omega$内从$\boldsymbol\theta^{(0)}$出发求解当前模型\;
+    得到候选解$\widehat{\boldsymbol\theta}$并计算$J(\widehat{\boldsymbol\theta})$\;
+    \If{$J(\widehat{\boldsymbol\theta})<J_{\min}$}{
+        $J_{\min}\leftarrow J(\widehat{\boldsymbol\theta})$\;
+        $\boldsymbol\theta^{*}\leftarrow\widehat{\boldsymbol\theta}$\;
+    }
+}
+根据题意计算误差、稳健性或独立验证指标\;
+\KwRet $\boldsymbol\theta^{*}$及对应评价指标\;
+\KwOut{最终参数、关键结果与必要的检验量}
+\end{algorithm}

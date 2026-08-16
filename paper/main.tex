@@ -1,0 +1,44 @@
+\documentclass[12pt,a4paper]{article}
+\providecommand{\ProjectRoot}{..}
+\input{preamble.tex}
+\input{settings.tex}
+\input{title.tex}
+
+\begin{document}
+\pagenumbering{gobble}
+\maketitle
+
+\begin{abstract}
+\input{../modules/00_abstract/paper/abstract.tex}
+\end{abstract}
+
+\ifshowtoc
+  \clearpage
+  \tableofcontents
+\fi
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{../modules/10_restatement/paper/restatement.tex}
+\input{../modules/11_notation/paper/notation.tex}
+\input{../modules/12_assumptions/paper/assumptions.tex}
+\input{../modules/20_q1/paper/q1.tex}
+\input{../modules/30_q2/paper/q2.tex}
+\input{../modules/40_q3/paper/q3.tex}
+% \input{../modules/50_q4/paper/q4.tex}
+\input{../modules/60_evaluation/paper/evaluation.tex}
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{参考文献}
+\renewcommand{\refname}{参考文献}
+\input{../modules/70_references/paper/references.tex}
+
+\clearpage
+\input{../modules/80_appendix/paper/appendix.tex}
+
+\clearpage
+\input{../modules/90_ai_report/paper/ai_report.tex}
+\end{document}

@@ -1,0 +1,130 @@
+\section{问题一模型的建立与求解}
+
+\subsection{问题一的描述与分析}
+
+本问示例只展示一套可复用的章节骨架：先明确任务、对象与困难，再给出解题流程图；随后完成必要预备工作、模型建立、模型汇总、算法求解、结果分析及模型检验。实际比赛中可按题意删减，不要求机械保留所有小节。
+
+图\ref{fig:q1-flow-demo}给出建议的总体流程图样式。总体流程图通常按正文宽度排版，内部文字尽量短句化。
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\FigureFlowWidth}{!}{%
+\begin{tikzpicture}[
+  node distance=1.45cm and 1.35cm,
+  box/.style={draw,rounded corners=2pt,minimum width=3.1cm,minimum height=1.0cm,align=center,fill=CumcmLightBlue},
+  line/.style={-{Latex[length=2.5mm]},thick}
+]
+\node[box] (data) {题目与数据\\确定对象、变量和约束};
+\node[box,right=of data] (prep) {预备工作\\清洗、变换或机理分析};
+\node[box,right=of prep] (model) {模型建立\\关系、目标与约束};
+\node[box,right=of model] (solve) {模型求解\\算法与参数设置};
+\node[box,right=of solve] (result) {结果分析\\结论、图表与检验};
+\draw[line] (data)--(prep);
+\draw[line] (prep)--(model);
+\draw[line] (model)--(solve);
+\draw[line] (solve)--(result);
+\end{tikzpicture}%
+}
+\caption{问题一建模求解总体流程示例。}
+\label{fig:q1-flow-demo}
+\end{figure}
+
+\subsection{模型建立}
+
+\subsubsection{变量与基本关系}
+
+设观测数据为$\{(x_i,y_i)\}_{i=1}^{n}$，待估参数向量为$\boldsymbol\theta$。若系统响应可抽象为函数$f(x;\boldsymbol\theta)$，则观测方程写为
+\begin{equation}
+y_i=f(x_i;\boldsymbol\theta)+\varepsilon_i,
+\label{eq:q1-observation-demo}
+\end{equation}
+其中$\varepsilon_i$表示测量误差或未建模扰动。普通解释性公式尽量放在行内，真正承担推导、模型定义或结果表达作用的公式再单独编号。
+
+\subsubsection{目标函数与约束}
+
+以加权残差平方和为例，可建立
+\begin{equation}
+J(\boldsymbol\theta)
+=\sum_{i=1}^{n}w_i\left[y_i-f(x_i;\boldsymbol\theta)\right]^2,
+\label{eq:q1-objective-demo}
+\end{equation}
+并在参数物理边界$\boldsymbol\theta_{\min}\le\boldsymbol\theta\le\boldsymbol\theta_{\max}$内求解。若题目属于优化问题，应明确写出决策变量、目标函数和约束；若属于解析推导或直接计算问题，则不必为了形式强行构造优化模型。
+
+\subsubsection{模型汇总}
+
+建议在复杂模型建立完成后用一组公式汇总输入、核心关系、约束与输出。例如
+\begin{equation}
+\left\{
+\begin{aligned}
+&y_i=f(x_i;\boldsymbol\theta)+\varepsilon_i,\\
+&J(\boldsymbol\theta)=\sum_{i=1}^{n}w_i\bigl[y_i-f(x_i;\boldsymbol\theta)\bigr]^2,\\
+&\boldsymbol\theta_{\min}\le\boldsymbol\theta\le\boldsymbol\theta_{\max},\\
+&\boldsymbol\theta^{*}=\operatorname*{arg\,min}_{\boldsymbol\theta}J(\boldsymbol\theta).
+\end{aligned}
+\right.
+\label{eq:q1-summary-demo}
+\end{equation}
+这样可以让读者在一处看到完整数学结构，同时便于后续算法与结果直接引用。
+
+\subsection{模型求解}
+
+求解算法应先说明为什么适合当前模型，再给出主要步骤。伪代码负责表达算法机制和输入输出，不应直接复制Python语法。算法示例见算法\ref{alg:q1-demo}。
+
+\input{\ProjectRoot/modules/20_q1/paper/q1_algorithm.tex}
+
+\subsection{结果与分析}
+
+结果部分优先先给“最重要结论”，再给参数组合、误差指标与图形解释。表\ref{tab:q1-result-demo}展示三线表和浅蓝表头的统一样式。
+
+\begin{table}[!htbp]
+\centering
+\caption{问题一结果表样式示例}
+\label{tab:q1-result-demo}
+\begin{tabular}{cccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+参数 & 估计值 & 评价指标 & 说明 \\
+\midrule
+$\theta_1$ & 1.234 & 误差A & 保留与数据精度匹配的有效数字 \\
+$\theta_2$ & 0.568 & 误差B & 单位统一写在表头或变量定义中 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Origin或其他外部软件生成的小图在论文中的视觉尺寸应统一。单个小图建议宽度为\texttt{0.44\textbackslash textwidth}，两个小图并排时总宽度约为\texttt{0.88\textbackslash textwidth}；若已经在Origin中合成为双面板图，则整张图片直接按\texttt{0.88\textbackslash textwidth}插入，不要再次缩成\texttt{0.44\textbackslash textwidth}。下面用TikZ画出两个无数据含义的示例面板，仅用于展示论文尺寸和子图排版。
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}[t]{\FigureSingleWidth}
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=0.75cm,y=0.75cm]
+\draw[->] (0,0)--(6.2,0) node[right] {$x$};
+\draw[->] (0,0)--(0,4.2) node[above] {$y$};
+\draw[thick,CumcmBlue] plot[smooth] coordinates {(0.4,0.7) (1.2,1.1) (2.0,1.7) (2.8,2.1) (3.6,2.8) (4.4,3.1) (5.4,3.6)};
+\foreach \x/\y in {0.4/0.8,1.2/1.0,2.0/1.9,2.8/2.0,3.6/2.7,4.4/3.2,5.4/3.5}{\fill (\x,\y) circle (2pt);}
+\end{tikzpicture}%
+}
+\caption{拟合或预测效果示例}
+\end{subfigure}
+\hspace{0.02\textwidth}
+\begin{subfigure}[t]{\FigureSingleWidth}
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=0.75cm,y=0.75cm]
+\draw[->] (0,2)--(6.2,2) node[right] {$x$};
+\draw[->] (0,0)--(0,4.2) node[above] {残差};
+\draw[dashed,gray] (0,2)--(5.8,2);
+\foreach \x/\y in {0.5/2.3,1.2/1.8,1.9/2.1,2.6/1.7,3.3/2.2,4.0/1.9,4.7/2.25,5.4/1.85}{\fill[CumcmBlue] (\x,\y) circle (2.2pt);}
+\end{tikzpicture}%
+}
+\caption{残差或误差分布示例}
+\end{subfigure}
+\caption{两个小图并排时的统一尺寸示例。}
+\label{fig:q1-result-demo}
+\end{figure}
+\FloatBarrier
+
+\subsection{模型检验}
+
+模型检验应服务于本问最主要的不确定性：可根据题型选择灵敏度、稳健性、误差、收敛性、回测或独立验证中的一种或数种，而不是机械地每问都放同一种检验。示例写法为：在参数$\theta_j$附近施加小幅扰动，重新求解并比较关键输出变化；若结果变化明显小于输入扰动或结论保持一致，则说明模型在该扰动范围内具有一定稳定性。

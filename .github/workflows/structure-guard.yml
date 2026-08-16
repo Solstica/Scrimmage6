@@ -1,0 +1,13 @@
+name: structure-guard
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run structure and ownership guard
+        run: python scripts/structure_guard.py --base origin/${{ github.base_ref }} --head HEAD --branch "${{ github.head_ref }}"

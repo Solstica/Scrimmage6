@@ -1,0 +1,122 @@
+{
+  "project_name": "CUMCM-Template",
+  "default_base": "main",
+  "modules": [
+    {
+      "key": "shared",
+      "branch": "feature/shared",
+      "path": "shared",
+      "task": "work/tasks/shared.md",
+      "active": true,
+      "merge_order": 5
+    },
+    {
+      "key": "abstract",
+      "branch": "feature/abstract",
+      "path": "modules/00_abstract",
+      "task": "work/tasks/abstract.md",
+      "active": true,
+      "merge_order": 10
+    },
+    {
+      "key": "restatement",
+      "branch": "feature/restatement",
+      "path": "modules/10_restatement",
+      "task": "work/tasks/restatement.md",
+      "active": true,
+      "merge_order": 20
+    },
+    {
+      "key": "notation",
+      "branch": "feature/notation",
+      "path": "modules/11_notation",
+      "task": "work/tasks/notation.md",
+      "active": true,
+      "merge_order": 30
+    },
+    {
+      "key": "assumptions",
+      "branch": "feature/assumptions",
+      "path": "modules/12_assumptions",
+      "task": "work/tasks/assumptions.md",
+      "active": true,
+      "merge_order": 40
+    },
+    {
+      "key": "q1",
+      "branch": "feature/q1",
+      "path": "modules/20_q1",
+      "task": "work/tasks/q1.md",
+      "active": true,
+      "merge_order": 50
+    },
+    {
+      "key": "q2",
+      "branch": "feature/q2",
+      "path": "modules/30_q2",
+      "task": "work/tasks/q2.md",
+      "active": true,
+      "merge_order": 60
+    },
+    {
+      "key": "q3",
+      "branch": "feature/q3",
+      "path": "modules/40_q3",
+      "task": "work/tasks/q3.md",
+      "active": true,
+      "merge_order": 70
+    },
+    {
+      "key": "q4",
+      "branch": "feature/q4",
+      "path": "modules/50_q4",
+      "task": "work/tasks/q4.md",
+      "active": false,
+      "merge_order": 80
+    },
+    {
+      "key": "evaluation",
+      "branch": "feature/evaluation",
+      "path": "modules/60_evaluation",
+      "task": "work/tasks/evaluation.md",
+      "active": true,
+      "merge_order": 90
+    },
+    {
+      "key": "references",
+      "branch": "feature/references",
+      "path": "modules/70_references",
+      "task": "work/tasks/references.md",
+      "active": true,
+      "merge_order": 100
+    },
+    {
+      "key": "appendix",
+      "branch": "feature/appendix",
+      "path": "modules/80_appendix",
+      "task": "work/tasks/appendix.md",
+      "active": true,
+      "merge_order": 110
+    },
+    {
+      "key": "ai-report",
+      "branch": "feature/ai-report",
+      "path": "modules/90_ai_report",
+      "task": "work/tasks/ai-report.md",
+      "active": true,
+      "merge_order": 120
+    },
+    {
+      "key": "paper-shell",
+      "branch": "feature/paper-shell",
+      "path": "paper",
+      "task": "work/tasks/paper-shell.md",
+      "extra_paths": [
+        "docs/PAPER_STYLE_GUIDE.md",
+        "docs/AI_HANDOFF_PROMPT.md"
+      ],
+      "active": true,
+      "merge_order": 999
+    }
+  ]
+}

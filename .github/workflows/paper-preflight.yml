@@ -1,0 +1,13 @@
+name: paper-preflight
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run paper preflight
+        run: python scripts/final_preflight.py
