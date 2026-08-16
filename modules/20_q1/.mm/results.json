@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "results": [
+    {
+      "result_id": "q1_test_wape",
+      "question": "q1",
+      "metric": "独立测试集WAPE",
+      "value_text": "0.24301446659461443",
+      "unit": "无量纲",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+          "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\tables\\q1_forecast_metrics.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "created_at": "2026-08-16T14:49:07+00:00",
+      "updated_at": "2026-08-16T14:49:07+00:00"
+    },
+    {
+      "result_id": "q1_interval_picp",
+      "question": "q1",
+      "metric": "90%预测区间覆盖率",
+      "value_text": "0.875",
+      "unit": "无量纲",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+          "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\tables\\q1_forecast_metrics.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "created_at": "2026-08-16T14:49:07+00:00",
+      "updated_at": "2026-08-16T14:49:07+00:00"
+    },
+    {
+      "result_id": "q1_scheduled_tasks",
+      "question": "q1",
+      "metric": "成功调度任务数",
+      "value_text": "538",
+      "unit": "个",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+          "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\data\\processed\\constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "created_at": "2026-08-16T14:49:07+00:00",
+      "updated_at": "2026-08-16T14:49:07+00:00"
+    },
+    {
+      "result_id": "q1_max_gpu_util",
+      "question": "q1",
+      "metric": "最大GPU利用率",
+      "value_text": "99.01656314699392",
+      "unit": "%",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\GPU_information.xlsx",
+          "sha256": "68f978ff242da0bab54259283f647c7552693acf6db5e2212ff4e10f6a5d5d2f"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\tables\\q1_schedule_summary.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "created_at": "2026-08-16T14:49:07+00:00",
+      "updated_at": "2026-08-16T14:49:07+00:00"
+    },
+    {
+      "result_id": "q1_baseline_error",
+      "question": "q1",
+      "metric": "基准AI IT负荷最大重构误差",
+      "value_text": "3.333344800182658e-07",
+      "unit": "MW",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+          "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\data\\processed\\constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "created_at": "2026-08-16T14:49:08+00:00",
+      "updated_at": "2026-08-16T14:49:08+00:00"
+    }
+  ]
+}

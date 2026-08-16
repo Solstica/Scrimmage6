@@ -1,1 +1,6 @@
 result_id,status,review_state,value,unit,source_file,used_in_paper,notes
+q1_test_wape,DRAFT,NEEDS_REVIEW,0.24301446659461443,无量纲,tables/q1_forecast_metrics.csv,false,2376至2399小时独立测试集系统GPU需求WAPE
+q1_interval_picp,DRAFT,NEEDS_REVIEW,0.875,无量纲,tables/q1_forecast_metrics.csv,false,系统GPU需求90%联合预测区间覆盖率
+q1_scheduled_tasks,DRAFT,NEEDS_REVIEW,538,个,data/processed/schedule_2376_2405.csv,false,2376至2399小时实际到达任务全部成功调度
+q1_max_gpu_util,DRAFT,NEEDS_REVIEW,99.01656314699392,百分比,tables/q1_schedule_summary.csv,false,2376至2405小时区域GPU利用率最大值
+q1_baseline_error,DRAFT,NEEDS_REVIEW,3.333344800182658e-07,MW,data/processed/constraint_audit.csv,false,到达即执行基准AI_IT负荷最大重构误差
