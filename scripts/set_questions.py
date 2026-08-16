@@ -69,8 +69,10 @@ def main() -> None:
     main_text = MAIN.read_text(encoding="utf-8")
     main_out = update_main_tex(main_text, args.questions)
 
-    CFG.write_text(cfg_out, encoding="utf-8", newline="\n")
-    MAIN.write_text(main_out, encoding="utf-8", newline="\n")
+    with CFG.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(cfg_out)
+    with MAIN.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(main_out)
 
     print(
         f"已设置为 {args.questions} 问"
