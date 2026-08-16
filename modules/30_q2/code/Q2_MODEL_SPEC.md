@@ -1,67 +1,90 @@
-# Q2 正式模型规范：碳感知时空资源约束任务调度
+# Q2 正式模型规范：碳感知时空工作负载调度
 
 状态：`DRAFT / NEEDS_REVIEW`
 
-本文件记录 Q2 当前正式建模口径。它在 `Q2_DATA_PROBES.md` 的数据探针基础上，先冻结**算力负荷到能源结果的平衡公式**，再规定 SFETA 应如何使用这些量。Q2 不把储能充放电、SOC、购售电策略本身设为优化决策；这些能源运行自由度留给 Q3/Q4。
+## 0. 正式命名与术语纪律
 
-## 1. 题意到模型的对应
+Q2 正式模型名称优先采用已有文献中的术语：
 
-Q2 的输入：0--2399 h 实际到达任务及逐时电力参数。
+**碳感知时空工作负载调度模型（Carbon-Aware Spatiotemporal Workload Scheduling）**。
 
-Q2 的决策变量：每个任务的执行区域 `r_i` 与开工时刻 `s_i`；等价二元变量为 `x[i,r,s]`。
+本题在该成熟问题框架上进一步加入两类题目特化结构：
 
-Q2 的算电耦合：任务调度 -> AI IT -> 总 IT -> Facility Load -> 基准能源状态上的边际能源后果。
+1. **资源容量约束（resource/capacity constraints）**：GPU、IT、Facility、GridImport、SLA、deadline；
+2. **新能源弃电缓解（renewable curtailment mitigation）**：利用可延迟、可迁移任务吸收基准状态中的可用新能源弃电裕量。
 
-Q2 的目标/评价：运行成本、碳排放、网络时延、新能源利用率。当前不使用主观加权和。
+此前使用的“任务时空柔性—弃电消纳耦合的碳感知资源约束调度模型”保留为**中文机制性描述**，不再把它包装成已有文献中的标准模型名。
 
-SFETA 是 Q2 数学模型的求解/构造算法，不是模型本身。
+“spatiotemporal flexibility / temporal and spatial workload shifting / carbon-aware workload scheduling / renewable curtailment mitigation / resource-constrained scheduling / time-indexed formulation / marginal resource allocation”均有对应文献来源；具体核对见 `Q2_TERMINOLOGY_AUDIT.md`。
+
+SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）是**本文自定义算法名**，不是已有标准算法或公认缩写。若论文保留该名称，必须明确写为“本文在 REPTA 思想基础上构造的任务分配启发式”，不能写成既有算法名称。
 
 ---
 
-## 2. 任务侧时空调度
+## 1. 题意到模型的对应
 
-设任务 `i` 的到达小时、来源区域、类型、GPU 需求、持续时长、最晚完成时刻、最大允许时延分别为
+Q2 输入：第 0--2399 小时实际到达任务及逐时电力参数。
 
-`a_i, o_i, k_i, g_i, p_i, d_i, L_i`，其中 `p_i = EstimatedDuration_min/60`。
+Q2 决策变量：每个任务的执行区域 `r_i` 与开工时刻 `s_i`；等价的时间索引二元变量为 `x[i,r,s]`。
 
-### 2.1 合法区域
+Q2 算电耦合：
+
+`任务时空调度 -> AI IT -> 总 IT -> Facility Load -> 增量能量平衡 -> Cost / Carbon / Renewable Utilization`。
+
+Q2 目标/评价：运行成本、碳排放、网络时延、新能源利用率。当前不使用主观加权和。
+
+SFETA 只负责求解/构造调度方案，不定义数学模型本身。
+
+---
+
+## 2. 任务时空调度与可行域
+
+设任务 `i` 的到达小时、来源区域、类型、GPU 需求、持续时间、最晚完成时刻、最大允许网络时延分别为
+
+`a_i, o_i, k_i, g_i, p_i, d_i, L_i`，其中 `p_i = EstimatedDuration_min/60`（h）。
+
+### 2.1 空间可行域
 
 `R_i = { r : NetworkLatency[o_i,r] <= L_i }`。
 
-### 2.2 合法开工时刻
+这对应文献中的 spatial workload shifting / spatial flexibility，但本题的具体可行域完全由附件 `network_latency.xlsx` 与 MaxLatency 决定。
+
+### 2.2 时间可行域
 
 - RealTimeInference：`s_i = a_i`；
 - BatchInference / AITraining：`s_i >= a_i` 且 `s_i + p_i <= min(d_i,2406)`。
 
-当前按 1 h 时段边界解释开工时刻；若后续题面确认连续开工，统一修改。
-
-完整合法域：
+当前按 1 h 时段边界解释开工时刻。完整合法域为：
 
 `C_i = R_i × T_i`。
 
-不得人为加入最大等待 24 h、最近若干区域、top-K 候选等搜索域限制。
+不得人为增加“最多等待 24 h”“只看最近几个区域”“top-K 候选”等搜索域限制。
 
 ### 2.3 小时重叠
 
-`omega(i,s,t) = max(0, min(t+1,s+p_i) - max(t,s))`。
+`omega(i,s,t) = max(0, min(t+1,s+p_i) - max(t,s))`（h）。
 
-并检查 `sum_t omega(i,s,t) = p_i`。
+必须满足：
+
+`sum_t omega(i,s,t) = p_i`（浮点容差内）。
 
 ---
 
 ## 3. 调度后的算力负荷
 
-任务类型单位 GPU 的 IT 功率为 `alpha[k]`。
+令 `Delta t = 1 h`，任务类型 `k` 的单位 GPU IT 功率映射为 `alpha[k]`（MW/GPU）。
 
-AI IT：
+### 3.1 AI IT 平均功率
 
-`P_AI[r,t](x) = sum_{i,s} alpha[k_i] * g_i * omega(i,s,t) * x[i,r,s]`。
+严格按量纲写为：
 
-总 IT：
+`P_AI[r,t](x) = (1/Delta t) * sum_{i,s} alpha[k_i] * g_i * omega(i,s,t) * x[i,r,s]`（MW）。
+
+由于 `Delta t = 1 h`，其数值与附件写法一致，但正文保留 `1/Delta t` 以避免 MW 与 MWh 混淆。
+
+### 3.2 总 IT 与设施负荷
 
 `P_IT[r,t](x) = NonAI_IT_Load[r,t] + P_AI[r,t](x)`。
-
-设施侧负荷：
 
 `L[r,t](x) = PUE[r] * P_IT[r,t](x)`。
 
@@ -69,253 +92,304 @@ AI IT：
 
 `L0[r,t] = PUE[r] * (NonAI_IT_Load[r,t] + Baseline_AI_IT_Load[r,t])`。
 
-定义任务调度引起的设施负荷增量：
+定义任务调度造成的设施负荷增量：
 
 `DeltaL[r,t] = L[r,t](x) - L0[r,t]`。
 
-该量是 Q2 从“算”进入“电”的唯一负荷增量接口。
+这是 Q2 从计算侧进入能源侧的唯一负荷接口。
+
+### 3.3 GPU-hour 容量约束
+
+附件明确按实际小时重叠时长折算 GPU-hour，因此必须显式写为：
+
+`sum_{i,s} g_i * omega(i,s,t) * x[i,r,s] <= AvailableGPU[r] * Delta t`。
+
+同时满足：
+
+`P_IT[r,t](x) <= MaxITPower[r]`，
+
+`L[r,t](x) <= MaxFacilityPower[r]`。
 
 ---
 
-## 4. Q2 能源层边界
+## 4. AvailableRenewable 与基准弃电裕量
 
-附件统一平衡式为：
+题目给定的外生新能源输入是 `AvailableRenewable[r,t]`。Q2 不用 `Curtailment0` 替代该输入，而把基准弃电解释为由可用新能源及基准能源分配导出的**剩余可消纳裕量**。
 
-`GridPurchase + AvailableRenewable + DischargePower = Total_Load + ChargePower + GridSell + Curtailment`。
+若附件基准新能源分配满足：
 
-Q2 的显式决策只有任务迁移与开工时段，因此 Q2 不重新优化储能和能源市场运行。`storage_information.xlsx` 中的 SOC、充放电功率和效率不作为 Q2 决策自由度；但附件“建模边界统一口径”明确规定 `MaxGridImport_MW` 与 `MaxGridExport_MW` 为区域级硬约束，因此 Q2 仍读取这两个边界参数用于可行性检查。
+`AvailableRenewable = UsedRenewable0 + RenewableCharge0 + GridSell0 + Curtailment0`，
 
-为避免把 Q3/Q4 的自由度提前引入 Q2，采用**基准状态中心化的边际能源核算**：
+则必须审计：
 
-- `GridCharge0, RenewableCharge0, DischargePower0, GridSell0` 保持基准值；
-- 任务调度只改变设施负荷；
-- 负荷增加时先利用基准 `Curtailment0`，其余增加供负荷购电；
-- 负荷降低时先减少基准供负荷购电，其余形成新增弃电；
-- 这是一条固定核算规则，不是额外能源优化决策。
+`Curtailment0[r,t] = AvailableRenewable[r,t] - UsedRenewable0[r,t] - RenewableCharge0[r,t] - GridSell0[r,t]`。
 
-定义基准供负荷购电：
+若该恒等式在数据中不成立，则不得继续使用本节口径，需回到附件字段定义重新核对。
 
-`G0[r,t] = max(GridPurchase0[r,t] - GridCharge0[r,t], 0)`。
+因此：
 
-定义基准直接新能源：
+- `AvailableRenewable` 是题面要求考虑的原始外生信号；
+- `Curtailment0` 是在基准运行状态下由该信号导出的、可被新计算负荷进一步吸收的新能源裕量。
 
-`U0[r,t] = UsedRenewable0[r,t]`，
+---
+
+## 5. Q2 能源层边界：基准状态增量能量平衡
+
+附件统一能量平衡为：
+
+`GridPurchase + AvailableRenewable + DischargePower = TotalLoad + ChargePower + GridSell + Curtailment`。
+
+Q2 的显式决策只有任务迁移与开工时段。为与 Q3 的储能优化形成清晰递进，Q2 作如下**题目特化建模假设**：
+
+- `GridCharge0, RenewableCharge0, DischargePower0, GridSell0` 保持附件基准状态；
+- Q2 只改变任务调度造成的设施负荷；
+- 新增负荷先吸收基准弃电裕量，剩余部分增加供负荷购电；
+- 负荷降低先减少基准供负荷购电，若仍有剩余则表现为新能源直接消纳下降、弃电增加。
+
+该规则称为“基准状态增量能量平衡”，只是本文核算规则，不作为已有文献模型名。
+
+### 5.1 基准供负荷购电
+
+定义：
+
+`G0[r,t] = GridPurchase0[r,t] - GridCharge0[r,t]`。
+
+必须审计：
+
+`G0[r,t] >= -tolerance`。
+
+禁止使用 `max(GridPurchase0-GridCharge0,0)` 静默修正异常。
+
+基准直接新能源：
+
+`U0[r,t] = UsedRenewable0[r,t]`。
 
 基准弃电：
 
 `C0[r,t] = Curtailment0[r,t]`。
 
----
+### 5.2 紧凑的增量购电分段式
 
-## 5. 基准状态中心化边际能量平衡
+定义供负荷购电变化 `DeltaG[r,t]`：
 
-令
+`DeltaG[r,t] = 0`, if `0 <= DeltaL[r,t] <= C0[r,t]`；
 
-`dplus[r,t] = max(DeltaL[r,t], 0)`，
+`DeltaG[r,t] = DeltaL[r,t] - C0[r,t]`, if `DeltaL[r,t] > C0[r,t]`；
 
-`dminus[r,t] = max(-DeltaL[r,t], 0)`。
+`DeltaG[r,t] = -min(-DeltaL[r,t], G0[r,t])`, if `DeltaL[r,t] < 0`。
 
-### 5.1 负荷增加：先吸收弃电，再新增购电
+含义：
 
-可由原弃电吸收的增量：
+1. 增量负荷不超过弃电裕量：全部由原弃电吸收，不增加购电；
+2. 增量负荷超过弃电裕量：超出部分新增购电；
+3. 负荷下降：先减少原有供负荷购电。
 
-`Aplus[r,t] = min(dplus[r,t], C0[r,t])`。
+### 5.3 弃电与直接新能源变化
 
-超过弃电余量的新增电网供负荷功率：
+由新旧能量平衡相减：
 
-`Bplus[r,t] = dplus[r,t] - Aplus[r,t]`。
+`DeltaGridPurchase[r,t] = DeltaL[r,t] + DeltaCurtailment[r,t]`。
 
-### 5.2 负荷降低：先减少供负荷购电，再增加弃电
+在 Q2 固定 `GridCharge0` 的条件下，`DeltaGridPurchase = DeltaG`，故：
 
-可直接削减的基准供负荷购电：
+`DeltaCurtailment[r,t] = DeltaG[r,t] - DeltaL[r,t]`。
 
-`Bminus[r,t] = min(dminus[r,t], G0[r,t])`。
+`DeltaUsedRenewable[r,t] = -DeltaCurtailment[r,t]`。
 
-剩余负荷下降量：
+更新后：
 
-`Aminus[r,t] = dminus[r,t] - Bminus[r,t]`。
+`GridPurchase[r,t] = GridPurchase0[r,t] + DeltaG[r,t]`；
 
-其物理含义为直接新能源消纳减少、弃电增加。
+`Curtailment[r,t] = C0[r,t] + DeltaCurtailment[r,t]`；
 
-实现时必须检查：
+`UsedRenewable[r,t] = U0[r,t] - DeltaCurtailment[r,t]`。
 
-`Aminus[r,t] <= U0[r,t] + tolerance`。
-
-若出现违反，不允许静默截断；说明“固定基准储能/市场背景”的 Q2 口径在该 region-hour 已失效，需要建模手重新审查，而不是自动修改储能策略。
-
-### 5.3 更新后的能源量
-
-供负荷购电：
-
-`G[r,t] = G0[r,t] + Bplus[r,t] - Bminus[r,t]`。
-
-总购电：
-
-`GridPurchase[r,t] = GridCharge0[r,t] + G[r,t]`。
-
-直接新能源消纳：
-
-`UsedRenewable[r,t] = U0[r,t] + Aplus[r,t] - Aminus[r,t]`。
-
-弃电：
-
-`Curtailment[r,t] = C0[r,t] - Aplus[r,t] + Aminus[r,t]`。
-
-保持：
+并保持：
 
 - `RenewableCharge = RenewableCharge0`；
 - `GridCharge = GridCharge0`；
 - `DischargePower = DischargePower0`；
 - `GridSell = GridSell0`。
 
-若基准数据满足附件统一能量平衡，则上述更新在每个 `(r,t)` 上保持能量守恒，并在 `DeltaL=0` 时精确回到附件基准状态。
+### 5.4 能源侧审计边界
 
-### 5.4 区域购售电硬边界
+必须满足：
 
-更新后必须满足：
+`GridPurchase[r,t] >= 0`，
 
-`0 <= GridPurchase[r,t] <= MaxGridImport[r]`，
+`UsedRenewable[r,t] >= 0`，
 
-`0 <= GridSell0[r,t] <= MaxGridExport[r]`。
+`Curtailment[r,t] >= 0`。
 
-由于 Q2 固定 `GridSell0`，第二条主要是基准一致性检查；第一条会实际限制任务向某区域/时段继续迁入。该约束属于附件统一边界，不属于储能优化。
+更新后还需满足区域统一购售电边界：
+
+`GridPurchase[r,t] <= MaxGridImport[r]`，
+
+`GridSell0[r,t] <= MaxGridExport[r]`。
+
+如果上述任一条件失败，不允许静默截断；说明当前“固定基准储能/外送策略”的 Q2 假设在该候选方案上失效，需返回建模手复核。
 
 ---
 
 ## 6. 成本、碳与新能源利用率
 
-绝对运行成本按附件口径：
+### 6.1 运行成本
 
-`Cost = sum_{r,t} [ GridPurchase[r,t] * Price[r,t] - GridSell0[r,t] * SellPrice[r,t] ]`。
+绝对运行成本：
 
-绝对碳排：
+`Cost = sum_{r,t} [GridPurchase[r,t] * Price[r,t] - GridSell0[r,t] * SellPrice[r,t]] * Delta t`。
 
-`Carbon = sum_{r,t} GridPurchase[r,t] * CarbonIntensity[r,t]`。
+由于 `GridSell0` 固定，调度方案之间的差异可写为：
 
-由于 `GridCharge0` 与 `GridSell0` 在 Q2 中固定，对任务调度方案的比较等价于比较其供负荷购电 `G[r,t]` 的边际成本/碳：
+`DeltaCost_sched = sum_{r,t} DeltaG[r,t] * Price[r,t] * Delta t`。
 
-`DeltaCost_sched = sum_{r,t} (Bplus-Bminus) * Price[r,t]`，
+### 6.2 碳排放
 
-`DeltaCarbon_sched = sum_{r,t} (Bplus-Bminus) * CarbonIntensity[r,t]`。
+`Carbon = sum_{r,t} GridPurchase[r,t] * CarbonIntensity[r,t] * Delta t`。
 
-新能源利用率按附件统一定义：
+调度增量：
 
-`eta_R = sum(UsedRenewable + RenewableCharge0 + GridSell0) / sum(AvailableRenewable)`。
+`DeltaCarbon_sched = sum_{r,t} DeltaG[r,t] * CarbonIntensity[r,t] * Delta t`。
 
-所以 Q2 中调度对新能源利用率的影响只来自直接消纳变化：
+CarbonIntensity 必须真正参与 Q2 的候选调度或碳约束，不能只在调度完成后做后验统计，否则不足以体现 carbon-aware scheduling。
 
-`Delta RenewableUse = sum(Aplus - Aminus)`。
+### 6.3 新能源利用率
 
-这给出一条可解释关系：
+按附件统一口径：
 
-`任务时空迁移 -> Facility Load 增量 -> 吸收/释放基准弃电 -> 供负荷购电变化 -> Cost/Carbon/Renewable Utilization`。
+`eta_R = sum_{r,t} (UsedRenewable[r,t] + RenewableCharge0[r,t] + GridSell0[r,t]) * Delta t / sum_{r,t} AvailableRenewable[r,t] * Delta t`。
+
+Q2 调度引起的新增直接新能源消纳为：
+
+`DeltaRenewableUse = sum_{r,t} (-DeltaCurtailment[r,t]) * Delta t`。
+
+因此模型中的实际因果链为：
+
+`任务时空迁移 -> Facility Load变化 -> renewable curtailment mitigation / 新增购电 -> Cost / Carbon / Renewable Utilization`。
 
 ---
 
-## 7. 资源与 SLA 硬约束
+## 7. 任务与系统硬约束
 
 所有任务必须满足：
 
 - 每个任务恰好选择一个 `(r,s)`；
-- NonPreemptive、不可拆分、运行中不可迁移；
-- GPU 容量；
+- NonPreemptive；
+- 不可拆分；
+- 运行过程中 Region 固定；
+- GPU-hour 容量约束；
 - Max IT power；
 - Max Facility power；
-- `GridPurchase <= MaxGridImport`，固定的 `GridSell0 <= MaxGridExport`；
+- MaxGridImport / MaxGridExport；
 - `NetworkLatency[o_i,r] <= MaxLatency_i`；
 - EarliestStart / LatestFinish；
 - `finish_i <= 2406`；
 - 2406 无计算任务占用。
 
-主运行时域 0--2399；2400--2405 仅结清此前任务，并计入对应任务引起的能源、成本和碳变化。
+主任务到达时域为 0--2399；2400--2405 仅结清此前到达的可延迟任务，并计入调度导致的能源、成本与碳变化。
+
+### 7.1 2406 口径
+
+Q2 的任务调度只影响 0--2405。
+
+- 若比较 baseline 与 Q2 的**调度增量 Cost/Carbon**，只需要统计 0--2405；
+- 若论文报告包含 2406 的全系统绝对 Cost/Carbon，则 2406 只能使用共同的基准终端能源结算项，不得安排任何计算任务，也不得把它伪装成 Q2 调度收益。
 
 ---
 
-## 8. 目标组织：当前不做主观加权
+## 8. 目标组织：先测冲突，再决定形式
 
-题面把运行成本、碳排放、网络时延和新能源利用率写为“目标或评价指标”，因此当前不构造
+题面允许运行成本、碳排放、网络时延和新能源利用率作为“目标或评价指标”，因此当前不构造跨量纲主观加权和。
 
-`w1*Cost + w2*Carbon + w3*Latency - w4*RenewableUtilization`。
+当前规则：
 
-当前建议：
-
-1. Latency 首先作为 SLA 硬约束，同时报告平均/分位时延和迁移率；
-2. Renewable utilization 由统一公式报告，并额外报告 `Delta Curtailment` / 新增弃电消纳；
-3. Cost 与 Carbon 先做两个极值/冲突探针；
-4. 若两者在正确的边际核算口径下基本同向，则采用单主目标 + 另一指标评价；
-5. 若存在实质 Pareto 冲突，再采用 epsilon-constraint，而不是主观权重。
+1. **Latency**：先作为 SLA 硬约束，同时报告平均/分位时延、迁移率；
+2. **Renewable utilization**：按统一公式报告，并额外报告 `DeltaCurtailment`；
+3. **Cost 与 Carbon**：先分别做 Cost-only / Carbon-only 极值或近极值探针；
+4. 若两者基本同向，采用单主目标 + 另一指标评价，同时保证 CarbonIntensity 仍进入候选优先级或碳约束；
+5. 若存在实质冲突，再采用 epsilon-constraint，不使用人为权重。
 
 这一部分在极值探针完成前保持 `NEEDS_REVIEW`。
 
 ---
 
-## 9. SFETA 在模型中的位置
+## 9. SFETA 的正式定位
 
-SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）只负责求解上述大规模组合调度模型。
+SFETA 是本文自定义名称，不是已有标准术语。
 
-数据已经给出约 `2.33e8` 个完整合法 `(task,region,start)` 候选，因此不直接展开巨大 MILP，也不人为截断合法域。
+算法家族更准确的文献化描述是：
 
-### 9.1 任务顺序
+**priority-rule-based constructive task assignment / scheduling heuristic**，并吸收 REPTA 的非迭代任务分配思想与 CarbonScaler 的 marginal resource allocation 思想。
 
-优先采用无权重字典序：
+### 9.1 任务优先规则
 
-1. `|R_i|` 小者先；
-2. slack / `|T_i|` 小者先；
-3. 必要时 `GPU-hour = g_i*p_i` 大者先。
+不再把“least-flexible-first”写成已有算法名。当前只是本文的 priority rule：
 
-这是由本题 RT / Batch / Training 的实际时空柔性差异驱动的 least-flexible-first 规则。
+1. `|R_i|` 小者优先（本题特化的空间可行域大小）；
+2. slack / `|T_i|` 小者优先，其中 slack 对应经典 scheduling 中的 minimum-slack 思想；
+3. 必要时 `GPU-hour = g_i * p_i` 大者优先。
+
+该规则的依据来自本题 RT / Batch / Training 的真实时空柔性差异，而非主观权重。
 
 ### 9.2 候选位置评价
 
-候选 `(r,s)` 不按原始 `Price`、`CarbonIntensity` 或 E/F 区域标签直接打分，而计算**该任务置入当前状态后的边际能源后果**：
+对每个合法 `(r,s)`，按当前调度状态计算：
 
-- 能吸收多少剩余 Curtailment；
-- 新增多少供负荷购电；
-- 是否触及 `MaxGridImport`；
+- `DeltaCurtailment_i,r,s`；
+- `DeltaG_i,r,s`；
 - `DeltaCost_i,r,s`；
 - `DeltaCarbon_i,r,s`；
-- 当前资源可行性与 SLA。
+- 是否触及 GPU/IT/Facility/GridImport/SLA/deadline 约束。
 
-这使 SFETA 的 energy-aware / carbon-aware 信息由能量守恒直接产生，而不是人为权重。
+这属于文献中“marginal resource allocation / signal-aware scheduling”的本题化使用，而不是给区域定义静态绿色评分。
 
-### 9.3 当前不加入的复杂机制
+### 9.3 当前不加入的机制
 
 - LSTM / 强化学习；
 - PSO/GA 等黑箱元启发式；
-- 储能控制；
+- Q2 储能控制；
 - 线路潮流；
-- 带宽、迁移数据量、迁移能耗/费用；
+- 带宽、迁移数据量、迁移能耗/迁移费用；
 - 人为 top-K / 最大等待窗口。
 
 ---
 
 ## 10. 必须实现的审计门禁
 
-程序手在正式 Q2 求解前至少检查：
+程序手正式求解 Q2 前至少检查：
 
-1. `DeltaL=0` 时所有能源结果精确复现附件基准；
-2. 每个 `(r,t)` 更新后满足附件统一能量平衡；
-3. `GridPurchase >= 0, UsedRenewable >= 0, Curtailment >= 0`；
-4. `GridPurchase <= MaxGridImport`，`GridSell0 <= MaxGridExport`；
-5. `Aminus <= U0`，若失败立即报错；
-6. 所有任务级 GPU/IT/Facility/SLA/deadline 约束零违规；
-7. 2406 无任务占用；
-8. Cost/Carbon/eta_R 均按附件统一公式重算；
-9. 除读取附件统一规定的购售电硬边界参数外，不从 `storage_information.xlsx` 引入 Q2 储能/SOC/购售电优化自由度。
+1. `DeltaL=0` 时能源结果精确复现附件 baseline；
+2. `AvailableRenewable = UsedRenewable0 + RenewableCharge0 + GridSell0 + Curtailment0` 在数据中成立；
+3. `G0 = GridPurchase0 - GridCharge0 >= -tol`；
+4. 每个 `(r,t)` 更新后满足附件统一能量平衡；
+5. `GridPurchase, UsedRenewable, Curtailment >= 0`；
+6. `GridPurchase <= MaxGridImport`，`GridSell0 <= MaxGridExport`；
+7. `sum_t omega(i,s,t)=p_i`；
+8. GPU-hour / IT / Facility / SLA / deadline 零违规；
+9. 2406 无任务占用；
+10. Cost / Carbon / eta_R 按附件统一口径重算；
+11. 不从 `storage_information.xlsx` 引入 SOC、充放电策略等 Q2 未授权决策自由度。
 
 ---
 
-## 11. 当前判断
+## 11. 当前模型总结
 
-当前最适合本题 Q2 的模型结构不是“任务调度 + 完整能源系统重新优化”，而是：
+Q2 的正式科研语境应表述为：
 
-**碳感知多区域时空资源约束任务调度 + 基准状态中心化边际能源核算。**
+**Carbon-Aware Spatiotemporal Workload Scheduling with resource-capacity constraints and renewable curtailment mitigation.**
 
-其优点：
+中文可写为：
 
-- 与题面“任务迁移与开工时段为决策变量”严格对应；
-- `DeltaL=0` 精确回到附件基准；
-- 保留附件中 Curtailment / GridPurchase 的真实基准结构，不因自由重分配新能源导致零购电/零碳退化；
-- 不提前侵入 Q3/Q4 的储能与能源调度自由度；
-- 仍满足附件统一规定的区域购售电硬边界；
-- Cost、Carbon、Renewable Utilization 均由同一能量平衡链得到，便于解释与审计。
+**碳感知时空工作负载调度模型，并嵌入资源容量约束与新能源弃电缓解机制。**
+
+此前“任务时空柔性—弃电消纳耦合”仍然准确描述本题特化机制，但不再作为声称已有文献标准名称的模型名。
+
+该结构同时保留了：
+
+- 题目给定的任务迁移与开工时段决策；
+- 数据中真实存在的 temporal/spatial flexibility；
+- `AvailableRenewable` 作为原始新能源输入；
+- `Curtailment0` 作为可进一步消纳的基准新能源裕量；
+- CarbonIntensity 真正进入调度；
+- Q2 与 Q3/Q4 能源决策自由度的边界；
+- SFETA 作为本文构造式求解算法，而不是模型本身。
