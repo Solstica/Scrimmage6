@@ -83,7 +83,7 @@ AI IT：
 
 `GridPurchase + AvailableRenewable + DischargePower = Total_Load + ChargePower + GridSell + Curtailment`。
 
-但 Q2 的显式决策只有任务迁移与开工时段；`storage_information.xlsx` 由附件表格指向 Q3/Q4。因此 Q2 不重新优化储能和能源市场运行。
+Q2 的显式决策只有任务迁移与开工时段，因此 Q2 不重新优化储能和能源市场运行。`storage_information.xlsx` 中的 SOC、充放电功率和效率不作为 Q2 决策自由度；但附件“建模边界统一口径”明确规定 `MaxGridImport_MW` 与 `MaxGridExport_MW` 为区域级硬约束，因此 Q2 仍读取这两个边界参数用于可行性检查。
 
 为避免把 Q3/Q4 的自由度提前引入 Q2，采用**基准状态中心化的边际能源核算**：
 
@@ -170,6 +170,16 @@ AI IT：
 
 若基准数据满足附件统一能量平衡，则上述更新在每个 `(r,t)` 上保持能量守恒，并在 `DeltaL=0` 时精确回到附件基准状态。
 
+### 5.4 区域购售电硬边界
+
+更新后必须满足：
+
+`0 <= GridPurchase[r,t] <= MaxGridImport[r]`，
+
+`0 <= GridSell0[r,t] <= MaxGridExport[r]`。
+
+由于 Q2 固定 `GridSell0`，第二条主要是基准一致性检查；第一条会实际限制任务向某区域/时段继续迁入。该约束属于附件统一边界，不属于储能优化。
+
 ---
 
 ## 6. 成本、碳与新能源利用率
@@ -211,6 +221,7 @@ AI IT：
 - GPU 容量；
 - Max IT power；
 - Max Facility power；
+- `GridPurchase <= MaxGridImport`，固定的 `GridSell0 <= MaxGridExport`；
 - `NetworkLatency[o_i,r] <= MaxLatency_i`；
 - EarliestStart / LatestFinish；
 - `finish_i <= 2406`；
@@ -260,6 +271,7 @@ SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）只负责
 
 - 能吸收多少剩余 Curtailment；
 - 新增多少供负荷购电；
+- 是否触及 `MaxGridImport`；
 - `DeltaCost_i,r,s`；
 - `DeltaCarbon_i,r,s`；
 - 当前资源可行性与 SLA。
@@ -284,11 +296,12 @@ SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）只负责
 1. `DeltaL=0` 时所有能源结果精确复现附件基准；
 2. 每个 `(r,t)` 更新后满足附件统一能量平衡；
 3. `GridPurchase >= 0, UsedRenewable >= 0, Curtailment >= 0`；
-4. `Aminus <= U0`，若失败立即报错；
-5. 所有任务级 GPU/IT/Facility/SLA/deadline 约束零违规；
-6. 2406 无任务占用；
-7. Cost/Carbon/eta_R 均按附件统一公式重算；
-8. 不从 `storage_information.xlsx` 引入 Q2 额外决策自由度。
+4. `GridPurchase <= MaxGridImport`，`GridSell0 <= MaxGridExport`；
+5. `Aminus <= U0`，若失败立即报错；
+6. 所有任务级 GPU/IT/Facility/SLA/deadline 约束零违规；
+7. 2406 无任务占用；
+8. Cost/Carbon/eta_R 均按附件统一公式重算；
+9. 除读取附件统一规定的购售电硬边界参数外，不从 `storage_information.xlsx` 引入 Q2 储能/SOC/购售电优化自由度。
 
 ---
 
@@ -304,4 +317,5 @@ SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）只负责
 - `DeltaL=0` 精确回到附件基准；
 - 保留附件中 Curtailment / GridPurchase 的真实基准结构，不因自由重分配新能源导致零购电/零碳退化；
 - 不提前侵入 Q3/Q4 的储能与能源调度自由度；
+- 仍满足附件统一规定的区域购售电硬边界；
 - Cost、Carbon、Renewable Utilization 均由同一能量平衡链得到，便于解释与审计。
