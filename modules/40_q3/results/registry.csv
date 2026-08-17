@@ -1,1 +1,9 @@
 result_id,status,review_state,value,unit,source_file,used_in_paper,notes
+q3_e0_cost,DRAFT,NEEDS_REVIEW,-419820327.73900986,CNY,tables/q3_metrics_summary.csv,false,无储能能源调度系统运行成本
+q3_e1_cost,DRAFT,NEEDS_REVIEW,-459217791.0387695,CNY,tables/q3_metrics_summary.csv,false,BESS协同调度系统运行成本
+q3_bess_value,DRAFT,NEEDS_REVIEW,39397463.29975963,CNY,tables/q3_metrics_summary.csv,false,E1相对E0的BESS增量经济价值
+q3_e0_carbon,DRAFT,NEEDS_REVIEW,8.85056419829166,tCO2,tables/q3_metrics_summary.csv,false,无储能能源调度系统碳排放
+q3_e1_carbon,DRAFT,NEEDS_REVIEW,4.1168346472401127e-07,tCO2,tables/q3_metrics_summary.csv,false,BESS协同调度数值零碳排放
+q3_eta_R_e1,DRAFT,NEEDS_REVIEW,69.51418874892138,百分比,tables/q3_metrics_summary.csv,false,E1系统新能源利用率
+q3_e1_throughput,DRAFT,NEEDS_REVIEW,346201.9337695286,MWh,tables/q3_metrics_summary.csv,false,Stage2最小吞吐量结果
+q3_stage2_scd,DRAFT,NEEDS_REVIEW,0,区域小时,results/q3_constraint_audit.csv,false,Stage2同时充放电小时数
