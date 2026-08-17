@@ -1,5 +1,5 @@
+% 算法 1: 结构化标记复合 Poisson 分层预测与区间估计
 \begin{algorithm}[H]
-\SetAlgoLined
 \setstretch{0.92}
 \SetAlFnt{\normalsize}
 \SetArgSty{textnormal}
@@ -7,21 +7,91 @@
 \SetKwInput{KwInit}{Initialize}
 \SetKwInput{KwOut}{Output}
 \SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
 \SetKw{KwRet}{return}
-\caption{问题一通用参数求解流程示例}
-\label{alg:q1-demo}
-\KwIn{观测数据$\mathcal D=\{(x_i,y_i)\}_{i=1}^{n}$，参数边界$\Omega$，候选初值集合$\mathcal S$}
-\KwInit{最优目标值$J_{\min}\leftarrow+\infty$，最优参数$\boldsymbol\theta^{*}\leftarrow\varnothing$}
-\For{$\boldsymbol\theta^{(0)}\in\mathcal S$}{
-    在边界$\Omega$内从$\boldsymbol\theta^{(0)}$出发求解当前模型\;
-    得到候选解$\widehat{\boldsymbol\theta}$并计算$J(\widehat{\boldsymbol\theta})$\;
-    \If{$J(\widehat{\boldsymbol\theta})<J_{\min}$}{
-        $J_{\min}\leftarrow J(\widehat{\boldsymbol\theta})$\;
-        $\boldsymbol\theta^{*}\leftarrow\widehat{\boldsymbol\theta}$\;
+\caption{结构化标记复合 Poisson 分层预测与区间估计}
+\label{alg:q1-prediction}
+\KwIn{训练段任务记录 $\mathcal D_{\text{train}}$（0--2351\,h），待预测时段 $T=\{2376,\dots,2399\}$，Monte Carlo 模拟次数 $M=10^4$，随机种子 $\text{seed}=20260816$}
+\KwInit{固定随机种子，加载训练段数据 $\mathcal D_{\text{train}}$}
+\BlankLine
+\emph{阶段一：参数估计}\;
+$\hat\lambda \leftarrow \frac{1}{|\mathcal D_{\text{train}}|}\sum_{t=0}^{2351} n_t$\;
+$\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r,K=k)$ 的任务计数\;
+\ForEach{$k \in \{\text{RT}, \text{BI}, \text{AT}\}$}{
+    构建联合经验分布 $\hat{F}_{GD}^{(k)}$ 从 $\mathcal D_{\text{train}}$ 中 $k$ 类任务的 $(G,D)$ 样本\;
+    计算 $\mathbb{E}[G \mid K=k]$ 和 $\mathbb{E}[G^2 \mid K=k]$\;
+}
+\BlankLine
+\emph{阶段二：解析均值预测}\;
+\ForEach{$t \in T$}{
+    \ForEach{$(r,k) \in \{1,\dots,6\} \times \{\text{RT},\text{BI},\text{AT}\}$}{
+        计算 $\hat{Y}_{rkt} \leftarrow \hat\lambda \cdot \hat\pi_{rk} \cdot \mathbb{E}[G \mid K=k]$\;
+    }
+    向上聚合：$\hat{Y}_{rt} \leftarrow \sum_k \hat{Y}_{rkt}$，$\hat{Y}_{kt} \leftarrow \sum_r \hat{Y}_{rkt}$，$\hat{Y}_{t} \leftarrow \sum_{r,k} \hat{Y}_{rkt}$\;
+}
+\BlankLine
+\emph{阶段三：Monte Carlo 预测区间}\;
+\For{$m \leftarrow 1$ \KwTo $M$}{
+    \ForEach{$t \in T$}{
+        $n \leftarrow \text{Poisson}(\hat\lambda)$ 的随机抽样\;
+        \For{$i \leftarrow 1$ \KwTo $n$}{
+            从 $\hat\pi_{rk}$ 抽取 $(r_i, k_i)$\;
+            从 $\hat{F}_{GD}^{(k_i)}$ 抽取 $(g_i, d_i)$\;
+            $Y_{r_i k_i t}^{(m)} \leftarrow Y_{r_i k_i t}^{(m)} + g_i$\;
+        }
     }
 }
-根据题意计算误差、稳健性或独立验证指标\;
-\KwRet $\boldsymbol\theta^{*}$及对应评价指标\;
-\KwOut{最终参数、关键结果与必要的检验量}
+\ForEach{$(r,k,t)$}{
+    取 $Y_{rkt}^{(1:M)}$ 的 5\% 和 95\% 分位数作为 90\% 预测区间边界\;
+}
+\KwRet{\text{四层预测均值 $\hat{Y}_{rkt},\hat{Y}_{rt},\hat{Y}_{kt},\hat{Y}_t$，四层 90\% 预测区间，MAE/WAPE/RMSE/PICP/MPIW}}
+\KwOut{Region$\times$TaskType 层预测结果及区间，向上聚合的 Region、TaskType、System 层预测}
+\end{algorithm}
+
+\vspace{2em}
+
+% 算法 2: 基础算力调度
+\begin{algorithm}[H]
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\caption{Locality-Preserving Minimal Adjustment 基础算力调度}
+\label{alg:q1-scheduling}
+\KwIn{2376--2399\,h 实际到达任务集 $\mathcal J$，每个任务 $j$ 携带 $(r_j,k_j,g_j,p_j,\text{deadline}_j)$；各区域 GPU 容量 $C_r$；carry-in 初始占用 $I_{rt}$（$t=2376,\dots,2405$）}
+\KwInit{系统状态 $S_{rt} \leftarrow I_{rt}$，调度决策 $\mathcal D \leftarrow \varnothing$}
+\BlankLine
+\emph{阶段一：按任务类型优先级调度}\;
+\ForEach{$t \in \{2376,\dots,2399\}$}{
+    \emph{1. 实时推理任务}（到达即开工，不可等待）\;
+    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{RT}$}{
+        候选区域 $\mathcal R_j \leftarrow \{r \mid \text{Latency}(r_j, r) \leq 20\text{ms}\}$\;
+        按 $(r=r_j)$ 优先，然后按延迟升序枚举 $\mathcal R_j$\;
+        找到首个 $r$ 使 $S_{rt} + g_j \leq C_r$\;
+        记录 $(j, r, s_j=t)$，更新 $S_{r,[t, t+p_j)} \leftarrow S_{r,[t, t+p_j)} + g_j$\;
+    }
+    \emph{2. 批量推理任务}（允许等待）\;
+    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{BI}$}{
+        在 $r=r_j$ 的 $[t, \min(\text{deadline}_j, 2406)-p_j]$ 内寻找最早 $s$ 使 $S_{r,[s,s+p_j)} + g_j \leq C_r$\;
+        \If{找到可行 $s$}{记录 $(j, r_j, s)$，更新系统状态\;}
+        \Else{按延迟升序枚举其他 $\text{Latency} \leq 80\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
+    }
+    \emph{3. AI 训练任务}（允许等待）\;
+    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{AT}$}{
+        在 $r=r_j$ 的完整时间域内寻找最早可行 $s$\;
+        \If{不可行}{按延迟升序枚举 $\text{Latency} \leq 150\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
+    }
+}
+\BlankLine
+\emph{阶段二：审计与输出}\;
+验证所有任务的 $\sum_t \omega(j,t) = p_j$，检查 GPU/IT/Facility 容量、延迟约束、$2406$ 边界\;
+\KwRet{调度决策 $\mathcal D$，区域 GPU 利用率 $U_{rt}$，迁移数/延迟数/最晚完成时间}
+\KwOut{甘特图数据、区域 GPU 利用率序列、约束审计报告}
 \end{algorithm}
