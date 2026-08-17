@@ -349,16 +349,16 @@ Cost-primary 从 reference-start 出发完成 3 遍完整扫描，主目标单�
 \rowcolor{CumcmLightBlue}
 任务类型 & 任务数 & 迁移数 & 迁移率 & 平均等待/h & P95 等待/h & 最大等待/h \\
 \midrule
-AITraining & 16,559 & -- & -- & -- & -- & -- \\
-BatchInference & 16,717 & -- & -- & -- & -- & 2016 \\
-RealTimeInference & 16,724 & 11,685 & $69.9\%$ & 0 & 0 & 0 \\
+AITraining & 16,559 & 12,059 & $72.824\%$ & 28.47 & 113 & 2010 \\
+BatchInference & 16,717 & 13,704 & $81.976\%$ & 33.03 & 168.2 & 2016 \\
+RealTimeInference & 16,724 & 11,685 & $69.870\%$ & 0 & 0 & 0 \\
 \midrule
 合计 & 50,000 & 37,448 & $74.90\%$ & 20.48 & 76 & 2016 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-注：BatchInference 与 AITraining 的逐类型迁移/等待细分在最终建模手完成统一 registry 之前暂以合计行为准；合计行的均值与 P95 由全部 20,282 个延迟任务统计得到。RealTimeInference 全部保持 $s_i = a_i$，但允许在全部 SLA 合法区域之间迁移；canonical 端点中 11,685 个 RT 任务发生跨区域迁移，全部即时开工、零等待。
+注：上述逐类型统计来自 canonical Cost-primary 收敛排程；合计行的均值与 P95 按全部 50,000 个任务统计。RealTimeInference 全部保持 $s_i = a_i$，但允许在全部 SLA 合法区域之间迁移；canonical 端点中 11,685 个 RT 任务发生跨区域迁移，全部即时开工、零等待。
 
 平均网络时延 26.75 ms，95\% 分位 78 ms，最大 82 ms，全部满足 SLA 要求。
 
