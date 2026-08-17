@@ -1,0 +1,61 @@
+% 算法: Benders 分解 + 精确列生成 + 六指标锚点折中
+\begin{algorithm}[H]
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwFor{While}{while}{do}{end while}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\caption{Benders 分解、精确列生成与六指标折中求解}
+\label{alg:q4-benders-cg}
+\KwIn{任务集 $\mathcal{I}$，区域 GPU/IT 容量，新能源出力，BESS 参数，购售电价，SLA，时域及场景参数}
+\KwInit{构建可行参考排程 $\mathbf{x}^0$ 与初始列池 $\mathcal{C}$；初始化 Benders 割集}
+\BlankLine
+\emph{阶段一：基准联合模型的 Benders--CG 闭合}\;
+\While{仍存在违反的 Benders 割或负 reduced-cost 列}{
+    在当前列池与割集上求 Restricted Master LP，得到 $\mathbf{x}^*$ 与 Master dual\;
+    \ForEach{区域 $r$}{
+        由 $\mathbf{x}^*$ 重算 $L_{rt}^{\mathrm{Fac}}$，求解真实能源/储能 LP\;
+        若 recourse 值违反当前 $\theta_r$，加入区域 Benders 最优性割\;
+    }
+    若本轮无新割，则对每个任务在其\textbf{完整合法域}上执行 exact pricing\;
+    对 Batch/Training 使用 $(k_i,r,p_i)$ 模板与 suffix-min；RT 固定到达时刻、枚举全部时延可行区域\;
+    将所有满足定价准则的负 reduced-cost 列加入 $\mathcal{C}$\;
+}
+\BlankLine
+\emph{阶段二：整数精化与真实 recourse 复核}\;
+在闭合列池上求 restricted integer master，得到可行整数解与上界 $UB$\;
+以 root LP 给出下界 $LB$，计算 integrality gap\;
+对整数解重新调用真实 Energy LP，并复核 GPU/IT、SLA、LatestFinish、2406、SOC 与购售电边界\;
+\If{integrality gap 不满足门限}{
+    仅在必要时进入 branch-and-price / branch-price-and-Benders；不得以经验 top-$k$ 删列代替 exact search\;
+}
+\BlankLine
+\emph{阶段三：六个单目标锚点}\;
+\ForEach{$j\in\{C,E,L,Q,R,P\}$}{
+    在同一联合模型和完整硬约束下求单目标锚点 $\mathbf{x}^{(j)}$\;
+    记录六指标 payoff 向量 $\mathbf{f}(\mathbf{x}^{(j)})$\;
+}
+由 payoff table 构造 $f_j^{I}$ 与 $f_j^{N}$，定义无量纲退让
+$d_j=(f_j-f_j^I)/(f_j^N-f_j^I)$\;
+\BlankLine
+\emph{阶段四：标准化最坏遗憾折中}\;
+求解 $\min z$，满足 $d_j\le z$ 及全部联合调度硬约束，得到 $z^*$\;
+在 $z\le z^*+\varepsilon$ 内最小化 $\sum_j d_j$\;
+若仍有数值等价解，仅作解释性 tie-break：先减小最大绝对等待，再减少迁移任务数\;
+\BlankLine
+\emph{阶段五：场景重优化}\;
+\ForEach{碳预算、电价机制或新能源波动场景 $s$}{
+    复用基准 active column pool 与整数 incumbent 作为 warm start\;
+    按场景参数重建必要的 Energy LP 与 Benders cuts，并重新执行 exact pricing\;
+    使用与基准场景完全相同的六指标折中规则重新优化；\textbf{不得固定基准/QoS 排程只重算能源}\;
+    记录 Cost、Carbon、Latency、QoS、RenewableUtilization、PeakNetImport 与迁移/BESS 策略变化\;
+}
+\KwRet{基准六指标折中整数解、六个锚点、各场景重优化结果及完整审计}
+\KwOut{任务区域--时间分配、BESS 充放电、购售电、新能源利用、六指标与场景比较}
+\end{algorithm}
