@@ -34,7 +34,7 @@
     \emph{阶段二：求解 Energy Subproblem}\;
     \ForEach{区域 $r$}{
         由 $\mathbf{x}^*$ 计算 $L_{rt}^{\text{Fac}}$\;
-        求解能量平衡 LP (\ref{eq:q4-subproblem})，得到 $Q_r(L_r^*)$ 和 dual $\boldsymbol{\lambda}_r^*$\;
+        求解能量平衡 LP (\ref{eq:q4-subproblem-obj})\text{--}(\ref{eq:q4-soc-bound})，得到 $Q_r(L_r^*)$ 和 dual $\boldsymbol{\lambda}_r^*$\;
         \If{$Q_r(L_r^*) > \theta_r + \varepsilon$}{
             添加区域最优性割 (\ref{eq:q4-benders-cut}) 到 Master\;
         }
@@ -58,9 +58,19 @@
     }
 }
 \BlankLine
-\emph{阶段四：字典序精化（实现要求见 Q4_LEXICOGRAPHIC_FULL_DOMAIN_REPRICING_REQUIREMENTS_20260817.md）}\;
-在 $\text{Cost} \le \text{Cost}^* + \varepsilon_C$ 条件下，\textbf{重新对完整合法域执行等待目标定价}，直至 QoS 阶段列生成闭合，再最小化总等待时间\;
-保持 Cost/Wait 最优后，\textbf{再次对完整合法域执行网络时延目标定价}，直至 Latency 阶段列生成闭合，再最小化总网络延迟\;
+\emph{阶段四：字典序精化——对完整合法域重新定价}\;
+\BlankLine
+\emph{阶段四-A：等待最小化}\;
+设置 Cost cap $\text{Cost}^* + \varepsilon_C$，将 Master 目标切换为 $\min \sum_i w_i$\;
+\textbf{对完整合法域执行 Wait 目标列生成}：每个任务 $i$ 扫描所有合法 $(r,s)$ 组合，若 reduced cost $\bar{c}_{irs}^{\text{wait}} < -\varepsilon$ 则加入列池\;
+Wait 阶段列生成闭合后，求解 restricted MIP 最小化总等待时间，记为 $\text{Wait}^*$\;
+\BlankLine
+\emph{阶段四-B：延迟最小化}\;
+保持 Cost cap 和 Wait cap $\text{Wait}^*$，将目标切换为 $\min \sum_i \ell_i$\;
+\textbf{再次对完整合法域执行 Latency 目标列生成}，直至 Latency 阶段列生成闭合\;
+求解 restricted MIP 最小化总网络延迟\;
+\BlankLine
+\emph{阶段四-C：结果输出}\;
 \KwRet{调度决策 $\mathbf{x}^*$，各区域能源调度方案，目标函数值，迁移/等待/延迟统计}
 \KwOut{任务区域-时间分配、BESS 充放电计划、电网购售电计划、碳排放量、服务质量指标}
 \end{algorithm}

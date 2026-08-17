@@ -2,7 +2,16 @@
 
 \subsection{问题四的描述与分析}
 
-问题四要求建立联合计算任务调度与能源调度的综合优化模型（Joint Workload--Energy Scheduling）。与问题二、三的独立建模不同，Q4 需要同时考虑任务时空决策对电力负荷的影响，以及可再生能源出力、储能系统和电网购售电的联合优化。Q2 的任务时空柔性与 Q3 的储能时间柔性会竞争同一份时空新能源余量，因此不能固定 Q2 排程后单向调用 Q3。
+问题四要求建立联合计算任务调度与能源调度的综合优化模型（Joint Workload--Energy Scheduling）。四个问题边界可以统一表述为：
+
+\begin{itemize}
+  \item \textbf{Q1}：最后 24\,h 基础 workload 调度，能源调度不优化；
+  \item \textbf{Q2}：仅 workload 调度优化，储能/能源动作固定；
+  \item \textbf{Q3}：workload 固定，储能/能源联合优化；
+  \item \textbf{Q4}：workload + 储能/能源 \textbf{联合优化}。
+\end{itemize}
+
+因此，与问题二、三的独立建模不同，Q4 需要同时考虑任务时空决策对电力负荷的影响，以及可再生能源出力、储能系统和电网购售电的联合优化。Q2 的任务时空柔性与 Q3 的储能时间柔性会竞争同一份时空新能源余量，因此不能固定 Q2 排程后单向调用 Q3。
 
 图\ref{fig:q4-flow}给出了问题四的总体求解框架。
 
@@ -46,36 +55,39 @@ x_{irs} = \begin{cases}
 \label{eq:q4-x}
 \end{equation}
 
-任务 $i$ 在区域 $r$ 小时 $t$ 的功率贡献由重叠量计算：
+任务 $i$ 在时刻 $s$ 开工、持续 $p_i$ 小时时，在小时 $t$ 的重叠量由时间区间决定：
 \begin{equation}
-\omega(i, r, s, t) = \max\bigl(0, \min(t+1, s+p_i) - \max(t, s)\bigr) \cdot \mathbf{1}\{r = \text{execRegion}_i\},
+\omega_{ist} = \max\bigl(0, \min(t+1, s+p_i) - \max(t, s)\bigr),
 \label{eq:q4-overlap}
 \end{equation}
 区域 $r$ 在小时 $t$ 的 AI IT 负荷为：
 \begin{equation}
-L_{rt}^{\text{AI}}(\mathbf{x}) = \sum_{i} \alpha_{k_i} \cdot g_i \cdot \omega(i, r, s_i, t),
+L_{rt}^{\text{AI}}(\mathbf{x}) = \sum_{i} \sum_{s} \alpha_{k_i} \cdot g_i \cdot \omega_{ist} \cdot x_{irs},
 \label{eq:q4-ai-it}
 \end{equation}
 其中 $\alpha_k$ 为任务类型 $k$ 的单位 GPU 功率系数。设施负荷为 $L_{rt}^{\text{Fac}} = \text{PUE}_r \cdot (L_{rt}^{\text{NonAI}} + L_{rt}^{\text{AI}})$。
 
 \subsubsection{能源子问题与 Benders 分解}
 
-给定任务调度 $\mathbf{x}$ 后，各区域的能源子问题为连续线性规划，决策可再生能源消纳 $R_{rt}$、BESS 充放电 $B_{rt}^+, B_{rt}^-$ 和电网购售电 $G_{rt}^+, G_{rt}^-$：
+给定任务调度 $\mathbf{x}$ 后，各区域的能源子问题为连续线性规划，沿用与 Q3 一致的 8 变量能源流表示（见问题三模型）。定义决策变量：$u_{rt}$（新能源直接供负荷）、$qR_{rt}$（新能源充电）、$qG_{rt}$（电网充电）、$d_{rt}$（储能放电供负荷）、$gL_{rt}$（电网供负荷）、$s_{rt}$（新能源售电）、$w_{rt}$（弃电）、$E_{rt}$（SOC）。核心关系约束为：
+\begin{align}
+&\text{AvailableRenewable}_t: \quad \bar{R}_{rt} = u_{rt} + qR_{rt} + s_{rt} + w_{rt}, \label{eq:q4-renew-balance}\\
+&\text{FacilityLoad}_t: \quad L_{rt}^{\text{Fac}} = u_{rt} + d_{rt} + gL_{rt}, \label{eq:q4-load-balance}\\
+&\text{GridPurchase}_t: \quad G_{rt}^{\text{buy}} = gL_{rt} + qG_{rt}, \label{eq:q4-grid-balance}\\
+&\text{SOC}_t: \quad E_{rt} = E_{r,t-1} + \eta_c (qR_{rt} + qG_{rt}) - d_{rt} / \eta_d, \label{eq:q4-soc}\\
+&0 \le u_{rt}, qR_{rt}, s_{rt}, w_{rt}, \quad gL_{rt}, qG_{rt}, d_{rt} \le \bar{B}_r,\\
+&\underline{S}_r \le E_{rt} \le \bar{S}_r,\quad E_{r,2406} \ge E_{r,0}, \label{eq:q4-soc-bound}\\
+&0 \le G_{rt}^{\text{buy}} \le \bar{G}_r^+,\quad 0 \le s_{rt} \le \bar{G}_r^-.
+\end{align}
+目标函数为区域能源成本：
 \begin{equation}
-\begin{aligned}
-Q_r(L_r) = \min\; & \sum_{t} \bigl( c_t^{\text{buy}} G_{rt}^+ - c_t^{\text{sell}} G_{rt}^- \bigr) \\
-\text{s.t.}\quad & L_{rt}^{\text{Fac}} + B_{rt}^+ + G_{rt}^+ = R_{rt} + B_{rt}^- + G_{rt}^-, \quad \forall t,\\
-& 0 \le R_{rt} \le \bar{R}_{rt},\quad 0 \le B_{rt}^\pm \le \bar{B}_r,\\
-& \text{SOC}_{rt} = \text{SOC}_{r,t-1} + \eta B_{rt}^- - B_{rt}^+/\eta,\\
-& \underline{S}_r \le \text{SOC}_{rt} \le \bar{S}_r,\quad \text{SOC}_{r,2406} \ge \text{SOC}_{r,0},\\
-& 0 \le G_{rt}^+ \le \bar{G}_r^+,\quad 0 \le G_{rt}^- \le \bar{G}_r^-.
-\end{aligned}
-\label{eq:q4-subproblem}
+Q_r(L_r) = \min\; \sum_{t} \bigl( c_t^{\text{buy}} G_{rt}^{\text{buy}} - c_t^{\text{sell}} s_{rt} \bigr).
+\label{eq:q4-subproblem-obj}
 \end{equation}
 
 由于 Cost-only 场景下 complete recourse 存在解析解，子问题对任意可行 $\mathbf{x}$ 均有界，因此只需 Benders 最优性割。设 $\boldsymbol{\lambda}_r$ 为能量平衡约束的对偶变量，区域最优性割构造为：
 \begin{equation}
-\theta_r \ge Q_r(L_r^k) + \sum_{r,t} \lambda_{rt}^k \bigl( L_{rt}^{\text{Fac}}(\mathbf{x}) - L_{rt}^{\text{Fac}}(\mathbf{x}^k) \bigr),
+\theta_r \ge Q_r(L_r^k) + \sum_{t} \lambda_{rt}^k \bigl( L_{rt}^{\text{Fac}}(\mathbf{x}) - L_{rt}^{\text{Fac}}(\mathbf{x}^k) \bigr),
 \label{eq:q4-benders-cut}
 \end{equation}
 其中 $k$ 为迭代索引。
@@ -88,12 +100,12 @@ Q_r(L_r) = \min\; & \sum_{t} \bigl( c_t^{\text{buy}} G_{rt}^+ - c_t^{\text{sell}
 \begin{aligned}
 & \min\; \sum_{i,r,s} c_{irs}^{\text{oper}} x_{irs} + \sum_r \theta_r, \\
 & \text{s.t.}\quad \sum_{r,s} x_{irs} = 1, \quad \forall i, \\
-& \sum_{i} g_i \cdot \omega(i, r, s, t) \cdot x_{irs} \le \text{GPU}_r^{\text{avail}}, \quad \forall r,t, \\
+& \sum_{i} g_i \cdot \omega_{ist} \cdot x_{irs} \le \text{GPU}_r^{\text{avail}}, \quad \forall r,t, \\
 & \text{Latency}(r_i, r) \le \text{SLA}_{k_i}, \quad \forall i, r,\\
 & s \in [\text{Earliest}_i, \text{Latest}_i - p_i], \quad \forall i,\\
 & x_{irs} \in \{0, 1\},\\
 & \theta_r \ge Q_r(L_r^k) + \boldsymbol{\lambda}_r^k \cdot \bigl( L_r(\mathbf{x}) - L_r(\mathbf{x}^k) \bigr), \quad \forall k, r,\\
-& \text{能源子问题}\;(\ref{eq:q4-subproblem}).
+& \text{能源子问题}\;(\ref{eq:q4-subproblem-obj})\text{--}(\ref{eq:q4-soc-bound}).
 \end{aligned}
 \right.
 \label{eq:q4-model-summary}
@@ -113,7 +125,7 @@ Energy subproblem 的 load-balance dual $\lambda_{rt}$ 通常在少量时空点�
 
 \subsubsection{Exact Column Generation}
 
-Master 采用列生成框架，初始列由可行参考排程提供。Pricing 子问题利用任务结构：Batch 和 Training 任务使用 $(k, r, p)$ 模板计算 start score 及 suffix minimum，在完整合法域内搜索负 reduced cost 列；RT 任务固定 start 时刻，只检查延迟可行区域。40-task 校准验证显示，完整显式合法 placements（177,995 列）与列生成最终 active columns（44 列）的 root 目标值完全一致，证明 pricing 的 exactness。
+Master 采用列生成框架，初始列由可行参考排程提供。Pricing 子问题利用任务结构：Batch 和 Training 任务使用 $(k, r, p)$ 模板计算 start score 及 suffix minimum，在完整合法域内搜索负 reduced cost 列；RT 任务固定 start 时刻，只检查延迟可行区域。40-task 校准验证显示，完整显式合法 placements（3,139 列）与列生成最终 active columns（44 列）的 root 目标值完全一致，证明 pricing 的 exactness。
 
 \subsection{模型求解}
 
@@ -121,23 +133,23 @@ Master 采用列生成框架，初始列由可行参考排程提供。Pricing �
 
 \input{\ProjectRoot/modules/50_q4/paper/q4_algorithm.tex}
 
-\subsubsection{Root Scaling 结果}
+\subsubsection{50k Cost Root 探针结果}
 
-在 5k/10k/25k/50k 任务规模上测试 Cost-only root LP relaxation，结果见表\ref{tab:q4-scaling}。50k 任务全规模求解中，root 最终 active columns 仅 51,465 列，压缩比约 4534:1；总 wall time 约 23.62 s，峰值内存约 650 MB，远低于工程门禁。
+在 5k/10k/25k/50k 任务规模上测试 Cost-only root LP relaxation，结果见表\ref{tab:q4-scaling}。50k 任务全规模求解中，root 最终 active columns 仅 51,247 列，压缩比约 4554:1；总 wall time 约 2.06 min，峰值内存约 0.254 GiB，远低于工程门禁。\textbf{注意：}该结果仅证明 root LP 闭合和 restricted integer 可行，\textbf{不证明全局整数最优}（global integer optimum proved = false）。
 
 \begin{table}[!htbp]
 \centering
-\caption{Benders+CG Root 扩展性结果}
+\caption{Benders+CG Root 扩展性结果（当前 full-run 真源）}
 \label{tab:q4-scaling}
 \begin{tabular}{ccccccc}
 \toprule
 \rowcolor{CumcmLightBlue}
-任务数 & 迭代 & Active 列 & 列/任务 & Cuts & 时间/s & 峰值内存/MB \\
+任务数 & 迭代 & Active 列 & 列/任务 & Cuts & 时间/min & 峰值内存/GiB \\
 \midrule
-5,000  & 3 & 5,130  & 1.026 & 8  & 7.53 & 631 \\
-10,000 & 5 & 10,277 & 1.028 & 10 & 9.10 & 631 \\
-25,000 & 7 & 25,713 & 1.029 & 10 & 16.91 & 641 \\
-\textbf{50,000} & \textbf{8} & \textbf{51,465} & \textbf{1.029} & \textbf{11} & \textbf{19.66} & \textbf{650} \\
+5,000  & 3 & 5,130  & 1.026 & 8  & 0.43 & 0.251 \\
+10,000 & 5 & 10,277 & 1.028 & 10 & 0.61 & 0.251 \\
+25,000 & 7 & 25,713 & 1.029 & 10 & 1.12 & 0.252 \\
+\textbf{50,000} & \textbf{2} & \textbf{51,247} & \textbf{1.025} & \textbf{2} & \textbf{2.06} & \textbf{0.254} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -147,7 +159,7 @@ Master 采用列生成框架，初始列由可行参考排程提供。Pricing �
 
 \subsubsection{40-task Exact 校准}
 
-采用 40 个真实任务（16 Training、14 Batch、10 RT，ArrivalHour 2376--2390）进行 exact 校准，结果见表\ref{tab:q4-40task}。完整显式合法域包含 177,995 个 placements，列生成仅需 44 个 active columns 即达到完全相同的 root 目标值，验证了 pricing 的精确性。
+采用 40 个真实任务（16 Training、14 Batch、10 RT，ArrivalHour 2376--2390）进行 exact 校准，结果见表\ref{tab:q4-40task}。完整显式合法域包含 3,139 个 placements，列生成仅需 44 个 active columns 即达到完全相同的 root 目标值 $-5{,}450{,}201.934546$ CNY，验证了 pricing 的精确性。Region multi-cut Benders 在 2 次迭代内复现该 exact Cost 值。
 
 \begin{table}[!htbp]
 \centering
@@ -158,9 +170,10 @@ Master 采用列生成框架，初始列由可行参考排程提供。Pricing �
 \rowcolor{CumcmLightBlue}
 指标 & 显式展开 & 列生成 \\
 \midrule
-Legal placements & 177,995 & 44（active）\\
-Root objective/CNY & $-4.5913\times10^8$ & $-4.5913\times10^8$ \\
+Legal placements & 3,139 & 44（active）\\
+Root objective/CNY & $-5{,}450{,}201.934546$ & $-5{,}450{,}201.934546$ \\
 绝对差/CNY & --- & 0.0 \\
+Benders 迭代 & --- & 2 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -191,28 +204,28 @@ Root objective/CNY & $-4.5913\times10^8$ & $-4.5913\times10^8$ \\
 
 Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素（共 31 个时空点），平均 cut 密度约 2.6--3.4\%。稀疏装配后 500-task 的 cut 存储从 9.17 MB 降至 0.38 MB（-95.8\%）。
 
-\subsubsection{Probe C -- Carbon Budget Allocation}
+\subsubsection{Probe C -- 诊断性碳预算探针}
 
-在 gamma=1.4 新能源压力场景下验证了碳预算约束的精确性。区域预算改写与全局碳约束的目标值完全一致，所有 5 档预算水平的最大目标差均为 $9.3\times10^{-10}$ CNY，碳排差为 $8.2\times10^{-13}$ tCO$_2$。
+在 $\gamma=1.4$ 新能源波动压力探针（临界放大因子 $\gamma_{\text{crit}} \approx 1.303326$，此处取临界点以上诊断值）下验证了碳预算约束的精确性。该探针仅用于验证 Carbon epsilon-constraint 被激活时的 Cost--Carbon 权衡，\textbf{不构成正式比赛场景}。区域预算改写与全局碳约束的目标值完全一致，所有 5 档预算水平的最大目标差均为 $9.3\times10^{-10}$ CNY，碳排差为 $8.2\times10^{-13}$ tCO$_2$。
 
 \subsubsection{字典序精化与服务质量}
 
-Cost-only 最优解集合中存在大量服务性能退化解（如 40-task benchmark 中可出现 38/40 迁移、总等待 172 h）。采用字典序精化策略：
+Cost-only 最优解集合中存在大量服务性能退化解（如 40-task exact benchmark 中可出现 38/40 迁移、总等待 172 h）。采用字典序精化策略：
 \begin{enumerate}
-  \item 在 $\text{Cost} \le \text{Cost}^* + \varepsilon$ 内最小化总等待时间；
-  \item 保持 Cost/Wait 最优，再最小化总网络延迟。
+  \item 在 $\text{Cost} \le \text{Cost}^* + \varepsilon$ 的\textbf{完整合法域}内最小化总等待时间（Wait full-domain CG）；
+  \item 保持 Cost/Wait 最优，再对\textbf{完整合法域}最小化总网络延迟（Latency full-domain CG）。
 \end{enumerate}
-得到代表解：迁移 5 任务、总等待 6 h、平均等待 0.15 h、最大等待 2 h、平均延迟 10.9 ms，显著优于 Cost-only 任意代表解。
+在 40-task exact benchmark 上完成字典序验证，得到代表解：迁移 5 任务、总等待 6\,h、平均等待 0.15\,h、最大等待 2\,h、总延迟 437\,ms、平均延迟 10.9\,ms。该结果说明 Cost-only 等价的任意代表解在 QoS 维度上存在巨大差异，因此正式模型必须对 Wait/Latency 分别重新做 full-domain exact pricing。\textbf{注意：}此处 40-task 结果不能直接外推至 50k 全规模——50k 的 QoS 阶段需在 Cost 闭合后对完整合法域重新定价，当前为 DRAFT 状态。
 
 \subsection{模型检验}
 
-\subsubsection{碳约束敏感性}
+\subsubsection{诊断性碳约束敏感性}
 
-在 $\gamma=1.4$ 新能源压力场景下，沿 Cost--Carbon 前沿的 epsilon-constraint 路径结果见表\ref{tab:q4-carbon}。碳预算从 100\% 降至 0\% 时，成本增加约 0.1\%，表明在当前新能源出力水平下碳减排的边际成本较低。
+在 $\gamma=1.4$ 新能源波动压力探针（临界放大因子 $\gamma_{\text{crit}} \approx 1.303326$，此处取临界点以上诊断值）下，沿 Cost--Carbon 前沿的 epsilon-constraint 路径结果见表\ref{tab:q4-carbon}。碳预算从 100\% 降至 0\% 时，成本增加约 0.1\%（约 4{,}961.32 CNY），局部平均减排成本约 92.48 CNY/tCO$_2$。该探针仅用于验证完整模型在碳约束激活时的权衡关系，\textbf{不构成正式比赛场景}。
 
 \begin{table}[!htbp]
 \centering
-\caption{Cost--Carbon 权衡前沿（$\gamma=1.4$ 场景）}
+\caption{Cost--Carbon 权衡前沿（$\gamma=1.4$ 诊断探针，$\gamma_{\text{crit}} \approx 1.303326$）}
 \label{tab:q4-carbon}
 \begin{tabular}{cccc}
 \toprule
@@ -231,4 +244,18 @@ Cost-only 最优解集合中存在大量服务性能退化解（如 40-task benc
 
 \subsubsection{计算规模验证}
 
-Root 阶段 50k 任务的实际峰值内存约 650 MB，远低于 10 GB 目标；总求解时间约 24 s，远低于 9 h 硬上限。Exact column generation 将 $2.33\times10^8$ 个潜在合法 placements 压缩为约 51,465 个 active columns，压缩比超过 4500:1，证明数据结构驱动的 Benders+CG 框架在大规模问题上的实际可计算性。
+Root 阶段 50k 任务的实际峰值内存约 0.254 GiB，远低于 10 GB 目标；总求解时间约 2.06 min，远低于 9 h 硬上限。Exact column generation 将 $2.33\times10^8$ 个潜在合法 placements 压缩为约 51,247 个 active columns，压缩比超过 4500:1，证明数据结构驱动的 Benders+CG 框架在大规模问题上的实际可计算性。\textbf{需要强调}：当前结果仅 Cover root LP 闭合和 restricted integer 可行；全局整数最优尚未证明，且 Wait/Latency 阶段需对完整合法域重新定价——这些均在 P0 路线中推进。
+
+\subsubsection{六指标的角色说明}
+
+题面要求报告 Cost、Carbon、Latency、QoS、RenewableUtilization、regional PeakNetImport 六项指标。在当前模型中，各项的角色如下：
+
+\begin{itemize}
+  \item \textbf{Cost}：主优化层，Benders/CG 框架保证完整合法域内的 Cost 最优性；
+  \item \textbf{Carbon}：当数据/场景激活时，通过 epsilon-constraint 纳入，不预设权重；
+  \item \textbf{QoS/Wait}：Cost 面上的字典序精化层，对完整合法域重新定价；
+  \item \textbf{Latency}：Wait 后的进一步字典序精化层，同样对完整合法域重新定价；
+  \item \textbf{RenewableUtilization}、\textbf{regional PeakNetImport}：必须报告，但作为独立优化轴的必要性有待 full-system 辨识/冲突探针验证。
+\end{itemize}
+
+六项指标不使用等权综合目标、AHP 或熵权方法。
