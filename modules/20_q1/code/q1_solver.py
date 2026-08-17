@@ -502,7 +502,16 @@ def main():
                              "Z_GPU利用率_百分比": [0.0] * len(regions),
                              "标签_区域": regions})
     z10 = pd.concat([z10.loc[:, ["X_时间_小时", "Y_区域序号_无量纲", "Z_GPU利用率_百分比", "标签_区域"]], boundary], ignore_index=True)
-    save_csv(z10, plotdata / "图10_区域GPU利用率热图.csv")
+    # Origin's plotvm expects a matrix: the first data row contains X coordinates,
+    # the first data column contains monotonic Y coordinates, and the body is Z.
+    times = sorted(z10["X_时间_小时"].astype(int).unique())
+    values = z10.pivot(index="Y_区域序号_无量纲", columns="X_时间_小时", values="Z_GPU利用率_百分比")
+    values = values.reindex(index=range(1, len(regions) + 1), columns=times)
+    matrix = pd.DataFrame([[None] + times])
+    body = pd.DataFrame([[i] + values.loc[i].astype(float).tolist() for i in values.index])
+    matrix = pd.concat([matrix, body], ignore_index=True)
+    matrix.columns = ["Y_区域序号_无量纲"] + [f"X_{t}_时间_小时" for t in times]
+    save_csv(matrix, plotdata / "图10_区域GPU利用率热图.csv")
 
     out = {"status": "PASS" if ca.Passed.all() else "FAIL", "seed": seed, "lambda_train": lam,
            "baseline_ai_it_max_error": float(np.max(np.abs(base_err))), "scheduled_tasks": int(len(sch)),
