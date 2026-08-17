@@ -1,9 +1,16 @@
 result_id,status,review_state,value,unit,source_file,used_in_paper,notes
-q3_e0_cost,DRAFT,NEEDS_REVIEW,-419820327.73900986,CNY,tables/q3_metrics_summary.csv,false,无储能能源调度系统运行成本
-q3_e1_cost,DRAFT,NEEDS_REVIEW,-459217791.0387695,CNY,tables/q3_metrics_summary.csv,false,BESS协同调度系统运行成本
+q3_e0_cost,DRAFT,NEEDS_REVIEW,-419820327.73900986,CNY,tables/q3_metrics_summary.csv,false,无储能能源调度系统净运行成本
+q3_e1_cost,DRAFT,NEEDS_REVIEW,-459217791.0387695,CNY,tables/q3_metrics_summary.csv,false,BESS协同调度系统净运行成本
 q3_bess_value,DRAFT,NEEDS_REVIEW,39397463.29975963,CNY,tables/q3_metrics_summary.csv,false,E1相对E0的BESS增量经济价值
 q3_e0_carbon,DRAFT,NEEDS_REVIEW,8.85056419829166,tCO2,tables/q3_metrics_summary.csv,false,无储能能源调度系统碳排放
 q3_e1_carbon,DRAFT,NEEDS_REVIEW,4.1168346472401127e-07,tCO2,tables/q3_metrics_summary.csv,false,BESS协同调度数值零碳排放
 q3_eta_R_e1,DRAFT,NEEDS_REVIEW,69.51418874892138,百分比,tables/q3_metrics_summary.csv,false,E1系统新能源利用率
 q3_e1_throughput,DRAFT,NEEDS_REVIEW,346201.9337695286,MWh,tables/q3_metrics_summary.csv,false,Stage2最小吞吐量结果
 q3_stage2_scd,DRAFT,NEEDS_REVIEW,0,区域小时,results/q3_constraint_audit.csv,false,Stage2同时充放电小时数
+q3_facility_load_std,DRAFT,NEEDS_REVIEW,563.8960333120365,MW,tables/q3_metrics_summary.csv,false,Facility Load固定故E0/E1相同，变化率为0
+q3_grid_sigma_e0,DRAFT,NEEDS_REVIEW,115.39141262060069,MW,tables/q3_metrics_summary.csv,false,E0系统聚合净电网交互功率标准差
+q3_grid_sigma_e1,DRAFT,NEEDS_REVIEW,4.982502334115692,MW,tables/q3_metrics_summary.csv,false,E1系统聚合净电网交互功率标准差
+q3_grid_ramp_e0,DRAFT,NEEDS_REVIEW,29.29024803958205,MW,tables/q3_metrics_summary.csv,false,E0平均绝对电网交互爬坡
+q3_grid_ramp_e1,DRAFT,NEEDS_REVIEW,0.4044213198753019,MW,tables/q3_metrics_summary.csv,false,E1平均绝对电网交互爬坡
+q3_e0_max_regional_peak,DRAFT,NEEDS_REVIEW,31.597867090000022,MW,tables/q3_metrics_summary.csv,false,E0最大区域峰值净购电，RegionF；不得被跨区售电抵消
+q3_e1_max_regional_peak,DRAFT,NEEDS_REVIEW,0,MW,tables/q3_metrics_summary.csv,false,E1六区峰值净购电均为数值零
