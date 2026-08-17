@@ -1,0 +1,22 @@
+{
+  "status": "DRAFT / NEEDS_REVIEW",
+  "probeA": [
+    {"tasks":40,"columns":3139,"rows_original":540,"rows_presolved":196,"row_reduction_pct":63.7037,"nnz_original":59272,"nnz_presolved":23043,"nnz_reduction_pct":61.1233,"solve_original_s":0.0274053,"solve_presolved_s":0.0126011,"objective_abs_diff":0.0},
+    {"tasks":100,"columns":5435,"rows_original":540,"rows_presolved":197,"row_reduction_pct":63.5185,"nnz_original":99755,"nnz_presolved":39464,"nnz_reduction_pct":60.4391,"solve_original_s":0.0450931,"solve_presolved_s":0.0221090,"objective_abs_diff":0.0},
+    {"tasks":500,"columns":30152,"rows_original":540,"rows_presolved":205,"row_reduction_pct":62.0370,"nnz_original":393563,"nnz_presolved":165601,"nnz_reduction_pct":57.9226,"solve_original_s":0.219858,"solve_presolved_s":0.107051,"objective_abs_diff":0.0}
+  ],
+  "probeB": [
+    {"tasks":40,"columns":3139,"benders_iterations":2,"final_gap":0.0,"mean_lambda_support":4.07143,"max_lambda_support":12,"mean_cut_density":0.0335184,"max_cut_density":0.0965276,"dense_bytes":351568,"sparse_payload_bytes_est":17900},
+    {"tasks":100,"columns":5435,"benders_iterations":2,"final_gap":0.0,"mean_lambda_support":3.35714,"max_lambda_support":12,"mean_cut_density":0.0257327,"max_cut_density":0.105980,"dense_bytes":608720,"sparse_payload_bytes_est":23720},
+    {"tasks":500,"columns":30152,"benders_iterations":4,"final_gap":0.0,"mean_lambda_support":3.5,"max_lambda_support":12,"mean_cut_density":0.0279217,"max_cut_density":0.0984014,"dense_bytes":9166208,"sparse_payload_bytes_est":384512,"total_s":1.53337,"energy_subproblem_s":0.0627644}
+  ],
+  "probeC": {
+    "anchor_cost_CNY": -5018111.400085245,
+    "anchor_carbon_tCO2": 53.647629846155745,
+    "max_cost_abs_diff_CNY": 1.862645149230957e-9,
+    "max_carbon_abs_diff_tCO2": 8.171241461241152e-13,
+    "budgets": [1.0,0.75,0.5,0.25,0.0],
+    "decision": "mathematically exact on the frozen 40-task benchmark; serial regional implementation is slower than the global-carbon subproblem at this small scale, so keep as optional backend pending full-horizon parallel benchmark"
+  },
+  "resource_gate": {"target_peak_ram_GB":10,"hard_peak_ram_GB":20,"hard_wall_clock_hours":9}
+}
