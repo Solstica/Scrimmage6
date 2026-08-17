@@ -1,4 +1,4 @@
-% 算法: Benders 分解 + 精确列生成
+% 算法: Region multi-cut Benders + Exact Column Generation + 字典序再认证
 \begin{algorithm}[H]
 \setstretch{0.92}
 \SetAlFnt{\normalsize}
@@ -13,64 +13,74 @@
 \SetKw{KwRet}{return}
 \SetKw{Continue}{continue}
 \SetKw{Break}{break}
-\caption{Benders 分解 + 精确列生成求解联合调度}
+\caption{Region multi-cut Benders + Exact Column Generation 的联合字典序求解}
 \label{alg:q4-benders-cg}
-\KwIn{任务集 $\mathcal{I}$，各区域 GPU/IT/Facility 容量 $C_r^{\text{GPU}}, C_r^{\text{IT}}, C_r^{\text{Fac}}$，新能源出力 $\bar{R}_{rt}$，BESS 参数，电价 $c_t^{\text{buy}}, c_t^{\text{sell}}$，SLA 延迟约束，时域 $0,\dots,2406$}
-\KwInit{构建初始可行参考排程 $\mathbf{x}^0$，生成初始列池 $\mathcal{C}$；$\theta_r \leftarrow -\infty$；$\text{converged} \leftarrow \text{false}$}
+\KwIn{任务集 $\mathcal I$，完整合法域 $\Omega_i$，区域 GPU/IT/Facility 容量，新能源出力 $\bar R_{rt}$，BESS 参数，购售电价格，SLA 与时域 $0,\dots,2406$}
+\KwInit{由可行参考排程生成初始活动列池 $\mathcal C$；区域 Benders 割集置空；阶段 $z\leftarrow\mathrm{Cost}$}
 \BlankLine
-\While{$\text{converged} = \text{false}$}{
-    \emph{阶段一：求解 Restricted Master LP}\;
-    在列池 $\mathcal{C}$ 和当前 Benders 割集上求解：
-    \begin{minipage}[t]{0.85\linewidth}
-    \vspace{0.5em}
-    $\min \sum_{i \in \mathcal{I}} \sum_{(r,s) \in \mathcal{C}_i} c_{irs} \cdot x_{irs} + \sum_r \theta_r$ \\
-    s.t. $\sum_{(r,s) \in \mathcal{C}_i} x_{irs} = 1,\ \forall i$ \\
-    \hspace{1.2em} GPU/IT 容量约束（presolved）\\
-    \hspace{1.2em} Benders 最优性割 $\theta_r \ge Q_r^k + \boldsymbol{\lambda}_r^k \cdot (L(\mathbf{x}) - L(\mathbf{x}^k)),\ \forall k,r$\\
-    \hspace{1.2em} $0 \le x_{irs} \le 1$
+
+\emph{阶段一：Cost root 的 Benders--CG 双闭环}\;
+\While{Cost root 未闭合}{
+    在活动列池 $\mathcal C$ 与当前区域割集上求解 Restricted Master LP：
+    \begin{minipage}[t]{0.86\linewidth}
+    \vspace{0.4em}
+    $\min \sum_r \theta_r$ \\
+    s.t. $\sum_{(r,s)\in\mathcal C_i}x_{irs}=1,\ \forall i$ \\
+    \hspace{1.2em}GPU/IT 容量约束（Facility 重复行可 exact presolve）\\
+    \hspace{1.2em}$\theta_r\ge Q_r(L_r^k)+(\boldsymbol\lambda_r^k)^\top(L_r(\mathbf x)-L_r^k),\ \forall r,k$\\
+    \hspace{1.2em}$0\le x_{irs}\le1$
     \end{minipage}\;
-    得到 $\mathbf{x}^*$ 和 Master dual $\boldsymbol{\pi}^*$\;
-    \BlankLine
-    \emph{阶段二：求解 Energy Subproblem}\;
+    得到 workload LP 解 $\mathbf x^{LP}$ 与 Master dual\;
     \ForEach{区域 $r$}{
-        由 $\mathbf{x}^*$ 计算 $L_{rt}^{\text{Fac}}$\;
-        求解能量平衡 LP (\ref{eq:q4-subproblem-obj})\text{--}(\ref{eq:q4-soc-bound})，得到 $Q_r(L_r^*)$ 和 dual $\boldsymbol{\lambda}_r^*$\;
-        \If{$Q_r(L_r^*) > \theta_r + \varepsilon$}{
-            添加区域最优性割 (\ref{eq:q4-benders-cut}) 到 Master\;
-        }
+        由 $\mathbf x^{LP}$ 计算 $L_{rt}^{\mathrm{Fac}}$ 并求真实 Energy LP，得到 $Q_r(L_r)$ 与 load dual $\boldsymbol\lambda_r$\;
+        \If{$Q_r(L_r)-\theta_r>\varepsilon_B$}{添加该区域 Benders cut\;}
     }
-    \BlankLine
-    \emph{阶段三：Exact Column Pricing}\;
-    \If{无新 Benders 割}{
-        \ForEach{任务 $i$}{
-            使用 reduced cost $\bar{c}_{irs} = c_{irs} - \boldsymbol{\pi}^* \cdot \mathbf{a}_{irs}$ 扫描完整合法域\;
-            \If{任务类型 $k_i \in \{\text{BI}, \text{AT}\}$}{
-                使用 $(k_i, r, p_i)$ 模板 + suffix-min 计算 $\min_s \bar{c}_{irs}$\;
-            }
-            \Else{（RT 任务）}{
-                固定 $s = \text{ArrivalHour}_i$，枚举所有延迟可行区域\;
-            }
-            \If{$\min \bar{c}_{irs} < -\varepsilon$}{
-                将最小 reduced cost 列加入 $\mathcal{C}$\;
-            }
-        }
-        \If{无新列加入}{$\text{converged} \leftarrow \text{true}$\;}
-    }
+    \If{本轮新增任一区域 cut}{\Continue}
+    对所有任务执行\textbf{完整隐式合法域 Exact Pricing}\;
+    \If{存在 reduced cost $< -\varepsilon_P$ 的 placement}{加入对应新列到 $\mathcal C$；\Continue}
+    Cost root LP 双门禁闭合\;
+}
+在当前扩展列池上求 restricted MIP，得到真实 Energy LP 复核通过的 Cost 可行整数 incumbent，记其成本为 $C^{\mathrm{anc}}$；\textbf{不据此声称 50k 全局整数最优}\;
+\BlankLine
+
+\emph{阶段二：Wait 字典序精化}\;
+设置 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，目标改为 $\min\sum_i w_i$\;
+\While{Wait 阶段未闭合}{
+    在当前活动列上求 Wait Restricted Master LP\;
+    对各区域求真实 Energy LP；若 Cost-cap underestimator 低估则加入对应 region cut\;
+    若 Benders 已闭合，则对\textbf{完整合法域}做 Wait reduced-cost pricing\;
+    若发现负 reduced-cost placement，则加列并继续闭合\;
+    若 Benders 与 Wait pricing 同时闭合，则求 restricted MIP，并用真实 Energy LP 复核 Cost cap\;
+    若整数候选违反真实 Cost cap，则在违规区域加入 integer Benders cuts 并继续\;
+    否则得到 Wait 可行整数 anchor $W^{\mathrm{anc}}$ 与对应排程\;
 }
 \BlankLine
-\emph{阶段四：字典序精化——对完整合法域重新定价}\;
+
+\emph{阶段三：Latency 字典序精化}\;
+保持 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$ 与 $\mathrm{Wait}(\mathbf x)\le W^{\mathrm{anc}}+\varepsilon_W$，目标改为 $\min\sum_i\ell_i$\;
+\While{Latency 阶段未闭合}{
+    求 Latency Restricted Master LP\;
+    对各区域真实 Energy LP 做 region multi-cut 复核\;
+    Benders 闭合后，对\textbf{完整合法域}执行 Latency pricing\;
+    若有负 reduced-cost placement，则加列并重新闭合\;
+    若 LP 双门禁闭合，则求 restricted MIP；用真实 Energy LP 复核 Cost cap 与全部能源约束\;
+    若整数候选不满足真实 recourse，则对违规区域添加 integer Benders cuts 并继续\;
+    否则得到 Latency 可行整数 incumbent\;
+}
 \BlankLine
-\emph{阶段四-A：等待最小化}\;
-设置 Cost cap $\text{Cost}^* + \varepsilon_C$，将 Master 目标切换为 $\min \sum_i w_i$\;
-\textbf{对完整合法域执行 Wait 目标列生成}：每个任务 $i$ 扫描所有合法 $(r,s)$ 组合，若 reduced cost $\bar{c}_{irs}^{\text{wait}} < -\varepsilon$ 则加入列池\;
-Wait 阶段列生成闭合后，求解 restricted MIP 最小化总等待时间，记为 $\text{Wait}^*$\;
+
+\emph{阶段四：最终列池字典序再认证}\;
+\While{后序阶段新增列仍能改善前序整数 anchor}{
+    在最终扩展列池上重新执行 Cost 层，更新 $C^{\mathrm{anc}}$\;
+    在新 Cost cap 下重新执行 Wait 层，更新 $W^{\mathrm{anc}}$\;
+    在新 Cost/Wait cap 下重新执行 Latency 层\;
+    每一层仍保留 region Benders 真实 recourse 复核与 full-domain exact pricing\;
+}
 \BlankLine
-\emph{阶段四-B：延迟最小化}\;
-保持 Cost cap 和 Wait cap $\text{Wait}^*$，将目标切换为 $\min \sum_i \ell_i$\;
-\textbf{再次对完整合法域执行 Latency 目标列生成}，直至 Latency 阶段列生成闭合\;
-求解 restricted MIP 最小化总网络延迟\;
+
+\emph{阶段五：硬约束与证据边界审计}\;
+检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、Renewable/Load balance、SOC 递推与终端 SOC、GridImport/Export、SellLimit；报告 full-domain root certificate、integer incumbent 与可得的 LB/UB/gap，不把 restricted MIP 写成全局整数最优\;
 \BlankLine
-\emph{阶段四-C：结果输出}\;
-\KwRet{调度决策 $\mathbf{x}^*$，各区域能源调度方案，目标函数值，迁移/等待/延迟统计}
-\KwOut{任务区域-时间分配、BESS 充放电计划、电网购售电计划、碳排放量、服务质量指标}
+\KwRet{通过真实能源复核的计算排程与能源排程，以及 Cost/Wait/Latency/Carbon/Renewable/Peak 等指标}
+\KwOut{任务区域--时间分配、BESS 充放电计划、电网购售电计划、约束审计与最优性证据边界}
 \end{algorithm}
