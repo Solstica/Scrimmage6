@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "results": [
+    {
+      "result_id": "q3_e0_cost",
+      "question": "Q3",
+      "metric": "无储能系统净运行成本",
+      "value_text": "-419820327.73900986",
+      "unit": "CNY",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+          "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_solver_run_audit.json",
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "created_at": "2026-08-17T10:56:12+00:00",
+      "updated_at": "2026-08-17T10:56:12+00:00"
+    },
+    {
+      "result_id": "q3_e1_cost",
+      "question": "Q3",
+      "metric": "BESS系统净运行成本",
+      "value_text": "-459217791.0387695",
+      "unit": "CNY",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+          "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_solver_run_audit.json",
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "created_at": "2026-08-17T10:56:17+00:00",
+      "updated_at": "2026-08-17T10:56:17+00:00"
+    },
+    {
+      "result_id": "q3_bess_value",
+      "question": "Q3",
+      "metric": "E1相对E0的BESS增量经济价值",
+      "value_text": "39397463.29975963",
+      "unit": "CNY",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+          "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_solver_run_audit.json",
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "created_at": "2026-08-17T10:56:24+00:00",
+      "updated_at": "2026-08-17T10:56:24+00:00"
+    },
+    {
+      "result_id": "q3_e1_throughput",
+      "question": "Q3",
+      "metric": "Stage 2系统储能吞吐量",
+      "value_text": "346201.9337695286",
+      "unit": "MWh",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+          "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_solver_run_audit.json",
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "created_at": "2026-08-17T10:56:31+00:00",
+      "updated_at": "2026-08-17T10:56:31+00:00"
+    },
+    {
+      "result_id": "q3_stage2_scd",
+      "question": "Q3",
+      "metric": "Stage 2同时充放电区域小时数",
+      "value_text": "0",
+      "unit": "区域小时",
+      "status": "DRAFT",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv",
+          "sha256": "889dc9bd4fe9004d23c2dcc6c81cbb8d843022f2ebd0a87ddf7b609900c699b1"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_solver_run_audit.json",
+        "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "created_at": "2026-08-17T10:56:36+00:00",
+      "updated_at": "2026-08-17T10:56:36+00:00"
+    }
+  ]
+}

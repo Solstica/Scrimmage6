@@ -1,0 +1,68 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_plot_data.py"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q3",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_plot_data.py",
+    "script_sha256": "d6b7ba3273fd5bc3f7e5f9e946444e59e7c8262b888e554dc43a8b46d4bd1b6a",
+    "started_at": "2026-08-17T11:02:14+00:00",
+    "finished_at": "2026-08-17T11:02:15+00:00",
+    "returncode": 0,
+    "stdout": "generated 5 plotting tables and report: D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\Q3绘图报告.md\n图1_系统电网交互功率时序.csv\n图2_D-E-F储能SOC时序.csv\n图3_各区域BESS增量经济价值.csv\n图4_系统新能源利用率对比.csv\n图5_D-E-F储能充放电量.csv\n",
+    "stderr": "",
+    "inputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+        "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7",
+        "size": 4691
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\data\\processed\\q3_energy_dispatch_0_2406.csv",
+        "sha256": "1893bd11badf523c44f6796f1f00fddc4954907ab58915b39f6038f9262d273b",
+        "size": 3627065
+      }
+    ],
+    "outputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\图1_系统电网交互功率时序.csv",
+        "sha256": "d1e41888f478fedd1f26193c59508d17ae8d1f5967cc0eeb632a9013e7bb0abc",
+        "size": 90443
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\图2_D-E-F储能SOC时序.csv",
+        "sha256": "2d4bdda81b4e181aecc65ec9d5548b10dee972397b2d05b057331457b8188f2f",
+        "size": 117858
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\图3_各区域BESS增量经济价值.csv",
+        "sha256": "5d7f3cd31ad3ca16a7395c29dc0fc30daab021a7528b9f1b1776f63a14d9bd8a",
+        "size": 204
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\图4_系统新能源利用率对比.csv",
+        "sha256": "d214a3766093ac3c8418169a4e60cb5c447b90e1c1505abffa624f6883c6375a",
+        "size": 128
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\图5_D-E-F储能充放电量.csv",
+        "sha256": "5e1c29eaba92156de6f854c78783f317713812e29b644aa3a5f68a0b74b7e105",
+        "size": 189
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\figures\\editable\\Q3绘图报告.md",
+        "sha256": "ffcb3a4b1c4869b115422a1285f2e513457231841f9ceb780ea98216eb7467a1",
+        "size": 4828
+      }
+    ]
+  },
+  "metrics": {
+    "syntax": "PASS"
+  }
+}
