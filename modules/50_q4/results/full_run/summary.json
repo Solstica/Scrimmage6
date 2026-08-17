@@ -1,0 +1,15 @@
+{
+  "状态": "DRAFT / NEEDS_REVIEW",
+  "完整候选域": "未裁剪的 implicit domain",
+  "任务数": 50000,
+  "候选域总数_预检": 233375201,
+  "根节点闭合": true,
+  "停止原因": "root_lp_closed",
+  "restricted_integer_status": "restricted_mip_completed",
+  "活动列数": 51247,
+  "Benders切数": 2,
+  "可行上界_能源成本_CNY": -459264025.46651757,
+  "运行分钟": 2.064452902475993,
+  "峰值当前RSS_GiB": 0.2542762756347656,
+  "全局整数最优已证明": false
+}

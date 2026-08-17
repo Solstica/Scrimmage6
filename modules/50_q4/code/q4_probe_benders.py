@@ -16,11 +16,16 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linprog, milp, LinearConstraint, Bounds
 from scipy.sparse import lil_matrix, csr_matrix, hstack, vstack
+from tqdm.auto import tqdm
 
-if len(sys.argv) < 2:
-    raise SystemExit("Usage: python q4_probe_benders.py <attachment_dir> [output_dir]")
-ATTACH=Path(sys.argv[1]).resolve()
-OUT=Path(sys.argv[2]).resolve() if len(sys.argv)>2 else Path.cwd()/"q4_probe_output"
+DEFAULT_ATTACHMENT_DIR=Path(r"D:\qq文件\2026年武汉理工大学数学建模训练题目7-9\C题附件")
+DEFAULT_OUTPUT_DIR=Path(__file__).resolve().parents[1]/"results"/"local_probe"
+if len(sys.argv)>3:
+    raise SystemExit("Usage: python q4_probe_benders.py [attachment_dir] [output_dir]")
+ATTACH=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else DEFAULT_ATTACHMENT_DIR
+OUT=Path(sys.argv[2]).resolve() if len(sys.argv)>2 else DEFAULT_OUTPUT_DIR
+if len(sys.argv)==1:
+    print(f"未传入参数，使用默认附件目录：{ATTACH}")
 OUT.mkdir(parents=True,exist_ok=True)
 T0,TTERM=2376,2406
 EH=np.arange(T0,TTERM+1); XH=np.arange(T0,TTERM)
@@ -48,7 +53,7 @@ for c in ["AvailableRenewable_MW","ElectricityPrice_CNY_per_MWh","SellPrice_CNY_
 
 # Baseline GPU/AI reconstruction.
 base_gpu=np.zeros((R,2406)); base_ai=np.zeros((R,2406))
-for t in w.itertuples(index=False):
+for t in tqdm(w.itertuples(index=False), total=len(w), desc="重建基线负荷", unit="任务"):
     rr=RIDX[t.SourceRegion]; prof=overlap_profile(t.EstimatedDuration_min); s=int(t.ArrivalHour)
     hs=np.arange(s,min(s+len(prof),2406)); ov=prof[:len(hs)]
     base_gpu[rr,hs]+=float(t.GPU_Demand)*ov
@@ -78,7 +83,7 @@ bg_fac[:,-1]=PUE*wide["NonAI_IT_Load_MW"][:,TTERM]
 
 # ---------- complete legal candidate set ----------
 cands=[]; task_cands={}
-for ti,t in enumerate(SEL.itertuples(index=False)):
+for ti,t in enumerate(tqdm(SEL.itertuples(index=False), total=NT, desc="枚举全合法候选", unit="任务")):
     legal=np.where(lat[RIDX[t.SourceRegion],:]<=float(t.MaxLatency_ms)+1e-9)[0]
     ph=float(t.EstimatedDuration_min)/60.0
     starts=[int(t.ArrivalHour)] if t.TaskType=="RealTimeInference" else list(range(int(t.ArrivalHour),int(math.floor(min(float(t.LatestFinishHour),2406.0)-ph+1e-10))+1))
@@ -98,7 +103,7 @@ for ti,t in enumerate(SEL.itertuples(index=False)):
     task_cands[ti]=ids
 NC=len(cands); T=len(EH); TX=len(XH)
 Aload=lil_matrix((R*T,NC)); Agpu=lil_matrix((R*TX,NC)); Aai=lil_matrix((R*TX,NC)); Afac=lil_matrix((R*TX,NC)); Aassign=lil_matrix((NT,NC))
-for j,c in enumerate(cands):
+for j,c in enumerate(tqdm(cands, desc="装配稀疏约束矩阵", unit="候选")):
     Aassign[c["task_idx"],j]=1; rr=c["region_idx"]
     for hh,fc,ac,gc in zip(c["hh"],c["facility_coef"],c["ai_coef"],c["gpu_coef"]):
         Aload[rr*T+hh,j]=fc; Agpu[rr*TX+hh,j]=gc; Aai[rr*TX+hh,j]=ac; Afac[rr*TX+hh,j]=fc
@@ -216,8 +221,10 @@ def solve_joint(rc,carbon_budget=None,objx=None,cost_cap=None,wait_cap=None):
 
 # ---------- Benders ----------
 def benders(rc,carbon_budget=None,multicut=False,max_iter=30):
-    cuts=[]; hist=[]; best=np.inf; bestx=None
+    cuts=[]; nogoods=[]; hist=[]; best=np.inf; bestx=None; converged=False
     e=energy_lp(load_from_x(X0),rc,carbon_budget); L0=load_from_x(X0)
+    if not e["success"]:
+        raise RuntimeError("Benders 初始排程的能源子问题不可行；该探针需要一个能源可行的初始排程。")
     if multicut and carbon_budget is None:
         for r in range(R):
             lam=e["lambda_"][r]; const=float(e["cost_r"][r]+lam@(bg_fac[r]-L0[r])); coef=np.asarray(lam@Aload[r*T:(r+1)*T,:]).ravel(); cuts.append((r,const,coef))
@@ -225,30 +232,42 @@ def benders(rc,carbon_budget=None,multicut=False,max_iter=30):
     else:
         lam=e["lambda_"].reshape(-1); const=float(e["cost"]+lam@(bg_flat-L0.reshape(-1))); coef=np.asarray(lam@Aload).ravel(); cuts.append((-1,const,coef)); ntheta=1
     best=e["cost"]; bestx=X0.copy()
-    for it in range(max_iter):
+    for it in tqdm(range(max_iter), desc="Benders 迭代", unit="轮"):
         n=NC+ntheta; obj=np.concatenate([np.zeros(NC),np.ones(ntheta)]); integM=np.concatenate([np.ones(NC),np.zeros(ntheta)]); lbM=np.concatenate([np.zeros(NC),np.full(ntheta,-1e9)]); ubM=np.concatenate([np.ones(NC),np.full(ntheta,1e9)])
         cons=[LinearConstraint(hstack([Aassign,csr_matrix((NT,ntheta))]),np.ones(NT),np.ones(NT)),LinearConstraint(hstack([Agpu,csr_matrix((R*TX,ntheta))]),-np.inf*np.ones(R*TX),rhs_gpu),LinearConstraint(hstack([Aai,csr_matrix((R*TX,ntheta))]),-np.inf*np.ones(R*TX),rhs_ai),LinearConstraint(hstack([Afac,csr_matrix((R*TX,ntheta))]),-np.inf*np.ones(R*TX),rhs_fac)]
         Ac=lil_matrix((len(cuts),n)); bc=np.zeros(len(cuts))
         for k,(rr,const,coef) in enumerate(cuts): Ac[k,:NC]=coef; Ac[k,NC+(rr if ntheta>1 else 0)]=-1; bc[k]=-const
-        cons.append(LinearConstraint(csr_matrix(Ac),-np.inf*np.ones(len(cuts)),bc)); m=milp(c=obj,integrality=integM,bounds=Bounds(lbM,ubM),constraints=cons,options={"time_limit":60,"mip_rel_gap":1e-9})
+        cons.append(LinearConstraint(csr_matrix(Ac),-np.inf*np.ones(len(cuts)),bc))
+        if nogoods:
+            Ang=lil_matrix((len(nogoods),n)); bng=np.full(len(nogoods),NT-1.0)
+            for k,js in enumerate(nogoods): Ang[k,js]=1.0
+            cons.append(LinearConstraint(csr_matrix(Ang),-np.inf*np.ones(len(nogoods)),bng))
+        m=milp(c=obj,integrality=integM,bounds=Bounds(lbM,ubM),constraints=cons,options={"time_limit":60,"mip_rel_gap":1e-9})
         if not m.success: raise RuntimeError(m.message)
-        xm=np.rint(m.x[:NC]).astype(int); em=energy_lp(load_from_x(xm),rc,carbon_budget); q=em["cost"]
+        xm=np.rint(m.x[:NC]).astype(int); em=energy_lp(load_from_x(xm),rc,carbon_budget)
+        if not em["success"]:
+            nogoods.append(np.flatnonzero(xm>0.5))
+            hist.append(dict(iter=it+1,LB=float(m.fun),candidate_Q=None,UB=best,gap=None,cuts=len(cuts),nogoods=len(nogoods),energy_feasible=False))
+            continue
+        q=em["cost"]
         if q<best-1e-7: best=q; bestx=xm.copy()
-        gap=best-float(m.fun); hist.append(dict(iter=it+1,LB=float(m.fun),candidate_Q=q,UB=best,gap=gap,cuts=len(cuts)))
-        if gap<=1e-8*max(1.0,abs(best)): break
+        gap=best-float(m.fun); hist.append(dict(iter=it+1,LB=float(m.fun),candidate_Q=q,UB=best,gap=gap,cuts=len(cuts),nogoods=len(nogoods),energy_feasible=True))
+        if gap<=1e-8*max(1.0,abs(best)):
+            converged=True
+            break
         Lm=load_from_x(xm)
         if multicut and carbon_budget is None:
             for r in range(R):
                 lam=em["lambda_"][r]; const=float(em["cost_r"][r]+lam@(bg_fac[r]-Lm[r])); coef=np.asarray(lam@Aload[r*T:(r+1)*T,:]).ravel(); cuts.append((r,const,coef))
         else:
             lam=em["lambda_"].reshape(-1); const=float(em["cost"]+lam@(bg_flat-Lm.reshape(-1))); coef=np.asarray(lam@Aload).ravel(); cuts.append((-1,const,coef))
-    return best,bestx,hist
+    return best,bestx,hist,converged
 
 # Probe 3A: exact and region multi-cut.
 t=time.time(); rex=solve_joint(renew); exact_t=time.time()-t
 if not rex.success: raise RuntimeError(rex.message)
 xex=np.rint(rex.x[:NC]).astype(int); Cstar=float(rex.fun)
-t=time.time(); bcost,bx,bhist=benders(renew,multicut=True); bend_t=time.time()-t
+t=time.time(); bcost,bx,bhist,bconverged=benders(renew,multicut=True); bend_t=time.time()-t
 rw=solve_joint(renew,objx=WAIT,cost_cap=Cstar+1e-5); rlat=solve_joint(renew,objx=LAT,cost_cap=Cstar+1e-5,wait_cap=float(rw.fun)+1e-7); xlex=np.rint(rlat.x[:NC]).astype(int)
 
 # Probe 3B: data-derived carbon activation threshold, then diagnostic gamma=1.4.
@@ -261,11 +280,11 @@ gcrit=(lo+hi)/2; gamma=1.4; rg=rmean+gamma*(renew-rmean)
 rg0=solve_joint(rg); xg0=np.rint(rg0.x[:NC]).astype(int); eg0=energy_lp(load_from_x(xg0),rg); C0=float(eg0["carbon"])
 rows=[]
 for frac in [1.0,0.75,0.5,0.25,0.0]:
-    B=max(1e-8,frac*C0); t=time.time(); rj=solve_joint(rg,carbon_budget=B); et=time.time()-t; xj=np.rint(rj.x[:NC]).astype(int); ej=energy_lp(load_from_x(xj),rg,B); t=time.time(); bc,bxx,bh=benders(rg,B,multicut=False); bt=time.time()-t
-    rows.append(dict(fraction=frac,carbon_budget=B,exact_cost=float(rj.fun),exact_carbon=float(ej["carbon"]),exact_time_s=et,benders_cost=bc,benders_iters=len(bh),benders_time_s=bt,**sched_metrics(xj)))
+    B=max(1e-8,frac*C0); t=time.time(); rj=solve_joint(rg,carbon_budget=B); et=time.time()-t; xj=np.rint(rj.x[:NC]).astype(int); ej=energy_lp(load_from_x(xj),rg,B); t=time.time(); bc,bxx,bh,bok=benders(rg,B,multicut=False); bt=time.time()-t
+    rows.append(dict(fraction=frac,carbon_budget=B,exact_cost=float(rj.fun),exact_carbon=float(ej["carbon"]),exact_time_s=et,benders_cost=bc,benders_converged=bok,benders_iters=len(bh),benders_time_s=bt,**sched_metrics(xj)))
 df=pd.DataFrame(rows); basec=float(df.iloc[0].exact_cost); basee=float(df.iloc[0].exact_carbon); df["cost_penalty_vs_costopt"]=df.exact_cost-basec; df["carbon_reduction_vs_costopt"]=basee-df.exact_carbon; df["avg_abatement_CNY_per_tCO2"]=df.cost_penalty_vs_costopt/df.carbon_reduction_vs_costopt.replace(0,np.nan)
 
 pd.DataFrame(bhist).to_csv(OUT/"probe3_cost_benders_history.csv",index=False); df.to_csv(OUT/"probe3_carbon_budget_results.csv",index=False); SEL[["TaskID","TaskType","ArrivalHour","GPU_Demand","EstimatedDuration_min","SourceRegion","GPUHour"]].to_csv(OUT/"probe_selected_tasks.csv",index=False)
-summary=dict(tasks=NT,candidates=NC,exact_cost=Cstar,exact_time_s=exact_t,benders_cost=bcost,benders_iters=len(bhist),benders_time_s=bend_t,exact_lex_metrics=sched_metrics(xlex),gamma_critical_for_positive_carbon=gcrit,gamma_stress=gamma,stress_cost_opt_carbon=C0)
+summary=dict(tasks=NT,candidates=NC,exact_cost=Cstar,exact_time_s=exact_t,benders_cost=bcost,benders_converged=bconverged,benders_iters=len(bhist),benders_time_s=bend_t,exact_lex_metrics=sched_metrics(xlex),gamma_critical_for_positive_carbon=gcrit,gamma_stress=gamma,stress_cost_opt_carbon=C0)
 (OUT/"probe3_summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False,indent=2)); print(df.to_string(index=False))
