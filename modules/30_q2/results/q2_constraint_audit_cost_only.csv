@@ -1,0 +1,9 @@
+﻿检查项,通过,最大误差
+候选使用动态边际能源,True,0.0
+RT空间合法域释放,True,0.0
+AvailableRenewable分解,True,0.00020000000002085017
+统一能量平衡,True,0.00020041666675751912
+GPU/IT/Facility容量,True,2.2737367544323206e-13
+GridImport/GridExport,True,0.0
+SLA/deadline/2406,True,0.0
+fallback重新验算,True,0.0
