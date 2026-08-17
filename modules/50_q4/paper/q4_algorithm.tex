@@ -1,0 +1,66 @@
+% 算法: Benders 分解 + 精确列生成
+\begin{algorithm}[H]
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwFor{While}{while}{do}{end while}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\SetKw{Continue}{continue}
+\SetKw{Break}{break}
+\caption{Benders 分解 + 精确列生成求解联合调度}
+\label{alg:q4-benders-cg}
+\KwIn{任务集 $\mathcal{I}$，各区域 GPU/IT/Facility 容量 $C_r^{\text{GPU}}, C_r^{\text{IT}}, C_r^{\text{Fac}}$，新能源出力 $\bar{R}_{rt}$，BESS 参数，电价 $c_t^{\text{buy}}, c_t^{\text{sell}}$，SLA 延迟约束，时域 $0,\dots,2406$}
+\KwInit{构建初始可行参考排程 $\mathbf{x}^0$，生成初始列池 $\mathcal{C}$；$\theta_r \leftarrow -\infty$；$\text{converged} \leftarrow \text{false}$}
+\BlankLine
+\While{$\text{converged} = \text{false}$}{
+    \emph{阶段一：求解 Restricted Master LP}\;
+    在列池 $\mathcal{C}$ 和当前 Benders 割集上求解：
+    \begin{minipage}[t]{0.85\linewidth}
+    \vspace{0.5em}
+    $\min \sum_{i \in \mathcal{I}} \sum_{(r,s) \in \mathcal{C}_i} c_{irs} \cdot x_{irs} + \sum_r \theta_r$ \\
+    s.t. $\sum_{(r,s) \in \mathcal{C}_i} x_{irs} = 1,\ \forall i$ \\
+    \hspace{1.2em} GPU/IT 容量约束（presolved）\\
+    \hspace{1.2em} Benders 最优性割 $\theta_r \ge Q_r^k + \boldsymbol{\lambda}_r^k \cdot (L(\mathbf{x}) - L(\mathbf{x}^k)),\ \forall k,r$\\
+    \hspace{1.2em} $0 \le x_{irs} \le 1$
+    \end{minipage}\;
+    得到 $\mathbf{x}^*$ 和 Master dual $\boldsymbol{\pi}^*$\;
+    \BlankLine
+    \emph{阶段二：求解 Energy Subproblem}\;
+    \ForEach{区域 $r$}{
+        由 $\mathbf{x}^*$ 计算 $L_{rt}^{\text{Fac}}$\;
+        求解能量平衡 LP (\ref{eq:q4-subproblem})，得到 $Q_r(L_r^*)$ 和 dual $\boldsymbol{\lambda}_r^*$\;
+        \If{$Q_r(L_r^*) > \theta_r + \varepsilon$}{
+            添加区域最优性割 (\ref{eq:q4-benders-cut}) 到 Master\;
+        }
+    }
+    \BlankLine
+    \emph{阶段三：Exact Column Pricing}\;
+    \If{无新 Benders 割}{
+        \ForEach{任务 $i$}{
+            使用 reduced cost $\bar{c}_{irs} = c_{irs} - \boldsymbol{\pi}^* \cdot \mathbf{a}_{irs}$ 扫描完整合法域\;
+            \If{任务类型 $k_i \in \{\text{BI}, \text{AT}\}$}{
+                使用 $(k_i, r, p_i)$ 模板 + suffix-min 计算 $\min_s \bar{c}_{irs}$\;
+            }
+            \Else{（RT 任务）}{
+                固定 $s = \text{ArrivalHour}_i$，枚举所有延迟可行区域\;
+            }
+            \If{$\min \bar{c}_{irs} < -\varepsilon$}{
+                将最小 reduced cost 列加入 $\mathcal{C}$\;
+            }
+        }
+        \If{无新列加入}{$\text{converged} \leftarrow \text{true}$\;}
+    }
+}
+\BlankLine
+\emph{阶段四：字典序精化}\;
+在 $\text{Cost} \le \text{Cost}^* + \varepsilon$ 内最小化总等待时间\;
+保持 Cost/Wait 最优，再最小化总网络延迟\;
+\KwRet{调度决策 $\mathbf{x}^*$，各区域能源调度方案，目标函数值，迁移/等待/延迟统计}
+\KwOut{任务区域-时间分配、BESS 充放电计划、电网购售电计划、碳排放量、服务质量指标}
+\end{algorithm}
