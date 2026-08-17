@@ -72,6 +72,7 @@ class Data:
 class Cut:
     const: float
     lam: np.ndarray             # shape (R, H_ENERGY), full load-balance subgradient
+    region: int = -1            # -1 表示旧版总 recourse；>=0 表示区域 recourse cut
 
 
 class ColumnPool:
@@ -298,7 +299,41 @@ def energy_lp(load: np.ndarray, data: Data, renew_override: np.ndarray | None = 
     if not result.success:
         return {"success": False, "message": result.message}
     carbon = sum(data.carbon[r,h] * (result.x[ix(r,h,"gL")] + result.x[ix(r,h,"qG")]) for r in range(R) for h in range(H_ENERGY))
-    return {"success": True, "cost": float(result.fun), "carbon": float(carbon), "lam": result.eqlin.marginals[load_row]}
+    region_cost = np.zeros(R, dtype=float)
+    for r in range(R):
+        for h in range(H_ENERGY):
+            region_cost[r] += (
+                data.price[r, h] * (result.x[ix(r, h, "gL")] + result.x[ix(r, h, "qG")])
+                - data.sell_price[r, h] * result.x[ix(r, h, "s")]
+            )
+    grid_import = np.empty((R, H_ENERGY)); grid_export = np.empty((R, H_ENERGY)); soc = np.empty((R, H_ENERGY))
+    for r in range(R):
+        for h in range(H_ENERGY):
+            grid_import[r,h] = result.x[ix(r,h,"gL")] + result.x[ix(r,h,"qG")]
+            grid_export[r,h] = result.x[ix(r,h,"s")]
+            soc[r,h] = result.x[ix(r,h,"E")]
+    import_cap = data.storage["MaxGridImport_MW"].to_numpy(float)[:,None]
+    export_cap = data.storage["MaxGridExport_MW"].to_numpy(float)[:,None]
+    sell_cap = data.storage["SellLimit_MW"].to_numpy(float)[:,None]
+    min_soc = data.storage["MinSOC_MWh"].to_numpy(float)[:,None]
+    max_soc = data.storage["StorageCapacity_MWh"].to_numpy(float)[:,None]
+    initial_soc = data.storage["InitialSOC_MWh"].to_numpy(float)
+    audit = {
+        "最大电网购电越界_MW": float(max(0.0, np.max(grid_import - import_cap))),
+        "最大电网上网越界_MW": float(max(0.0, np.max(grid_export - export_cap))),
+        "最大售电上限越界_MW": float(max(0.0, np.max(grid_export - sell_cap))),
+        "最大SOC下界越界_MWh": float(max(0.0, np.max(min_soc - soc))),
+        "最大SOC上界越界_MWh": float(max(0.0, np.max(soc - max_soc))),
+        "终端SOC缺口_MWh": float(max(0.0, np.max(initial_soc - soc[:,-1]))),
+    }
+    return {
+        "success": True,
+        "cost": float(result.fun),
+        "region_cost": region_cost,
+        "carbon": float(carbon),
+        "lam": result.eqlin.marginals[load_row],
+        "audit": audit,
+    }
 
 
 def cut_matrix(pool: ColumnPool, data: Data, cuts: list[Cut]) -> csr_matrix:
@@ -351,20 +386,35 @@ def price_all(pool: ColumnPool, data: Data, gpu_row: np.ndarray, it_row: np.ndar
                 if ir >= 0: per_hour[h] += -rdual[ir] * data.alpha[example]
                 per_hour[h] += cut_signal[r,h] * data.pue[r] * data.alpha[example]
             profiles[(task_type, r, int(round(duration * 60)))] = np.convolve(per_hour, prof[::-1], mode="valid")
+    active: dict[tuple[int,int], set[int]] = {}
+    for task, region, start in zip(*pool.arrays()):
+        active.setdefault((int(task), int(region)), set()).add(int(start))
     additions: list[tuple[int,int,int,float]] = []
     iterator = tqdm(range(len(data.task)), desc="完整域精确定价", unit="任务", leave=False)
+    task_types = data.task["TaskType"].astype(str).to_numpy()
     for i in iterator:
-        start0, end = int(data.arrival[i]), legal_last_start(data, i)
+        start0 = int(data.arrival[i])
+        end = start0 if task_types[i] == "RealTimeInference" else legal_last_start(data, i)
         if end < start0:
             raise RuntimeError(f"TaskID={data.task.iloc[i].TaskID} 无合法开工时刻")
         best: tuple[float,int,int] | None = None
         for r in np.flatnonzero(data.legal[i]):
             scores = profiles[(int(data.type_idx[i]), int(r), int(round(data.duration[i] * 60)))][start0:end+1]
-            local = int(np.argmin(scores)); score, s = float(scores[local] * data.gpu[i]), start0 + local
+            used = {start for start in active.get((i, int(r)), set()) if start0 <= start <= end}
+            if len(used) >= len(scores):
+                continue
+            local = int(np.argmin(scores)); s = start0 + local
+            if s in used:
+                count = min(len(scores), len(used) + 1)
+                candidates = np.argpartition(scores, count - 1)[:count]
+                local = min((int(k) for k in candidates if start0 + int(k) not in used), key=lambda k: scores[k])
+                s = start0 + local
+            score = float(scores[local] * data.gpu[i])
             if best is None or score < best[0]: best = (score, int(r), s)
-        assert best is not None
+        if best is None:
+            continue
         reduced = best[0] - eqdual[i]
-        if reduced < -tol and ColumnPool.key(i, best[1], best[2]) not in pool.keys:
+        if reduced < -tol:
             additions.append((i, best[1], best[2], reduced))
     additions.sort(key=lambda item: item[3])
     return additions
@@ -378,7 +428,7 @@ def save_solver_state(out: Path, pool: ColumnPool, cuts: list[Cut], completed_it
     """原子替换压缩数值状态；仅在一轮完整结束后写入。"""
     ti, rr, ss = pool.arrays()
     target, temporary = out / "checkpoint_state.npz", out / "checkpoint_state.tmp.npz"
-    lam = np.stack([cut.lam.astype(np.float32) for cut in cuts])
+    lam = np.stack([cut.lam.astype(np.float64) for cut in cuts])
     np.savez_compressed(temporary, task=ti, region=rr, start=ss,
                         cut_const=np.asarray([cut.const for cut in cuts]), cut_lam=lam,
                         completed_iter=np.int32(completed_iter), initial_columns=np.int32(initial_columns),
@@ -408,6 +458,7 @@ def main() -> None:
     parser.add_argument("--max-rss-gib", type=float, default=10.0)
     parser.add_argument("--min-free-gib", type=float, default=12.0)
     parser.add_argument("--price-tol", type=float, default=1e-6)
+    parser.add_argument("--benders-tol-cny", type=float, default=1e-3)
     parser.add_argument("--integer-time-limit-s", type=float, default=10800.0)
     parser.add_argument("--resume", action="store_true", help="从 output-dir/checkpoint_state.npz 的完整轮次继续")
     args = parser.parse_args()
@@ -455,7 +506,7 @@ def main() -> None:
             if not energy["success"]: raise RuntimeError("LP 主问题给出能源不可行负荷：" + energy["message"])
             violation = float(energy["cost"] - rmp["theta"])
             new_columns = 0; min_rc = 0.0
-            if violation > 1e-5 * max(1.0, abs(energy["cost"])):
+            if violation > args.benders_tol_cny:
                 cuts.append(Cut(const=float(energy["cost"] + np.sum(energy["lam"] * (fixed_facility_load(data) - load))), lam=energy["lam"].copy()))
                 stop_reason = "added_benders_cut"
             else:
@@ -483,7 +534,7 @@ def main() -> None:
         else: integer_status = "restricted_mip_incomplete: " + mip.message
     ti, rr, ss = pool.arrays(); chosen = np.flatnonzero(np.asarray(incumbent_x) > 0.5)
     pd.DataFrame({"TaskID":data.task.iloc[ti[chosen]]["TaskID"].to_numpy(),"区域":[REGIONS[int(x)] for x in rr[chosen]],"开工小时":ss[chosen]}).to_csv(out/"best_schedule.csv",index=False,encoding="utf-8-sig")
-    summary={"状态":"DRAFT / NEEDS_REVIEW","完整候选域":"未裁剪的 implicit domain","任务数":len(data.task),"候选域总数_预检":233375201,"根节点闭合":root_closed,"停止原因":stop_reason,"restricted_integer_status":integer_status,"活动列数":len(pool),"Benders切数":len(cuts),"可行上界_能源成本_CNY":incumbent_cost,"运行分钟":(time.time()-started)/60,"峰值当前RSS_GiB":process.memory_info().rss/1024**3,"全局整数最优已证明":False}
+    summary={"状态":"DRAFT / NEEDS_REVIEW","完整候选域":"未裁剪的 implicit domain","任务数":len(data.task),"候选域总数_预检":233375201,"根节点闭合":root_closed,"停止原因":stop_reason,"Benders闭合容差_CNY":args.benders_tol_cny,"restricted_integer_status":integer_status,"活动列数":len(pool),"Benders切数":len(cuts),"可行上界_能源成本_CNY":incumbent_cost,"运行分钟":(time.time()-started)/60,"峰值当前RSS_GiB":process.memory_info().rss/1024**3,"全局整数最优已证明":False}
     (out/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8"); write_checkpoint(out,{**summary,"状态":"FINISHED"})
     print(json.dumps(summary,ensure_ascii=False,indent=2))
 
