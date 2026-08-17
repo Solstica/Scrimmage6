@@ -108,7 +108,7 @@
 \end{figure}
 \FloatBarrier
 
-进一步检验表明，给定 TaskType 后，SourceRegion 对 GPU 需求和执行时长的附加影响很弱；GPU 与执行时长之间的线性相关系数接近 0，但尚不能将其升级为严格独立关系。因此，本文保留 $(GPU, Duration) \mid TaskType$ 的联合经验分布作为资源标记。
+进一步检验表明，给定 TaskType 后，SourceRegion 对 GPU 需求和执行时长的附加影响很弱；GPU 与执行时长之间的线性相关系数接近 0，但尚不能将其升级为严格独立关系。因此，本文保留 $(GPU, Duration) \mid TaskType$ 的联合经验分布作为资源标记。需要指出的是，在 GPU 需求概率预测中，实际使用的是该联合经验分布所诱导的 GPU 边际抽样；执行时长 $D$ 用于保持任务资源结构与后续 Q1-3 调度的语义一致性，并不直接参与 $Y_{rkt}$ 的 GPU 总量计算。
 
 \subsection{模型建立：结构化标记复合 Poisson 模型}
 
@@ -143,7 +143,7 @@ N_{rkt} \sim \text{Poisson}(\lambda \pi_{rk}).
 (G, D) \mid K = k \sim \hat{F}_{GD}^{(k)},
 \label{eq:q1-mark}
 \end{equation}
-其中 $\hat{F}_{GD}^{(k)}$ 由训练段历史数据中 $k$ 类任务的 $(G,D)$ 样本经核密度估计或经验频率表得到。完整的任务生成关系为：
+其中 $\hat{F}_{GD}^{(k)}$ 由训练段历史数据中 $k$ 类任务的 $(G,D)$ 样本经经验频率直接得到（不使用核密度估计）。完整的任务生成关系为：
 \begin{equation}
 P(R, K, G, D) = \pi_{rk} \cdot \hat{f}_{GD}^{(k)}(g, d).
 \label{eq:q1-joint}
@@ -171,11 +171,20 @@ P(R, K, G, D) = \pi_{rk} \cdot \hat{f}_{GD}^{(k)}(g, d).
 
 \subsection{模型求解}
 
+为保证模型评估的口径一致，本文按时间将数据切分为四段：
+
+\begin{itemize}
+  \item \textbf{训练段} 0--2351\,h（共 2352 小时），用于参数频率估计与分布拟合；
+  \item \textbf{验证段} 2352--2375\,h（共 24 小时），用于区间覆盖校准与超参选择（不用于选模切换）；
+  \item \textbf{最终 refit} 在 0--2375\,h 全量数据上重新估计参数，得到最终报告模型；
+  \item \textbf{测试段} 2376--2399\,h（共 24 小时），为一次性独立测试，不用于回调参数或重新选模。
+\end{itemize}
+
 \subsubsection{参数估计}
 
 模型参数采用频率估计方法：
 \begin{itemize}
-  \item 到达率 $\hat\lambda = \frac{1}{T}\sum_{t=0}^{T-1} n_t$，其中 $T$ 为训练小时数，$n_t$ 为第 $t$ 小时实际到达任务数；
+  \item 到达率 $\hat\lambda = \frac{1}{T}\sum_{t=0}^{T-1} n_t$，其中 $T=2352$ 为训练小时数（0--2351\,h），$n_t$ 为第 $t$ 小时实际到达任务数；
   \item 联合组成概率 $\hat\pi_{rk} = \frac{c_{rk}}{\sum_{r,k} c_{rk}}$，其中 $c_{rk}$ 为训练段中 $(R=r, K=k)$ 的任务计数；
   \item 条件资源分布 $\hat{F}_{GD}^{(k)}$ 由训练段中 $k$ 类任务的 $(G,D)$ 样本经验频率直接得到。
 \end{itemize}
@@ -278,7 +287,7 @@ Region$\times$TaskType & 26.49  & 53.74  & 0.656 & 94.21\% & 97.67 \\
 \end{table}
 \FloatBarrier
 
-各层级的 90\% 预测区间覆盖率均接近或超过名义水平 90\%，其中 Region$\times$TaskType 层达到 94.21\%，验证了概率预测的可靠性。图\ref{fig:q1-fig08}展示了测试集系统层 GPU 需求的预测均值与 90\% 预测区间。
+各层级的 90\% 预测区间覆盖率总体接近名义水平 90\%：Region$\times$TaskType 层达到 94.21\%，TaskType 层 90.28\%，Region 层 89.58\%，System 层为 87.5\%（21/24）。测试集仅包含 24 个小时样本点，System 层与名义水平的偏差不构成调参依据。图\ref{fig:q1-fig08}展示了测试集系统层 GPU 需求的预测均值与 90\% 预测区间。
 
 \begin{figure}[!htbp]
 \centering

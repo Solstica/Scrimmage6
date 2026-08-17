@@ -16,10 +16,10 @@
 \KwInit{固定随机种子，加载训练段数据 $\mathcal D_{\text{train}}$}
 \BlankLine
 \emph{阶段一：参数估计}\;
-$\hat\lambda \leftarrow \frac{1}{|\mathcal D_{\text{train}}|}\sum_{t=0}^{2351} n_t$\;
+$\hat\lambda \leftarrow \frac{1}{T}\sum_{t=0}^{T-1} n_t$，其中 $T=2352$ 为训练小时数\;
 $\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r,K=k)$ 的任务计数\;
 \ForEach{$k \in \{\text{RT}, \text{BI}, \text{AT}\}$}{
-    构建联合经验分布 $\hat{F}_{GD}^{(k)}$ 从 $\mathcal D_{\text{train}}$ 中 $k$ 类任务的 $(G,D)$ 样本\;
+    构建联合经验分布 $\hat{F}_{GD}^{(k)}$ 从 $\mathcal D_{\text{train}}$ 中 $k$ 类任务的 $(G,D)$ 样本（不使用核密度估计）\;
     计算 $\mathbb{E}[G \mid K=k]$ 和 $\mathbb{E}[G^2 \mid K=k]$\;
 }
 \BlankLine
@@ -65,33 +65,33 @@ $\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r
 \SetKw{KwRet}{return}
 \caption{Locality-Preserving Minimal Adjustment 基础算力调度}
 \label{alg:q1-scheduling}
-\KwIn{2376--2399\,h 实际到达任务集 $\mathcal J$，每个任务 $j$ 携带 $(r_j,k_j,g_j,p_j,\text{deadline}_j)$；各区域 GPU 容量 $C_r$；carry-in 初始占用 $I_{rt}$（$t=2376,\dots,2405$）}
+\KwIn{2376--2399\,h 实际到达任务集 $\mathcal J$，每个任务 $j$ 携带 $(r_j,k_j,g_j,p_j,\text{deadline}_j)$；各区域 GPU 容量 $C_r^{\text{GPU}}$、IT 容量 $C_r^{\text{IT}}$、Facility 容量 $C_r^{\text{Fac}}$，类型 $k$ 功率系数 $\alpha_k$；carry-in 初始占用 $I_{rt}$（$t=2376,\dots,2405$）}
 \KwInit{系统状态 $S_{rt} \leftarrow I_{rt}$，调度决策 $\mathcal D \leftarrow \varnothing$}
 \BlankLine
-\emph{阶段一：按任务类型优先级调度}\;
+\emph{阶段一：按任务类型优先级调度}（可行性 $F(r,j,s,t) \Leftrightarrow$ GPU/IT/Facility 三层容量同时满足 + SLA 延迟 + LatestFinish / $s+p \le 2406$）\;
 \ForEach{$t \in \{2376,\dots,2399\}$}{
     \emph{1. 实时推理任务}（到达即开工，不可等待）\;
     \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{RT}$}{
         候选区域 $\mathcal R_j \leftarrow \{r \mid \text{Latency}(r_j, r) \leq 20\text{ms}\}$\;
         按 $(r=r_j)$ 优先，然后按延迟升序枚举 $\mathcal R_j$\;
-        找到首个 $r$ 使 $S_{rt} + g_j \leq C_r$\;
-        记录 $(j, r, s_j=t)$，更新 $S_{r,[t, t+p_j)} \leftarrow S_{r,[t, t+p_j)} + g_j$\;
+        找到首个 $r$ 使 $F(r,j,t,t)$ 成立（GPU: $S_{rt}^{\text{GPU}}+g_j\le C_r^{\text{GPU}}$；IT: $S_{rt}^{\text{IT}}+\alpha_{RT}g_j\le C_r^{\text{IT}}$；Facility: $S_{rt}^{\text{Fac}}+\text{PUE}_r\cdot\alpha_{RT}g_j\le C_r^{\text{Fac}}$）\;
+        记录 $(j, r, s_j=t)$，更新 $S_{r,[t, t+p_j)}$ 的三层状态\;
     }
     \emph{2. 批量推理任务}（允许等待）\;
     \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{BI}$}{
-        在 $r=r_j$ 的 $[t, \min(\text{deadline}_j, 2406)-p_j]$ 内寻找最早 $s$ 使 $S_{r,[s,s+p_j)} + g_j \leq C_r$\;
+        在 $r=r_j$ 的 $[t, \min(\text{deadline}_j, 2406)-p_j]$ 内寻找最早 $s$ 使 $F(r_j,j,s,\cdot)$ 成立\;
         \If{找到可行 $s$}{记录 $(j, r_j, s)$，更新系统状态\;}
         \Else{按延迟升序枚举其他 $\text{Latency} \leq 80\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
     }
     \emph{3. AI 训练任务}（允许等待）\;
     \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{AT}$}{
-        在 $r=r_j$ 的完整时间域内寻找最早可行 $s$\;
+        在 $r=r_j$ 的完整合法时间域内寻找最早可行 $s$\;
         \If{不可行}{按延迟升序枚举 $\text{Latency} \leq 150\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
     }
 }
 \BlankLine
 \emph{阶段二：审计与输出}\;
-验证所有任务的 $\sum_t \omega(j,t) = p_j$，检查 GPU/IT/Facility 容量、延迟约束、$2406$ 边界\;
+验证所有任务的 $\sum_t \omega(j,t) = p_j$，检查 GPU/IT/Facility 三层容量、延迟约束、$2406$ 边界\;
 \KwRet{调度决策 $\mathcal D$，区域 GPU 利用率 $U_{rt}$，迁移数/延迟数/最晚完成时间}
-\KwOut{甘特图数据、区域 GPU 利用率序列、约束审计报告}
+\KwOut{甘特图数据、区域 GPU 利用率序列、三层容量与延迟约束审计报告}
 \end{algorithm}
