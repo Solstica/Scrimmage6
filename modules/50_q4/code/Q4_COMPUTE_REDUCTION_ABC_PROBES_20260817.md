@@ -72,4 +72,4 @@ Cost-opt anchor：Cost=`-5,018,111.400085 CNY`，Carbon=`53.6476298462 tCO2`。
 4. 结合 exact column pricing，Q4 计算瓶颈进一步集中到 large Restricted Master degeneracy / integer refinement，而不是 Energy LP、pricing 或 cut storage；
 5. `peak RAM 目标 10 GB / 硬上限 20 GB、总时间硬上限 9 h` 继续保留。Probe A+B 提高了落在目标区间内的可信度。
 
-复现文件：`modules/50_q4/code/q4_abc_probes.py`；结果 CSV/JSON 位于 `modules/50_q4/results/`。
+结果文件位于 `modules/50_q4/results/`：`q4_probeA_exact_presolve_20260817.csv`、`q4_probeB_sparse_cuts_summary_20260817.csv`、`q4_probeC_carbon_allocation_20260817.csv`、`q4_abc_probes_summary_20260817.json`。
