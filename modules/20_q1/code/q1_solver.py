@@ -460,7 +460,16 @@ def main():
     z1["标签_任务类型"] = z1.TaskType.map(type_cn)
     z1["标签_区域"] = z1.SourceRegion
     z1 = z1.rename(columns={"TaskCount": "Z_任务数_个"})
-    save_csv(z1.loc[:, ["X_任务类型序号_无量纲", "Y_区域序号_无量纲", "Z_任务数_个", "标签_任务类型", "标签_区域"]], plotdata / "图01_区域与任务类型任务数热图.csv")
+    # Keep the heatmap input as a 6x3 matrix so Origin's plotvm does not
+    # reinterpret repeated long-table coordinates as invalid matrix axes.
+    task_ids = list(range(1, len(types) + 1))
+    values1 = z1.pivot(index="Y_区域序号_无量纲", columns="X_任务类型序号_无量纲", values="Z_任务数_个")
+    values1 = values1.reindex(index=range(1, len(regions) + 1), columns=task_ids)
+    matrix1 = pd.DataFrame([[None] + task_ids])
+    body1 = pd.DataFrame([[i] + values1.loc[i].astype(int).tolist() for i in values1.index])
+    matrix1 = pd.concat([matrix1, body1], ignore_index=True)
+    matrix1.columns = ["Y_区域序号_无量纲"] + [f"X_{i}_任务类型序号_无量纲" for i in task_ids]
+    save_csv(matrix1, plotdata / "图01_区域与任务类型任务数热图.csv")
     z2 = work.groupby("TaskType").agg(TaskCount=("TaskID", "size"), GPUHour=("GPUHour", "sum")).reindex(types).reset_index()
     z2["类别_任务类型"] = z2.TaskType.map(type_cn)
     z2["Y_任务数占比_百分比"] = 100.0 * z2.TaskCount / z2.TaskCount.sum()
