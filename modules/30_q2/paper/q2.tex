@@ -4,7 +4,7 @@
 
 问题二要求对附件中全部 50000 个 AI 推理与训练任务，在保持网络时延、截止时间、GPU 容量、IT 功率、设施功率和电网购售电边界等约束的前提下，通过跨区域迁移与开工时段调整，实现运行成本降低、碳排放减少与新能源利用率提升。
 
-本问的核心挑战在于决策变量规模巨大：三类任务（AITraining、BatchInference、RealTimeInference）的完整合法时空候选约 $2.33\times10^8$ 个，传统精确求解方法难以直接处理。然而，附件数据本身蕴含的任务结构与能源状态差异，为构造高效的启发式算法提供了依据。
+本问的核心挑战在于决策变量规模巨大：三类任务（AITraining、BatchInference、RealTimeInference）的完整合法时空候选约 $2.33\times10^8$ 个，传统精确求解方法难以直接处理。本文从任务结构、候选评价、求解收敛与多起点稳健性四个层面展开建模与求解。任务--准备--模型--算法--结果--解释六个环节的安排为：任务为带网络时延与截止时间约束的时空调度；准备为任务柔性差异、能源增量平衡与硬约束审计；模型为基于当前残余能源状态的动态边际 0--1 整数规划；算法为外层重复完整扫描直到收敛的 SFETA 构造式启发式；结果为 Cost-primary 与 Carbon-primary 双端点对照；解释为多起点路径依赖与极端等待的服务代价。
 
 图\ref{fig:q2-flow} 给出本问的建模与求解总体流程。
 
@@ -19,8 +19,8 @@
 \node[box] (data) {任务与能源数据\\分析任务柔性差异};
 \node[box,right=of data] (probe) {数据探针\\|R_i|、slack、GPU-hour};
 \node[box,right=of probe] (model) {模型建立\\增量能量平衡\\碳感知时空调度};
-\node[box,right=of model] (solve) {SFETA 求解\\优先规则 + 动态边际评价};
-\node[box,right=of solve] (result) {结果分析\\成本、碳、新能源利用率};
+\node[box,right=of model] (solve) {SFETA 求解\\重复完整扫描\\+ 收敛门禁};
+\node[box,right=of solve] (result) {结果分析\\Cost/Carbon 双端点\\多起点稳健性};
 \draw[line] (data)--(probe);
 \draw[line] (probe)--(model);
 \draw[line] (model)--(solve);
@@ -57,7 +57,7 @@ T_i = \begin{cases}
 \end{cases}
 \label{eq:q2-temporal-domain}
 \end{equation}
-完整合法时空候选集为 $C_i = R_i \times T_i$。
+完整合法时空候选集为 $C_i = R_i \times T_i$。RT 的合法域允许在全部 SLA 合法区域之间迁移，仅开工时刻固定为到达时刻。
 
 \subsubsection{三类任务的柔性差异}
 
@@ -94,7 +94,7 @@ T_i = \begin{cases}
 
 \subsubsection{AvailableRenewable 与基准弃电}
 
-六区域的原始可用新能源功率 \text{AvailableRenewable}$[r,t]$ 逐时完全相同，因此不能根据"E 区光伏富集、F 区风电富集"的文字标签人为制造空间绿色排序。真正具有空间差异的是基准运行状态下的弃电功率
+六区域的原始可用新能源功率 $\text{AvailableRenewable}[r,t]$ 逐时完全相同，因此区域间的新能源空间差异只能由基准运行状态下的弃电功率体现：
 \begin{equation}
 \text{Curtailment}_0[r,t] = \text{AvailableRenewable}[r,t] - \text{UsedRenewable}_0[r,t] - \text{RenewableCharge}_0[r,t] - \text{GridSell}_0[r,t].
 \label{eq:q2-curtailment0}
@@ -203,11 +203,17 @@ L[r,t](\mathbf x) \le \text{MaxFacilityPower}[r],\quad \forall r,t.
 \label{eq:q2-latency}
 \end{equation}
 
-\textbf{截止时间与非抢占约束}：
+\textbf{截止时间约束}：任务 $i$ 必须在最晚完成时刻前结束
 \begin{equation}
-s_i + p_i \le \min(d_i, 2406),\quad
-\text{运行过程中区域固定、不可拆分}.
+s_i + p_i \le \min(d_i, 2406),\quad \forall i.
 \label{eq:q2-deadline}
+\end{equation}
+
+\textbf{非抢占与整时段约束}：任务在执行过程中区域固定、不可拆分；RT 必须即时开工但允许跨区域迁移
+\begin{equation}
+s_i = a_i,\quad k_i = \text{RT};\qquad
+\text{执行过程中区域固定、不可拆分},\quad \forall i.
+\label{eq:q2-nonpreempt}
 \end{equation}
 
 \subsubsection{目标函数}
@@ -228,7 +234,7 @@ s_i + p_i \le \min(d_i, 2406),\quad
 \label{eq:q2-eta-r}
 \end{equation}
 
-当前 Cost 与 Carbon 在候选评价中具有近似同向性（见数据探针分析），因此采用 Cost 为主目标、Carbon 作为平行评价指标的组织方式，同时保证 CarbonIntensity 真实进入调度信号。
+Cost 与 Carbon 在候选评价中具有近似同向性（见数据探针分析），但二者并不完全退化。因此 Q2 采用 Cost-primary 为主目标，Carbon-primary 作为对照端点，Carbon 作为平行评价指标；CarbonIntensity 真实进入调度信号；不使用人工 Cost/Carbon 权重和。
 
 \subsection{模型汇总}
 
@@ -240,35 +246,36 @@ s_i + p_i \le \min(d_i, 2406),\quad
 &\text{主目标：}\quad \min\; \text{Cost},\\
 &\text{评价指标：}\quad \text{Carbon},\; \eta_R,\\
 &\text{约束：}\quad \text{唯一指派、GPU-hour、IT 功率、设施功率、}\\
-&\qquad\qquad \text{购售电边界、网络时延、截止时间、非抢占},\\
+&\qquad\qquad \text{购售电边界、网络时延、截止时间、非抢占、RT 即时开工},\\
 &\text{能源规则：}\quad \text{基准状态增量能量平衡},\\
-&\text{边界：}\quad \text{固定基准储能充放电与购售电策略}.
+&\text{边界：}\quad \text{固定基准储能充放电与购售电策略},\\
+&\text{时域：}\quad \text{调度敏感时域 } [0, 2405];\; 2406 \text{ 仅做能源终端结算},\\
+&\text{求解：}\quad \text{外层重复完整扫描至 } (J_{k-1}-J_k)/|J_{k-1}| < 10^{-3}.
 \end{aligned}
 \right.
 \label{eq:q2-summary}
 \end{equation}
 
-\subsection{模型求解：SFETA 构造式启发式算法}
+\subsection{模型求解：SFETA 迭代收敛构造式启发式算法}
 
 \subsubsection{算法设计思想}
 
-面对约 $2.33\times10^8$ 的完整合法候选空间，本文设计 SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）构造式启发式算法。该算法吸收 REPTA 的非迭代任务分配思想与 CarbonScaler 的边际资源分配思想，但针对本题的 GPU 规模固定、任务不可拆分、资源容量约束等特征进行特化。
+面对约 $2.33\times10^8$ 的完整合法候选空间，本文设计 SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）迭代收敛构造式启发式算法。该算法吸收 REPTA 的非迭代任务分配思想与 CarbonScaler 的边际资源分配思想，但针对本题的 GPU 规模固定、任务不可拆分、资源容量约束等特征进行特化。
 
-SFETA 的核心由三个步骤构成：（1）基于任务时空柔性的优先级排序；（2）基于当前残余调度状态的动态边际能量评价；（3）等价候选的确定性 tie-break。算法的伪代码见算法\ref{alg:q2-sfeta}。
+独立原始数据复核发现，单遍全扫描存在明显路径依赖：第一遍完成后，前序任务的位移会改变 GPU/IT 与能源余量，从而可能为此前已处理任务重新创造更优 placement。因此 SFETA 在单遍构造式分配的基础上，外层增加重复完整扫描直到主目标相对改善率低于收敛容差，并将 last-pass fallback 计数与全部硬约束审计作为求解终止的联合门禁。算法的伪代码见算法\ref{alg:q2-sfeta}。
 
 \input{\ProjectRoot/modules/30_q2/paper/q2_algorithm.tex}
 
 \subsubsection{任务优先规则}
 
 任务排序规则直接来自数据探针中三类任务的柔性差异，而非主观权重。排序键依次为
-
 \begin{enumerate}
 \item 空间可行区域数 $|R_i|$ 小者优先（空间柔性最小的任务最难迁移）；
 \item slack $\text{Slack}_i$ 小者优先（时间余量最小的任务最紧迫）；
 \item GPU-hour $g_i \cdot p_i$ 大者优先（资源重量最大的任务对全局影响最大）。
 \end{enumerate}
 
-该规则体现"先保护最难移动的任务，再处理大体量柔性任务"的调度逻辑，RealTimeInference 天然排在首位，AITraining 虽柔性最大但因 GPU-hour 极大而获得较高优先级。
+该规则体现"先保护最难移动的任务，再处理大体量柔性任务"的调度逻辑，RealTimeInference 因时间刚性天然排在首位，AITraining 虽柔性最大但因 GPU-hour 极大而获得较高优先级。
 
 \subsubsection{动态边际候选评价}
 
@@ -284,7 +291,7 @@ SFETA 的核心由三个步骤构成：（1）基于任务时空柔性的优先�
 \label{eq:q2-marginal}
 \end{equation}
 
-边际量来自 $\text{EnergyResponse}(\text{当前} + \text{候选}) - \text{EnergyResponse}(\text{当前})$，而非读取 baseline 静态缓存。这样避免了前序任务已消耗的弃电裕量被重复计入评价。
+每次处理任务 $i$ 时，先从当前排程暂时移除 $i$，获得 removal 后的当前残余负荷与能源状态，再枚举完整合法 $(r,s)$ 域并对每个候选计算 $\text{EnergyResponse}(\text{current} + \text{candidate}) - \text{EnergyResponse}(\text{current})$。该口径避免了前序任务已消耗的弃电裕量被重复计入评价，也避免 removal 后的能源非负边界被忽略。
 
 \subsubsection{等价候选的 tie-break}
 
@@ -298,31 +305,123 @@ SFETA 的核心由三个步骤构成：（1）基于任务时空柔性的优先�
 
 \subsection{结果与分析}
 
-SFETA 构造式算法对全部 50000 个任务成功生成可行调度方案，所有硬约束均通过审计门禁。表\ref{tab:q2-metrics} 汇总了主要指标与附件基准的对比。
+SFETA 迭代收敛算法对全部 50000 个任务成功生成可行调度方案，所有硬约束均通过审计门禁。表\ref{tab:q2-metrics} 汇总了 Cost-primary 端点与附件参考状态的对比，Cost 与 Carbon 的相对节约均以 Q2 调度敏感时域口径（Hour 0--2405）报告。
 
 \begin{table}[!htbp]
 \centering
-\caption{Q2 主要结果与附件基准对比}
+\caption{Q2 Cost-primary canonical 端点与附件参考状态对比（Q2 调度敏感时域 Hour 0--2405）}
 \label{tab:q2-metrics}
 \begin{tabular}{lccc}
 \toprule
 \rowcolor{CumcmLightBlue}
-指标 & 附件基准 & SFETA 方案 & 变化 \\
+指标 & 附件参考状态 & SFETA Cost-primary & 变化 \\
 \midrule
-运行成本 / CNY & 1,801,786,872.69 & 1,593,353,325.29 & $-208,433,547.40$（$-11.57\%$）\\
-碳排放 / tCO\textsubscript{2} & 2,045,367.48 & 1,853,354.50 & $-192,012.97$（$-9.39\%$）\\
-新能源利用率 & 32.85\% & 37.49\% & $+4.64$ 个百分点 \\
-弃电 / MWh & 基准 & 基准 $-536{,}038.75$ & 减少 $536{,}038.75$ \\
+运行成本 / CNY & 1,801,786,872.69 & 1,555,371,304.13 & $-246,415,568.56$（$-13.68\%$）\\
+碳排放 / tCO\textsubscript{2} & 2,045,367.48 & 1,826,774.35 & $-218,593.12$（$-10.69\%$）\\
+新能源利用率 & 32.85\% & 37.29\% & $+4.44$ 个百分点 \\
+跨区域迁移任务数 & 0 & 37,448 & 迁移率 $74.90\%$ \\
+RT 迁移任务数 & 0 & 11,685 & 即时开工但跨区域 \\
 最大 GPU 利用率 & 135.58\% & 100.00\% & 容量超限已消除 \\
+last-pass fallback & -- & 0 & 全部任务由合法候选承载 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\subsubsection{收敛轨迹}
+
+Cost-primary 从 reference-start 出发完成 3 遍完整扫描，主目标单调下降并通过相对改善率门禁：
+\begin{equation}
+\text{pass1} \to \text{pass2} \to \text{pass3},\quad
+\frac{J_2 - J_3}{|J_2|} = 5.77\times10^{-4} < 10^{-3}.
+\end{equation}
+收敛后 last-pass fallback = 0，全部硬约束 PASS。
+
 \subsubsection{调度行为分析}
 
-50000 个任务全部成功调度，其中跨区域迁移 28674 个（迁移率 57.35\%），延迟开工 23203 个。按任务类型统计：AITraining 迁移 12713/16559 个（76.77\%），平均等待 21.51 h，P95 等待 71 h，最大等待 1982 h；BatchInference 迁移 12528/16717 个（74.94\%），平均等待 27.47 h，P95 等待 92 h，最大等待 2136 h；RealTimeInference 迁移 3433/16724 个（20.53\%），无延迟开工。平均网络时延 27.59 ms，95\% 分位 78 ms，最大 82 ms，全部满足 SLA 要求。
+50000 个任务全部成功调度。表\ref{tab:q2-wait} 按任务类型给出迁移与等待分布。
 
-\subsubsection{柔性利用分析}
+\begin{table}[!htbp]
+\centering
+\caption{Q2 Cost-primary 端点的任务类型迁移与等待分布}
+\label{tab:q2-wait}
+\begin{tabular}{lcccccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+任务类型 & 任务数 & 迁移数 & 迁移率 & 平均等待/h & P95 等待/h & 最大等待/h \\
+\midrule
+AITraining & 16,559 & -- & -- & -- & -- & -- \\
+BatchInference & 16,717 & -- & -- & -- & -- & 2016 \\
+RealTimeInference & 16,724 & 11,685 & $69.9\%$ & 0 & 0 & 0 \\
+\midrule
+合计 & 50,000 & 37,448 & $74.90\%$ & 20.48 & 76 & 2016 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+注：BatchInference 与 AITraining 的逐类型迁移/等待细分在最终建模手完成统一 registry 之前暂以合计行为准；合计行的均值与 P95 由全部 20,282 个延迟任务统计得到。RealTimeInference 全部保持 $s_i = a_i$，但允许在全部 SLA 合法区域之间迁移；canonical 端点中 11,685 个 RT 任务发生跨区域迁移，全部即时开工、零等待。
+
+平均网络时延 26.75 ms，95\% 分位 78 ms，最大 82 ms，全部满足 SLA 要求。
+
+\subsubsection{Carbon-primary 对照端点}
+
+为检验 Cost/Carbon 目标结构，本文同步运行 Carbon-primary 端点（reference-start，3-pass 收敛）。表\ref{tab:q2-cmp} 给出 Cost-primary 与 Carbon-primary 的端点对比。
+
+\begin{table}[!htbp]
+\centering
+\caption{Cost-primary 与 Carbon-primary 端点对照（reference-start，3-pass 收敛）}
+\label{tab:q2-cmp}
+\begin{tabular}{lcc}
+\toprule
+\rowcolor{CumcmLightBlue}
+指标 & Cost-primary & Carbon-primary \\
+\midrule
+主目标 & Cost = 1,555,371,304.13 CNY & Carbon = 1,815,531.61 tCO\textsubscript{2} \\
+对应副目标 & Carbon = 1,826,774.35 tCO\textsubscript{2} & Cost = 1,558,153,356.53 CNY \\
+相对副目标代价 & -- & $+0.18\%$ Cost \\
+相对副目标代价 & $+0.62\%$ Carbon & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Carbon-primary 相比 Cost-primary 额外多花 2,782,052.40 CNY，仅占 Cost-primary 总成本 $0.18\%$；Cost-primary 相比 Carbon-primary 额外多排 11,242.75 tCO\textsubscript{2}，仅占 Carbon-primary 碳排 $0.62\%$。两者高度同向但并不完全退化，因此正文采用 Cost-primary 代表方案 + Carbon-primary 端点对照的组织方式，不构造人工 Cost/Carbon 加权和。
+
+\subsubsection{多起点路径依赖与稳健性}
+
+SFETA 为面向约 $2.33\times10^8$ 个合法候选的大规模动态边际构造式启发式，存在一定路径依赖。本文采用 reference-start（附件 source-local immediate 可行修复起点）与 previous-start（上一次扫描终态起点）双起点比较，约束容差均取 $10^{-3}$。表\ref{tab:q2-multistart} 给出两个起点的端点对比。
+
+\begin{table}[!htbp]
+\centering
+\caption{Q2 多起点 Cost-primary 端点对比}
+\label{tab:q2-multistart}
+\begin{tabular}{lcc}
+\toprule
+\rowcolor{CumcmLightBlue}
+指标 & reference-start & previous-start \\
+\midrule
+Cost / CNY & 1,555,371,304.13 & 1,576,174,462.12 \\
+Carbon / tCO\textsubscript{2} & 1,826,774.35 & 1,838,076.57 \\
+$\eta_R$ / \% & 37.29 & 37.72 \\
+迁移率 / \% & 74.90 & 63.22 \\
+平均等待 / h & 20.48 & 23.83 \\
+P95 等待 / h & 76 & 94 \\
+最大等待 / h & 2016 & 2239 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+previous-start 端点 Cost 相对 reference-start 高约 $1.34\%$。因此 Q2 选取全部硬约束满足且主目标更优的 reference-start 端点作为代表解；本文不声称算法对初始化不敏感，也不声称 50000 任务调度为全局整数最优。
+
+\subsubsection{极端等待解释}
+
+canonical Cost-primary 端点的最大等待为 2016 h。对该任务人工审计：TaskID 13051，BatchInference，Arrival = 69，Start = 2085，Finish = 2090.0667，LatestFinish = 2406，AvailableSlack $\approx$ 2331.93 h，实际仅使用约 $86.45\%$ 合法 slack，Latency = 22 ms $<$ 80 ms。前若干个极端等待任务全部为 Batch/Training，无 RT；全部满足 SLA、LatestFinish 与 $\text{Finish}_i \le 2406$。
+
+长等待是 Cost-primary 利用官方超长时间柔性的服务代价，反映了"能源主目标 vs. 即时性"的权衡；它不是时间索引或 deadline bug。Q2 不人为加入 24/48 h 最大等待窗来掩盖这一代价；Cost--QoS 的正式联合权衡留给 Q4 处理。
+
+\subsubsection{Hour 2406 跨问结算口径}
+
+当前 Q2 求解代码的经济核算为 Hour 0--2405；Q3 能源模型包含 Hour 0--2406，且 Hour 2406 只做能源终端结算、禁止计算任务占用。两侧的公共常数差异约为 $1.267\times10^5$ CNY。本节给出的绝对 Cost/Carbon/$\eta_R$ 数字均显式标注为 Q2 调度敏感时域口径（Hour 0--2405），不与 Q3 B0 直接并表比较；最终跨问绝对对比等待建模手完成统一 accounting/registry 后再冻结。
+
+\subsubsection{柔性捕获率定义}
 
 为进一步评估调度方案对附件理论可利用柔性的利用程度，定义柔性捕获率
 \begin{equation}
@@ -330,20 +429,26 @@ SFETA 构造式算法对全部 50000 个任务成功生成可行调度方案，�
 \text{FlexCapture}_{\text{carbon}} = \frac{\text{实际碳减排}}{\text{理论碳减排上界}},
 \label{eq:q2-flex-capture}
 \end{equation}
-其中上界来自连续松弛下的 removal-side 分析。当前方案中，成本柔性捕获率约 60.89\%，碳柔性捕获率约 63.73\%，说明 SFETA 方案已获取附件中相当比例的可用计算柔性，同时保留了从松弛上界到实际可执行调度之间的提升空间。
-
-\subsubsection{能源门禁审计}
-
-全部能源门禁均通过审计：
-\begin{itemize}
-\item AvailableRenewable 分解最大残差：$2.00\times10^{-4}$ MW；
-\item 统一能量平衡最大残差：$2.00\times10^{-4}$ MW；
-\item baseline AI IT 重构最大误差：$3.33\times10^{-7}$ MW；
-\item overlap 守恒、GPU-hour、IT、Facility、GridImport/Export、SLA、deadline 违规均为 0；
-\item 所有能源变量非负。
-\end{itemize}
+其中上界来自连续松弛下的 removal-side 分析。新 canonical 端点下 FlexCapture 的具体数值待统一 registry 完成后补入；本节只给出定义与计算口径，不引用旧单遍的百分比。
 
 \subsection{模型检验}
+
+\subsubsection{硬约束审计}
+
+全部硬约束在 last-pass 均通过：
+\begin{itemize}
+\item GPU-hour、IT 功率、设施功率：违规 0；
+\item 电网购售电上下界：违规 0；
+\item 网络时延 SLA：违规 0；
+\item 逐任务 $\text{Finish}_i \le \text{LatestFinishHour}_i$：违规 0；
+\item 统一 $\text{Finish}_i \le 2406$ 且 Hour 2406 无计算占用：通过；
+\item RT 强制 $\text{StartHour} = \text{ArrivalHour}$：违规 0；
+\item last-pass fallback 计数：0；
+\item 统一能量平衡最大残差约 $2.00\times10^{-4}$ MW $< 10^{-3}$ MW；
+\item AvailableRenewable 分解最大残差约 $2.00\times10^{-4}$ MW；
+\item baseline AI IT 重构最大误差约 $3.33\times10^{-7}$ MW；
+\item overlap 守恒、全部能源变量非负：通过。
+\end{itemize}
 
 \subsubsection{Baseline 复现检验}
 
@@ -351,7 +456,7 @@ SFETA 构造式算法对全部 50000 个任务成功生成可行调度方案，�
 
 \subsubsection{参数敏感性分析}
 
-为评估调度方案对关键参数变化的稳健性，对电价与碳强度分别施加 $\pm 5\%$ 的扰动，观察目标值变化幅度。结果表明，在 $\pm 5\%$ 扰动范围内，Cost 和 Carbon 的相对变化幅度均不超过扰动幅度，方案排序保持稳定，说明 SFETA 对关键参数具有一定稳健性。
+参数敏感性分析需对 Cost-primary canonical 端点重算后写入正文；旧 ±5\% 扰动结论来自旧单遍数值，不复用于当前结果。本节保留待重算占位，不给出具体百分比。
 
 \subsubsection{柔性可用性上界验证}
 
