@@ -1,0 +1,40 @@
+\begin{algorithm}[H]
+\SetAlgoLined
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\caption{固定负荷下BESS两阶段字典序经济调度}
+\label{alg:q3-two-stage}
+\KwIn{区域参数$r$：设施负荷$L[r,\cdot]$，新能源出力$\mathrm{AR}[r,\cdot]$，电价$\mathrm{Price}[r,\cdot]$、$\mathrm{SellPrice}[r,\cdot]$，储能参数$(\eta_c,\eta_d,\mathrm{InitialSOC},\mathrm{StorageCapacity},\mathrm{MaxChargePower},\mathrm{MaxDischargePower})$，购售电限额$(\mathrm{MaxGridImport},\mathrm{SellLimit})$}
+\KwInit{$\mathrm{Cost}^* \leftarrow 0$，$\varepsilon \leftarrow 1\times10^{-4}$（CNY）}
+\ForEach{区域$r \in \{\mathrm{A},\mathrm{B},\mathrm{C},\mathrm{D},\mathrm{E},\mathrm{F}\}$}{
+  \textbf{Stage 1 —— 最小化净运行成本：}\;
+  在约束\eqref{eq:q3-renewable-balance}--\eqref{eq:q3-sell-bound}下求解：
+  \[
+  \min \; \sum_{t=0}^{2406} \bigl[ \mathrm{Price}[r,t]\cdot(gL[r,t]+qG[r,t]) - \mathrm{SellPrice}[r,t]\cdot s[r,t] \bigr]\Delta t
+  \]
+  得到最优成本$\mathrm{Cost}^*_r$\;
+  记录Stage 1决策变量$(u,qR,qG,d,gL,s,w,E)$\;
+  \textbf{Stage 2 —— 在成本最优面上最小化吞吐量：}\;
+  增加容差约束：$\mathrm{Cost}_r \le \mathrm{Cost}^*_r + \varepsilon$\;
+  在相同约束下求解：
+  \[
+  \min \; \sum_{t=0}^{2406} \bigl[ qR[r,t] + qG[r,t] + d[r,t] \bigr]\Delta t
+  \]
+  得到Stage 2最优解$(u^*,qR^*,qG^*,d^*,gL^*,s^*,w^*,E^*)$\;
+  计算区域指标：$\mathrm{Cost}_r$，$\mathrm{Carbon}_r = \sum_t \mathrm{GridPurchase}[r,t]\cdot\mathrm{CarbonIntensity}[r,t]\Delta t$\;
+  $\mathrm{PeakImport}_r = \max_t \max(\mathrm{GridPurchase}[r,t]-s[r,t], 0)$\;
+  $\mathrm{SigmaGrid}_r$，$\mathrm{MeanRamp}_r$，$\mathrm{Throughput}_r$\;
+}
+汇总系统级指标：$\mathrm{Cost} = \sum_r \mathrm{Cost}_r$，$\mathrm{Carbon} = \sum_r \mathrm{Carbon}_r$\;
+报告三层对照：B0（附件基准）、E0（无储能：$qR=qG=d=0$）、E1（当前Stage 2结果）\;
+\KwRet{各区域及系统级$\mathrm{Cost}$、$\mathrm{Carbon}$、$\mathrm{PeakImport}$、$\mathrm{SigmaGrid}$、$\mathrm{MeanRamp}$、$\mathrm{Throughput}$，以及三层对照表}
+\KwOut{六区域独立最优BESS调度方案与系统聚合指标}
+\end{algorithm}
