@@ -70,10 +70,12 @@ zero_rules = {
     "GridPurchase_MWh": 1e-6,
     "SigmaGrid_MW": 1e-6,
     "MeanAbsRamp_MW": 1e-6,
+    "AggregateNetExchangePeak_MW": 1e-6,
+    "GrossGridPurchasePeak_MW": 1e-6,
 }
 for col, tol in zero_rules.items():
     if col in summary.columns:
-        arr = summary[col].to_numpy(float)
+        arr = summary[col].to_numpy(dtype=float, copy=True)
         arr[np.abs(arr) < tol] = 0.0
         summary[col] = arr
 

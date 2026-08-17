@@ -1,0 +1,50 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_result_semantics_patch.py",
+      "modules\\40_q3",
+      "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q3",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_result_semantics_patch.py",
+    "script_sha256": "380115b442d3ebf692cefd1018a72d9c2c2398e1bd41245d5c938431797f70a3",
+    "started_at": "2026-08-17T10:33:10+00:00",
+    "finished_at": "2026-08-17T10:33:12+00:00",
+    "returncode": 0,
+    "stdout": "patched: D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv\n         方案  PeakImport_MW  AggregateNetExchangePeak_MW  GrossGridPurchasePeak_MW  FacilityLoadStd_MW  SigmaGrid_MW  MeanAbsRamp_MW\n    B0_附件基准     497.001600                    1907.6382               2427.320100          563.896033    607.203968      153.781274\n   E0_无储能调度      31.597867                       0.0000                 31.597867          563.896033    115.391413       29.290248\nE1_BESS协同调度       0.000000                       0.0000                  0.000000          563.896033      4.982502        0.404421\n",
+    "stderr": "",
+    "inputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+        "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7",
+        "size": 4691
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\data\\processed\\q3_energy_dispatch_0_2406.csv",
+        "sha256": "1893bd11badf523c44f6796f1f00fddc4954907ab58915b39f6038f9262d273b",
+        "size": 3627065
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+        "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba",
+        "size": 2845390
+      }
+    ],
+    "outputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+        "sha256": "2a5534c33e73ddf739cf94e9d7c34a34f891376b6a41d6d9922cd14d04ad49f7",
+        "size": 4691
+      }
+    ]
+  },
+  "metrics": {
+    "syntax": "PASS"
+  }
+}
