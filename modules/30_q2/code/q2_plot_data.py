@@ -39,9 +39,9 @@ def main() -> None:
     save(
         pd.DataFrame(
             {
-                "X_任务类型": ["AI训练", "批量推理", "实时推理"],
-                "Y_空间合法区域数_下限_个": [6, 5, 1],
-                "Y_空间合法区域数_上限_个": [6, 6, 3],
+                "类别_任务类型": ["AI训练", "批量推理", "实时推理"],
+                "Y_空间合法区域数下限（个）": [6, 5, 1],
+                "Y_空间合法区域数上限（个）": [6, 6, 3],
             }
         ),
         "图01_任务空间柔性范围.csv",
@@ -49,17 +49,17 @@ def main() -> None:
     save(
         pd.DataFrame(
             {
-                "X_任务类型": ["AI训练", "批量推理", "实时推理"],
-                "Y_DeadlineSlack中位数_h": [1184.22, 1207.22, 0.50],
+                "类别_任务类型": ["AI训练", "批量推理", "实时推理"],
+                "Y_截止时间余量中位数（h）": [1184.22, 1207.22, 0.50],
             }
         ),
-        "图02_任务时间余量中位数.csv",
+        "图02_截止时间余量中位数.csv",
     )
     save(
         pd.DataFrame(
             {
-                "X_任务类型": ["AI训练", "批量推理", "实时推理"],
-                "Y_GPU小时中位数_GPU小时": [194.35, 37.80, 10.83],
+                "类别_任务类型": ["AI训练", "批量推理", "实时推理"],
+                "Y_GPU小时中位数（GPU·h）": [194.35, 37.80, 10.83],
             }
         ),
         "图03_任务GPU小时中位数.csv",
@@ -68,21 +68,21 @@ def main() -> None:
     cost_conv = pd.read_csv(RESULTS / "q2_convergence_cost_only.csv")
     previous_conv = pd.read_csv(RESULTS / "q2_convergence_cost_only_previous_start.csv")
     passes = sorted(set(cost_conv["pass"]).union(previous_conv["pass"]))
-    cost_curve = pd.DataFrame({"X_扫描轮次": passes})
-    cost_curve["Y_参考起点成本_CNY"] = cost_curve["X_扫描轮次"].map(
+    cost_curve = pd.DataFrame({"X_扫描轮次（次）": passes})
+    cost_curve["Y_参考起点运行成本（CNY）"] = cost_curve["X_扫描轮次（次）"].map(
         cost_conv.set_index("pass")["cost_cny"]
     )
-    cost_curve["Y_前次起点成本_CNY"] = cost_curve["X_扫描轮次"].map(
+    cost_curve["Y_前次起点运行成本（CNY）"] = cost_curve["X_扫描轮次（次）"].map(
         previous_conv.set_index("pass")["cost_cny"]
     )
     save(cost_curve, "图04_成本收敛轨迹.csv")
 
     carbon_conv = pd.read_csv(RESULTS / "q2_convergence_carbon_only.csv")
-    carbon_curve = pd.DataFrame({"X_扫描轮次": sorted(cost_conv["pass"].unique())})
-    carbon_curve["Y_Cost主端点碳排_tCO2"] = carbon_curve["X_扫描轮次"].map(
+    carbon_curve = pd.DataFrame({"X_扫描轮次（次）": sorted(cost_conv["pass"].unique())})
+    carbon_curve["Y_Cost主端点碳排放（tCO₂）"] = carbon_curve["X_扫描轮次（次）"].map(
         cost_conv.set_index("pass")["carbon_tco2"]
     )
-    carbon_curve["Y_Carbon主端点碳排_tCO2"] = carbon_curve["X_扫描轮次"].map(
+    carbon_curve["Y_Carbon主端点碳排放（tCO₂）"] = carbon_curve["X_扫描轮次（次）"].map(
         carbon_conv.set_index("pass")["carbon_tco2"]
     )
     save(carbon_curve, "图05_碳排收敛轨迹.csv")
@@ -93,8 +93,8 @@ def main() -> None:
     endpoint_labels = ["附件基准", "Cost主端点", "Carbon主端点", "前次起点Cost"]
     endpoint_cost = pd.DataFrame(
         {
-            "X_方案": endpoint_labels,
-            "Y_运行成本_CNY": [
+            "类别_方案": endpoint_labels,
+            "Y_运行成本（CNY）": [
                 cost_metrics["baseline_cost_cny"],
                 cost_metrics["cost_cny"],
                 carbon_metrics["cost_cny"],
@@ -105,8 +105,8 @@ def main() -> None:
     save(endpoint_cost, "图06_方案运行成本对比.csv")
     endpoint_carbon = pd.DataFrame(
         {
-            "X_方案": endpoint_labels,
-            "Y_碳排放_tCO2": [
+            "类别_方案": endpoint_labels,
+            "Y_碳排放（tCO₂）": [
                 cost_metrics["baseline_carbon_tco2"],
                 cost_metrics["carbon_tco2"],
                 carbon_metrics["carbon_tco2"],
@@ -121,12 +121,12 @@ def main() -> None:
     save(
         waits.rename(
             columns={
-                "TaskType": "X_任务类型",
-                "平均等待_h": "Y_平均等待_h",
-                "等待P95_h": "Y_等待P95_h",
-                "最大等待_h": "Y_最大等待_h",
+                "TaskType": "类别_任务类型",
+                "平均等待_h": "Y_平均等待时间（h）",
+                "等待P95_h": "Y_等待时间95%分位数（h）",
+                "最大等待_h": "Y_最大等待时间（h）",
             }
-        )[["X_任务类型", "Y_平均等待_h", "Y_等待P95_h"]],
+        )[["类别_任务类型", "Y_平均等待时间（h）", "Y_等待时间95%分位数（h）"]],
         "图08_任务类型等待分布.csv",
     )
 
@@ -136,10 +136,10 @@ def main() -> None:
         .unstack(fill_value=0)
         .reindex(index=REGIONS, columns=REGIONS, fill_value=0)
         .reset_index()
-        .rename(columns={"SourceRegion": "X_来源区域"})
+        .rename(columns={"SourceRegion": "类别_来源区域"})
     )
-    migration["X_来源区域"] = migration["X_来源区域"].map(REGION_ZH)
-    migration = migration.rename(columns={r: f"Y_{REGION_ZH[r]}_任务数" for r in REGIONS})
+    migration["类别_来源区域"] = migration["类别_来源区域"].map(REGION_ZH)
+    migration = migration.rename(columns={r: f"Y_{REGION_ZH[r]}执行任务数（个）" for r in REGIONS})
     save(migration, "图09_区域迁移矩阵.csv")
 
     hourly = pd.read_csv(DATA / "q2_hourly_energy_cost_only.csv")
@@ -150,11 +150,11 @@ def main() -> None:
         .sum()
         .rename(
             columns={
-                "Hour": "X_小时",
-                "Facility_Load_MW": "Y_设施负荷_MW",
-                "GridPurchase_MW": "Y_电网购电_MW",
-                "Curtailment_MW": "Y_弃电_MW",
-                "UsedRenewable_MW": "Y_利用新能源_MW",
+                "Hour": "X_时间（h）",
+                "Facility_Load_MW": "Y_设施负荷（MW）",
+                "GridPurchase_MW": "Y_电网购电功率（MW）",
+                "Curtailment_MW": "Y_弃电功率（MW）",
+                "UsedRenewable_MW": "Y_新能源利用功率（MW）",
             }
         )
     )
@@ -174,14 +174,14 @@ def main() -> None:
     )
     response = response.rename(
         columns={
-            "DeltaL_MW": "X_任务负荷增量_MW",
-            "DeltaCurtailment_MW": "Y_弃电变化_MW",
-            "DeltaGridPurchase_MW": "Y_购电变化_MW",
+            "DeltaL_MW": "X_设施负荷扰动ΔL（MW）",
+            "DeltaCurtailment_MW": "Y_弃电功率变化ΔC（MW）",
+            "DeltaGridPurchase_MW": "Y_电网购电功率变化ΔG（MW）",
         }
     )
 
     def response_segment(row: pd.Series) -> str:
-        delta_load = float(row["X_任务负荷增量_MW"])
+        delta_load = float(row["X_设施负荷扰动ΔL（MW）"])
         baseline_grid = float(row["BaselineGridPurchase_MW"])
         baseline_curtail = float(row["BaselineCurtailment_MW"])
         if delta_load >= -1e-8:
@@ -190,20 +190,20 @@ def main() -> None:
 
     response.insert(1, "类别_能源响应分段", response.apply(response_segment, axis=1))
     response = response[
-        ["X_任务负荷增量_MW", "类别_能源响应分段", "Y_弃电变化_MW", "Y_购电变化_MW"]
+        ["X_设施负荷扰动ΔL（MW）", "类别_能源响应分段", "Y_弃电功率变化ΔC（MW）", "Y_电网购电功率变化ΔG（MW）"]
     ]
     save(response, "图11_负荷增量与能源响应.csv")
 
     save(
         pd.DataFrame(
             {
-                "X_运行成本_CNY": [
+                "X_运行成本（CNY）": [
                     cost_metrics["baseline_cost_cny"],
                     cost_metrics["cost_cny"],
                     carbon_metrics["cost_cny"],
                     previous_metrics["cost_cny"],
                 ],
-                "Y_碳排放_tCO2": [
+                "Y_碳排放（tCO₂）": [
                     cost_metrics["baseline_carbon_tco2"],
                     cost_metrics["carbon_tco2"],
                     carbon_metrics["carbon_tco2"],
