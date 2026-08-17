@@ -12,7 +12,7 @@
 \SetKw{KwRet}{return}
 \caption{结构化标记复合 Poisson 分层预测与区间估计}
 \label{alg:q1-prediction}
-\KwIn{训练段任务记录 $\mathcal D_{\text{train}}$（0--2351\,h），待预测时段 $T=\{2376,\dots,2399\}$，Monte Carlo 模拟次数 $M=10^4$，随机种子 $\text{seed}=20260816$}
+\KwIn{训练段任务记录 $\mathcal D_{\text{train}}$（0--2351\,h，$T_{\text{train}}=2352$ 小时），待预测时段 $\mathcal{T}=\{2376,\dots,2399\}$，Monte Carlo 模拟次数 $M=10^4$，随机种子 $\text{seed}=20260816$}
 \KwInit{固定随机种子，加载训练段数据 $\mathcal D_{\text{train}}$}
 \BlankLine
 \emph{阶段一：参数估计}\;
@@ -24,7 +24,7 @@ $\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r
 }
 \BlankLine
 \emph{阶段二：解析均值预测}\;
-\ForEach{$t \in T$}{
+\ForEach{$t \in \mathcal{T}$}{
     \ForEach{$(r,k) \in \{1,\dots,6\} \times \{\text{RT},\text{BI},\text{AT}\}$}{
         计算 $\hat{Y}_{rkt} \leftarrow \hat\lambda \cdot \hat\pi_{rk} \cdot \mathbb{E}[G \mid K=k]$\;
     }
@@ -33,7 +33,7 @@ $\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r
 \BlankLine
 \emph{阶段三：Monte Carlo 预测区间}\;
 \For{$m \leftarrow 1$ \KwTo $M$}{
-    \ForEach{$t \in T$}{
+    \ForEach{$t \in \mathcal{T}$}{
         $n \leftarrow \text{Poisson}(\hat\lambda)$ 的随机抽样\;
         \For{$i \leftarrow 1$ \KwTo $n$}{
             从 $\hat\pi_{rk}$ 抽取 $(r_i, k_i)$\;
