@@ -11,50 +11,52 @@
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
 \SetKw{KwRet}{return}
 \SetKw{KwContinue}{continue}
-\SetKw{KwBreak}{break}
-\caption{SFETA：时空柔性与能量感知任务分配启发式（迭代收敛版）}
+\caption{SFETA：完整合法域动态边际任务分配（迭代收敛版）}
 \label{alg:q2-sfeta}
-\KwIn{任务集 $\mathcal I$，各区域逐时能源参数 $(\text{AvailableRenewable},\text{Price},\text{CarbonIntensity})$，基准运行状态 $(\text{Curtailment}_0,G_0,L_0)$，容量边界，收敛容差 $\epsilon$，最大迭代次数 $K_{\max}$}
-\KwInit{$k \leftarrow 1$，$\mathbf x^{(0)} \leftarrow$ 基准位置 $(o_i, a_i)$，$J^{(0)} \leftarrow \infty$}
-\While{$k \le K_{\max}$}{
-    \ForEach{任务 $i \in \mathcal I$}{
-        计算空间可行域 $R_i \gets \{\, r \mid \text{Latency}[o_i,r] \le L_i \,\}$\;
-        计算时间可行域 $T_i$ 按式\eqref{eq:q2-temporal-domain}\;
-        若 $|R_i|=0$ 或 $|T_i|=0$ 则标记 $\text{FAIL}$ 并终止\;
-    }
-    按优先规则排序任务集 $\mathcal I$：
-        $|R_i|$ 升序 $\to$ $\text{Slack}_i$ 升序 $\to$ $g_i \cdot p_i$ 降序\;
-    $\mathcal L_{\text{current}} \leftarrow L_0$\;
-    \ForEach{排序后的任务 $i \in \mathcal I$}{
-        生成候选列表 $\mathcal C_i \gets R_i \times T_i$\;
-        对每个候选 $(r,s) \in \mathcal C_i$ 计算边际能源后果：
-            $\Delta L_{i,r,s} \gets$ 候选调度引起的设施负荷增量\;
-            $\Delta G_{i,r,s} \gets$ 按分段式\eqref{eq:q2-delta-g}计算\;
-            $\Delta\text{Cost}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{Price}[r,s] \cdot \Delta t$\;
-            $\Delta\text{Carbon}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{CarbonIntensity}[r,s] \cdot \Delta t$\;
-        检查 GPU-hour/IT/Facility/GridImport/SLA/deadline 约束\;
-        筛选全部约束通过的可行候选集 $\mathcal F_i$\;
-        \If{$\mathcal F_i = \varnothing$}{
-            对原基准位置 $(o_i, a_i)$ 重新执行完整硬约束检查\;
-            \If{基准位置不可行}{\textbf{FAIL}：任务 $i$ 无合法候选\;}
-            \Else{选择基准位置 $(o_i, a_i)$\;}
-            \KwContinue
+\KwIn{任务集 $\mathcal I$，完整能源基准状态，网络/资源边界，目标模式 $m\in\{\mathrm{Cost},\mathrm{Carbon}\}$，相对收敛容差 $\epsilon$，最大完整扫描次数 $K_{\max}$}
+\KwInit{由附件 source-local immediate 状态构造 $\mathbf x^{(0)}$；若该状态存在 GPU 超限，则先在完整合法域内执行可行性修复；$J^{(0)}\leftarrow+\infty$}
+\BlankLine
+\ForEach{任务 $i\in\mathcal I$}{
+    构造空间合法域 $R_i=\{r:\mathrm{Latency}[o_i,r]\le L_i\}$\;
+    构造时间合法域 $T_i$：RT 仅含 $a_i$；Batch/Training 使用全部满足 Arrival、LatestFinish 与 2406 的整数开工时刻\;
+    记 $\Omega_i=R_i\times T_i$；若 $\Omega_i=\varnothing$ 则返回 FAIL\;
+}
+按 $|R_i|$ 升序 $\to$ Slack 升序 $\to$ GPU-hour 降序固定任务扫描顺序\;
+\BlankLine
+\For{$k\leftarrow1$ \KwTo $K_{\max}$}{
+    从上一遍排程 $\mathbf x^{(k-1)}$ 重构 GPU/IT/Facility 与逐时能源状态\;
+    $\mathrm{changed}\leftarrow0$，$\mathrm{fallback}\leftarrow0$\;
+    \ForEach{排序后的任务 $i\in\mathcal I$}{
+        读取任务 $i$ 的当前 placement $(r_i^{old},s_i^{old})$\;
+        \textbf{暂时移除任务 $i$}，得到不含该任务的残余 workload 状态与能源状态 $S^{-i}$\;
+        \ForEach{候选 $(r,s)\in\Omega_i$}{
+            将任务 $i$ 按 fractional overlap 加回 $S^{-i}$，形成候选状态 $S^{-i}\oplus(i,r,s)$\;
+            检查 GPU-hour、IT、Facility、GridImport、SLA、LatestFinish、finish$\le2406$；RT 额外检查 $s=a_i$\;
+            若移除旧任务使某些能源小时暂时触及非负边界，则仅保留能够覆盖并修复这些 removal-dependent 小时的候选\;
+            对通过硬约束的候选，计算动态边际响应
+            \[
+            \Delta E_{i,r,s}=\mathrm{EnergyResponse}(S^{-i}\oplus(i,r,s))-\mathrm{EnergyResponse}(S^{-i}),
+            \]
+            并由其得到 $\Delta\mathrm{GridPurchase}$、$\Delta\mathrm{Curtailment}$、$\Delta\mathrm{Cost}$ 与 $\Delta\mathrm{Carbon}$\;
         }
-        按边际评价排序 $\mathcal F_i$：
-            $\Delta\text{Cost}$ 升序 $\to$ $\Delta\text{Carbon}$ 升序\;
-        若存在多个候选在数值容差内等价，执行 tie-break：
-            更早 $s$ $\to$ 保持 $r=o_i$ $\to$ 更低 $\text{Latency}[o_i,r]$\;
-        选择最优候选 $(r_i^*, s_i^*)$\;
-        更新 $\mathcal L_{\text{current}} \gets \mathcal L_{\text{current}} + \Delta L_{i,r_i^*,s_i^*}$\;
-        记录 $x_{i,r_i^*,s_i^*}^{(k)} \gets 1$\;
+        得到全部合法候选集合 $\mathcal F_i$\;
+        \If{$\mathcal F_i=\varnothing$}{
+            对旧 placement 重新执行完整硬约束检查；若仍不可行则返回 FAIL，否则保留旧 placement 并令 $\mathrm{fallback}\leftarrow\mathrm{fallback}+1$\;
+        }
+        \Else{
+            \If{$m=\mathrm{Cost}$}{按 $\Delta\mathrm{Cost}$ 升序、$\Delta\mathrm{Carbon}$ 次序选择候选\;}
+            \Else{按 $\Delta\mathrm{Carbon}$ 升序、$\Delta\mathrm{Cost}$ 次序选择候选\;}
+            对数值等价候选执行 tie-break：更早开工 $\to$ 保持 SourceRegion $\to$ 更低网络时延\;
+            将最优候选重新插入当前状态；若 placement 改变则 $\mathrm{changed}\leftarrow\mathrm{changed}+1$\;
+        }
     }
-    计算当前迭代目标值 $J^{(k)} \gets \text{Cost}(\mathbf x^{(k)})$ 或 $\text{Carbon}(\mathbf x^{(k)})$\;
-    \If{$(J^{(k-1)} - J^{(k)}) / |J^{(k-1)}| < \epsilon$}{
+    由完整排程重新计算真实目标 $J^{(k)}$、硬约束审计和能源平衡残差\;
+    \If{$k\ge2$ 且 $(J^{(k-1)}-J^{(k)})/|J^{(k-1)}|<\epsilon$ 且 $\mathrm{fallback}=0$ 且硬约束全部 PASS}{
         \textbf{break}\;
     }
-    $k \leftarrow k + 1$\;
 }
-计算 $\text{Cost}$、$\text{Carbon}$、$\eta_R$ 及调度统计指标\;
-\KwRet 调度方案 $\mathbf x^{(k)}$、目标值与评价指标\;
-\KwOut{各任务的执行区域与开工时刻、运行成本、碳排放、新能源利用率、迁移率、等待时间分布及柔性捕获率}
+\BlankLine
+计算 $\mathrm{Cost}$、$\mathrm{Carbon}$、$\eta_R$、迁移/等待/网络时延及收敛轨迹；对 Cost-primary 可从不同初始可行排程重复运行用于路径依赖审计\;
+\KwRet 调度方案 $\mathbf x$、主目标、平行评价指标和硬约束审计\;
+\KwOut{各任务执行区域与开工时刻、Cost/Carbon/新能源利用率、迁移率、等待分布、收敛与初始化稳健性结果}
 \end{algorithm}
