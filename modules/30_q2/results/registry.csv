@@ -1,14 +1,29 @@
 result_id,status,review_state,value,unit,source_file,used_in_paper,notes
-q2_tasks_scheduled,DRAFT,NEEDS_REVIEW,50000,个,data/processed/q2_schedule_cost_only.csv,false,旧单遍结果；已被重复完整扫描收敛审计判定为不可冻结，等待q2_iterative_solver.py重跑覆盖
-q2_cost_reduction,DRAFT,NEEDS_REVIEW,208433547.40239072,CNY,tables/q2_metrics_cost_only.csv,false,旧单遍Cost-primary可行解；数值已被独立收敛审计证明存在路径依赖，不用于正文
-q2_cost_reduction_rate,DRAFT,NEEDS_REVIEW,11.568157730608226,百分比,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待统一reference start和relative_tol=1e-3的canonical重跑
-q2_carbon_reduction,DRAFT,NEEDS_REVIEW,192012.97033908754,tCO2,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_carbon_reduction_rate,DRAFT,NEEDS_REVIEW,9.38770038437333,百分比,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_eta_R,DRAFT,NEEDS_REVIEW,37.48941688285797,百分比,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_delta_renewable_use,DRAFT,NEEDS_REVIEW,536038.7484513333,MWh,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_migration_rate,DRAFT,NEEDS_REVIEW,57.348,百分比,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_rt_migrated,DRAFT,NEEDS_REVIEW,3433,个,tables/q2_metrics_cost_only.csv,false,旧单遍数值；等待canonical重跑
-q2_cost_capture,DRAFT,NEEDS_REVIEW,60.88788078099134,百分比,tables/q2_objective_probe_20260817.csv,false,旧单遍端点派生值；收敛端点比较完成前不可使用
-q2_carbon_capture,DRAFT,NEEDS_REVIEW,63.73157671806342,百分比,tables/q2_objective_probe_20260817.csv,false,旧单遍端点派生值；收敛端点比较完成前不可使用
-q2_independent_cost_pass3,DRAFT,NEEDS_REVIEW,1554958103.8526173,CNY,results/q2_independent_convergence_audit_20260817.csv,false,独立复核端点，仅用于验证单遍不足和canonical重跑交叉检查
-q2_independent_carbon_pass3,DRAFT,NEEDS_REVIEW,1815207.8827400673,tCO2,results/q2_independent_convergence_audit_20260817.csv,false,独立复核端点，仅用于验证单遍不足和canonical重跑交叉检查
+q2_tasks_scheduled,DRAFT,NEEDS_REVIEW,50000,个,data/processed/q2_schedule_cost_only.csv,false,canonical reference-start Cost-primary 收敛端点；待初始化稳健性和人工复核
+q2_cost_primary_cost,DRAFT,NEEDS_REVIEW,1555371304.1316478,CNY,tables/q2_metrics_cost_only.csv,false,3-pass 收敛；relative improvement=5.7656e-4；硬约束 PASS
+q2_cost_reduction,DRAFT,NEEDS_REVIEW,246415568.56023908,CNY,tables/q2_metrics_cost_only.csv,false,相对附件参考状态的 Cost-primary 成本降低
+q2_cost_reduction_rate,DRAFT,NEEDS_REVIEW,13.676177371194399,百分比,tables/q2_metrics_cost_only.csv,false,canonical reference-start 收敛结果
+q2_cost_primary_carbon,DRAFT,NEEDS_REVIEW,1826774.354637248,tCO2,tables/q2_metrics_cost_only.csv,false,Cost-primary 对应碳排
+q2_cost_primary_carbon_reduction,DRAFT,NEEDS_REVIEW,218593.12064679852,tCO2,tables/q2_metrics_cost_only.csv,false,Cost-primary 相对附件参考状态减排
+q2_cost_primary_carbon_reduction_rate,DRAFT,NEEDS_REVIEW,10.687229717312379,百分比,tables/q2_metrics_cost_only.csv,false,canonical reference-start 收敛结果
+q2_eta_R,DRAFT,NEEDS_REVIEW,37.29211901630813,百分比,tables/q2_metrics_cost_only.csv,false,Cost-primary 新能源利用率
+q2_delta_renewable_use,DRAFT,NEEDS_REVIEW,513260.57488533336,MWh,tables/q2_metrics_cost_only.csv,false,Cost-primary 新增新能源直接消纳/弃电减少
+q2_migration_rate,DRAFT,NEEDS_REVIEW,74.896,百分比,tables/q2_metrics_cost_only.csv,false,Cost-primary 跨区域迁移占比
+q2_rt_migrated,DRAFT,NEEDS_REVIEW,11685,个,tables/q2_metrics_cost_only.csv,false,RT 保持到达即开工前提下的合法迁移数
+q2_cost_mean_wait,DRAFT,NEEDS_REVIEW,20.47522,h,tables/q2_metrics_cost_only.csv,false,Q2 能源导向调度的服务代价；Q4 再做正式 Cost-QoS 权衡
+q2_cost_p95_wait,DRAFT,NEEDS_REVIEW,76,h,tables/q2_metrics_cost_only.csv,false,Cost-primary P95 waiting
+q2_cost_max_wait,DRAFT,NEEDS_REVIEW,2016,h,tables/q2_metrics_cost_only.csv,false,合法但极端；待样例审计后解释
+q2_carbon_primary_carbon,DRAFT,NEEDS_REVIEW,1815531.6056203956,tCO2,tables/q2_metrics_carbon_only.csv,false,3-pass 收敛；relative improvement=5.1185e-4；硬约束 PASS
+q2_carbon_reduction,DRAFT,NEEDS_REVIEW,229835.86966365087,tCO2,tables/q2_metrics_carbon_only.csv,false,Carbon-primary 相对附件参考状态减排
+q2_carbon_reduction_rate,DRAFT,NEEDS_REVIEW,11.23689862291043,百分比,tables/q2_metrics_carbon_only.csv,false,canonical reference-start 收敛结果
+q2_carbon_primary_cost,DRAFT,NEEDS_REVIEW,1558153356.531096,CNY,tables/q2_metrics_carbon_only.csv,false,Carbon-primary 对应成本
+q2_carbon_primary_cost_reduction_rate,DRAFT,NEEDS_REVIEW,13.52177218367676,百分比,tables/q2_metrics_carbon_only.csv,false,相对附件参考状态成本降幅
+q2_carbon_cost_penalty,DRAFT,NEEDS_REVIEW,2782052.3994481564,CNY,tables/q2_objective_probe_20260817.csv,false,Carbon-primary 相对 Cost-primary 的额外成本
+q2_carbon_cost_penalty_rate,DRAFT,NEEDS_REVIEW,0.17886741204868475,百分比,tables/q2_objective_probe_20260817.csv,false,额外成本占 Cost-primary 总成本比例
+q2_cost_carbon_penalty,DRAFT,NEEDS_REVIEW,11242.74901685235,tCO2,tables/q2_objective_probe_20260817.csv,false,Cost-primary 相对 Carbon-primary 的额外碳排
+q2_cost_carbon_penalty_rate,DRAFT,NEEDS_REVIEW,0.6192538307814546,百分比,tables/q2_objective_probe_20260817.csv,false,额外碳排占 Carbon-primary 碳排比例
+q2_cost_passes,DRAFT,NEEDS_REVIEW,3,遍,results/q2_convergence_cost_only.csv,false,达到 relative_tol=1e-3
+q2_carbon_passes,DRAFT,NEEDS_REVIEW,3,遍,results/q2_convergence_carbon_only.csv,false,达到 relative_tol=1e-3
+q2_hard_constraint_status,DRAFT,NEEDS_REVIEW,1,布尔,results/q2_run_summary_cost_only.json,false,Cost/Carbon 两端点均 GPU/IT/Facility/Grid/SLA/deadline/2406/energy balance PASS
+q2_independent_cost_pass3,DRAFT,NEEDS_REVIEW,1554958103.8526173,CNY,results/q2_independent_convergence_audit_20260817.csv,false,旧独立实现交叉检查值；不作为 canonical 正文值
+q2_independent_carbon_pass3,DRAFT,NEEDS_REVIEW,1815207.8827400673,tCO2,results/q2_independent_convergence_audit_20260817.csv,false,旧独立实现交叉检查值；不作为 canonical 正文值
