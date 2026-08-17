@@ -50,7 +50,7 @@ def main() -> None:
         pd.DataFrame(
             {
                 "X_任务类型": ["AI训练", "批量推理", "实时推理"],
-                "Y_时间余量中位数_h": [1184.22, 1207.22, 0.50],
+                "Y_DeadlineSlack中位数_h": [1184.22, 1207.22, 0.50],
             }
         ),
         "图02_任务时间余量中位数.csv",
@@ -90,11 +90,12 @@ def main() -> None:
     cost_metrics = pd.read_csv(TABLES / "q2_metrics_cost_only.csv").iloc[0]
     carbon_metrics = pd.read_csv(TABLES / "q2_metrics_carbon_only.csv").iloc[0]
     previous_metrics = pd.read_csv(TABLES / "q2_metrics_cost_only_previous_start.csv").iloc[0]
-    endpoint_labels = ["Cost主端点", "Carbon主端点", "前次起点Cost"]
+    endpoint_labels = ["附件基准", "Cost主端点", "Carbon主端点", "前次起点Cost"]
     endpoint_cost = pd.DataFrame(
         {
             "X_方案": endpoint_labels,
             "Y_运行成本_CNY": [
+                cost_metrics["baseline_cost_cny"],
                 cost_metrics["cost_cny"],
                 carbon_metrics["cost_cny"],
                 previous_metrics["cost_cny"],
@@ -106,6 +107,7 @@ def main() -> None:
         {
             "X_方案": endpoint_labels,
             "Y_碳排放_tCO2": [
+                cost_metrics["baseline_carbon_tco2"],
                 cost_metrics["carbon_tco2"],
                 carbon_metrics["carbon_tco2"],
                 previous_metrics["carbon_tco2"],
@@ -124,7 +126,7 @@ def main() -> None:
                 "等待P95_h": "Y_等待P95_h",
                 "最大等待_h": "Y_最大等待_h",
             }
-        )[["X_任务类型", "Y_平均等待_h", "Y_等待P95_h", "Y_最大等待_h"]],
+        )[["X_任务类型", "Y_平均等待_h", "Y_等待P95_h"]],
         "图08_任务类型等待分布.csv",
     )
 
@@ -158,31 +160,51 @@ def main() -> None:
     )
     save(energy, "图10_逐时能源状态.csv")
 
-    response = (
-        hourly.groupby("Hour", as_index=False)[
-            ["DeltaL_MW", "DeltaCurtailment_MW", "DeltaGridPurchase_MW"]
-        ]
-        .sum()
-        .rename(
+    baseline_hourly = pd.read_csv(DATA / "q2_hourly_energy_0_2405.csv")
+    response = hourly.merge(
+        baseline_hourly[["Hour", "Region", "GridPurchase_MW", "Curtailment_MW"]].rename(
             columns={
-                "DeltaL_MW": "X_任务负荷增量_MW",
-                "DeltaCurtailment_MW": "Y_弃电变化_MW",
-                "DeltaGridPurchase_MW": "Y_购电变化_MW",
+                "GridPurchase_MW": "BaselineGridPurchase_MW",
+                "Curtailment_MW": "BaselineCurtailment_MW",
             }
-        )
-        [["X_任务负荷增量_MW", "Y_弃电变化_MW", "Y_购电变化_MW"]]
+        ),
+        on=["Hour", "Region"],
+        how="left",
+        validate="one_to_one",
     )
+    response = response.rename(
+        columns={
+            "DeltaL_MW": "X_任务负荷增量_MW",
+            "DeltaCurtailment_MW": "Y_弃电变化_MW",
+            "DeltaGridPurchase_MW": "Y_购电变化_MW",
+        }
+    )
+
+    def response_segment(row: pd.Series) -> str:
+        delta_load = float(row["X_任务负荷增量_MW"])
+        baseline_grid = float(row["BaselineGridPurchase_MW"])
+        baseline_curtail = float(row["BaselineCurtailment_MW"])
+        if delta_load >= -1e-8:
+            return "弃电吸收区" if delta_load <= baseline_curtail + 1e-8 else "购电边际区"
+        return "降负荷减购电区" if -delta_load <= baseline_grid + 1e-8 else "降负荷回退弃电区"
+
+    response.insert(1, "类别_能源响应分段", response.apply(response_segment, axis=1))
+    response = response[
+        ["X_任务负荷增量_MW", "类别_能源响应分段", "Y_弃电变化_MW", "Y_购电变化_MW"]
+    ]
     save(response, "图11_负荷增量与能源响应.csv")
 
     save(
         pd.DataFrame(
             {
                 "X_运行成本_CNY": [
+                    cost_metrics["baseline_cost_cny"],
                     cost_metrics["cost_cny"],
                     carbon_metrics["cost_cny"],
                     previous_metrics["cost_cny"],
                 ],
                 "Y_碳排放_tCO2": [
+                    cost_metrics["baseline_carbon_tco2"],
                     cost_metrics["carbon_tco2"],
                     carbon_metrics["carbon_tco2"],
                     previous_metrics["carbon_tco2"],
