@@ -10,76 +10,84 @@ TAB = MOD / "tables"
 
 FILES = {
     "动态弃电优先": "dynamic_marginal",
-    "Cost-only": "cost_only",
-    "Carbon-only": "carbon_only",
+    "Cost-primary": "cost_only",
+    "Carbon-primary": "carbon_only",
 }
 
 
-def load_audit(suffix):
+def load_summary(suffix):
     path = RES / ("q2_run_summary_" + suffix + ".json")
-    return json.loads(path.read_text(encoding="utf-8"))["audit"]
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    audit = payload["audit"]
+    if not audit.get("converged", False):
+        raise RuntimeError(f"{suffix} 尚未通过重复完整扫描收敛门禁")
+    if audit.get("hard_constraint_status", audit.get("status")) != "PASS":
+        raise RuntimeError(f"{suffix} 硬约束审计未通过")
+    return payload
 
 
 def main():
-    modes = {name: load_audit(suffix) for name, suffix in FILES.items()}
-    headroom = pd.read_csv(RES / "q2_flexibility_headroom_20260817.csv")
-    ub_cost = float(headroom.loc[
-        headroom.Item.eq("RemovalCostHeadroomCombined"), "Value"
-    ].iloc[0])
-    ub_carbon = float(headroom.loc[
-        headroom.Item.eq("RemovalCarbonHeadroomCombined"), "Value"
-    ].iloc[0])
-    cost = modes["Cost-only"]
-    carbon = modes["Carbon-only"]
+    runs = {name: load_summary(suffix) for name, suffix in FILES.items()}
+    cost = runs["Cost-primary"]["audit"]
+    carbon = runs["Carbon-primary"]["audit"]
+
     rows = []
-    for name, audit in modes.items():
+    for name, payload in runs.items():
+        a = payload["audit"]
         rows.append({
             "方案": name,
-            "状态": audit["status"],
-            "成本_CNY": audit["cost_cny"],
-            "成本降幅_CNY": -audit["delta_cost_cny"],
-            "成本降幅_百分比": -100.0 * audit["delta_cost_cny"] / audit["baseline_cost_cny"],
-            "碳排_tCO2": audit["carbon_tco2"],
-            "碳排减少_tCO2": -audit["delta_carbon_tco2"],
-            "碳排降幅_百分比": -100.0 * audit["delta_carbon_tco2"] / audit["baseline_carbon_tco2"],
-            "新能源利用率_百分比": 100.0 * audit["eta_R"],
-            "新增新能源消纳_MWh": audit["delta_renewable_use_mwh"],
-            "迁移率_百分比": 100.0 * audit["migration_rate"],
-            "平均等待_h": audit["mean_wait_h"],
-            "等待P95_h": audit["p95_wait_h"],
-            "最大等待_h": audit["max_wait_h"],
-            "RT迁移任务数": audit["rt_migrated_tasks"],
+            "状态": a["status"],
+            "完整扫描次数": a["passes"],
+            "末次主目标相对改善": a["last_relative_primary_improvement"],
+            "成本_CNY": a["cost_cny"],
+            "成本降幅_CNY": -a["delta_cost_cny"],
+            "成本降幅_百分比": -100.0 * a["delta_cost_cny"] / a["baseline_cost_cny"],
+            "碳排_tCO2": a["carbon_tco2"],
+            "碳排减少_tCO2": -a["delta_carbon_tco2"],
+            "碳排降幅_百分比": -100.0 * a["delta_carbon_tco2"] / a["baseline_carbon_tco2"],
+            "新能源利用率_百分比": 100.0 * a["eta_R"],
+            "新增新能源消纳_MWh": a["delta_renewable_use_mwh"],
+            "迁移率_百分比": 100.0 * a["migration_rate"],
+            "平均等待_h": a["mean_wait_h"],
+            "等待P95_h": a["p95_wait_h"],
+            "最大等待_h": a["max_wait_h"],
+            "RT迁移任务数": a["rt_migrated_tasks"],
         })
+
+    cost_penalty = carbon["cost_cny"] - cost["cost_cny"]
+    carbon_penalty = cost["carbon_tco2"] - carbon["carbon_tco2"]
     rows.extend([
         {
-            "方案": "交叉损失：Carbon-only 相对 Cost-only",
-            "状态": "探针",
-            "成本_CNY": carbon["cost_cny"] - cost["cost_cny"],
-            "成本降幅_CNY": (carbon["cost_cny"] - cost["cost_cny"]) / (-cost["delta_cost_cny"]),
+            "方案": "交叉损失：Carbon-primary 相对 Cost-primary",
+            "状态": "收敛端点探针",
+            "成本_CNY": cost_penalty,
+            "成本降幅_CNY": cost_penalty / (-cost["delta_cost_cny"]),
             "碳排_tCO2": 0.0,
             "碳排减少_tCO2": 0.0,
         },
         {
-            "方案": "交叉损失：Cost-only 相对 Carbon-only",
-            "状态": "探针",
+            "方案": "交叉损失：Cost-primary 相对 Carbon-primary",
+            "状态": "收敛端点探针",
             "成本_CNY": 0.0,
             "成本降幅_CNY": 0.0,
-            "碳排_tCO2": cost["carbon_tco2"] - carbon["carbon_tco2"],
-            "碳排减少_tCO2": (cost["carbon_tco2"] - carbon["carbon_tco2"]) / (-carbon["delta_carbon_tco2"]),
-        },
-        {
-            "方案": "FlexCapture_cost",
-            "状态": "松弛上界对照",
-            "成本_CNY": (-cost["delta_cost_cny"]) / ub_cost,
-        },
-        {
-            "方案": "FlexCapture_carbon",
-            "状态": "松弛上界对照",
-            "碳排_tCO2": (-carbon["delta_carbon_tco2"]) / ub_carbon,
+            "碳排_tCO2": carbon_penalty,
+            "碳排减少_tCO2": carbon_penalty / (-carbon["delta_carbon_tco2"]),
         },
     ])
     pd.DataFrame(rows).to_csv(
         TAB / "q2_objective_probe_20260817.csv", index=False, encoding="utf-8-sig"
+    )
+
+    history = []
+    for name, suffix in FILES.items():
+        path = RES / ("q2_convergence_" + suffix + ".csv")
+        h = pd.read_csv(path)
+        h.insert(0, "方案", name)
+        history.append(h)
+    pd.concat(history, ignore_index=True).to_csv(
+        TAB / "q2_convergence_comparison_20260817.csv",
+        index=False,
+        encoding="utf-8-sig",
     )
 
 
