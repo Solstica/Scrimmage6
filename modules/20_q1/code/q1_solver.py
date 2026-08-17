@@ -489,14 +489,20 @@ def main():
     z9["Y_绘图序号_无量纲"] = np.arange(1, len(z9) + 1)
     z9["类别_执行区域"] = z9.ExecutionRegion
     z9["类别_任务类型"] = z9.TaskType.map(type_cn)
+    z9["类别_调度状态"] = np.where(z9.Delayed.astype(bool), "延期调整", "到达即执行")
     z9["标签_任务编号"] = z9.TaskID.astype(str)
     z9 = z9.rename(columns={"StartHour": "X_开始时间_小时", "FinishTime": "X_结束时间_小时"})
-    save_csv(z9.loc[:, ["Y_绘图序号_无量纲", "X_开始时间_小时", "X_结束时间_小时", "类别_执行区域", "类别_任务类型", "标签_任务编号"]], plotdata / "图09_最后24小时任务甘特图.csv")
+    save_csv(z9.loc[:, ["Y_绘图序号_无量纲", "X_开始时间_小时", "X_结束时间_小时", "类别_执行区域", "类别_任务类型", "类别_调度状态", "标签_任务编号"]], plotdata / "图09_最后24小时任务甘特图.csv")
     z10 = util.copy()
     z10["Y_区域序号_无量纲"] = z10.Region.map({r: i + 1 for i, r in enumerate(regions)})
     z10["标签_区域"] = z10.Region
     z10 = z10.rename(columns={"Hour": "X_时间_小时", "GPU_Utilization_Percent": "Z_GPU利用率_百分比"})
-    save_csv(z10.loc[:, ["X_时间_小时", "Y_区域序号_无量纲", "Z_GPU利用率_百分比", "标签_区域"]], plotdata / "图10_区域GPU利用率热图.csv")
+    boundary = pd.DataFrame({"X_时间_小时": [2406] * len(regions),
+                             "Y_区域序号_无量纲": np.arange(1, len(regions) + 1),
+                             "Z_GPU利用率_百分比": [0.0] * len(regions),
+                             "标签_区域": regions})
+    z10 = pd.concat([z10.loc[:, ["X_时间_小时", "Y_区域序号_无量纲", "Z_GPU利用率_百分比", "标签_区域"]], boundary], ignore_index=True)
+    save_csv(z10, plotdata / "图10_区域GPU利用率热图.csv")
 
     out = {"status": "PASS" if ca.Passed.all() else "FAIL", "seed": seed, "lambda_train": lam,
            "baseline_ai_it_max_error": float(np.max(np.abs(base_err))), "scheduled_tasks": int(len(sch)),
