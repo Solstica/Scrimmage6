@@ -12,42 +12,49 @@
 \SetKw{KwRet}{return}
 \SetKw{KwContinue}{continue}
 \SetKw{KwBreak}{break}
-\caption{SFETA：时空柔性与能量感知任务分配启发式}
+\caption{SFETA：时空柔性与能量感知任务分配启发式（迭代收敛版）}
 \label{alg:q2-sfeta}
-\KwIn{任务集 $\mathcal I$，各区域逐时能源参数 $(\text{AvailableRenewable},\text{Price},\text{CarbonIntensity})$，基准运行状态 $(\text{Curtailment}_0,G_0,L_0)$，容量边界}
-\KwInit{$\mathcal L_{\text{current}} \leftarrow L_0$，$\mathbf x \leftarrow \varnothing$，$\text{fallback\_count} \leftarrow 0$}
-\ForEach{任务 $i \in \mathcal I$}{
-    计算空间可行域 $R_i \gets \{\, r \mid \text{Latency}[o_i,r] \le L_i \,\}$\;
-    计算时间可行域 $T_i$ 按式\eqref{eq:q2-temporal-domain}\;
-    若 $|R_i|=0$ 或 $|T_i|=0$ 则标记 $\text{FAIL}$ 并终止\;
-}
-按优先规则排序任务集 $\mathcal I$：
-    $|R_i|$ 升序 $\to$ $\text{Slack}_i$ 升序 $\to$ $g_i \cdot p_i$ 降序\;
-\ForEach{排序后的任务 $i \in \mathcal I$}{
-    生成候选列表 $\mathcal C_i \gets R_i \times T_i$\;
-    对每个候选 $(r,s) \in \mathcal C_i$ 计算边际能源后果：
-        $\Delta L_{i,r,s} \gets$ 候选调度引起的设施负荷增量\;
-        $\Delta G_{i,r,s} \gets$ 按分段式\eqref{eq:q2-delta-g}计算\;
-        $\Delta\text{Cost}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{Price}[r,s] \cdot \Delta t$\;
-        $\Delta\text{Carbon}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{CarbonIntensity}[r,s] \cdot \Delta t$\;
-    检查 GPU-hour/IT/Facility/GridImport/SLA/deadline 约束\;
-    筛选全部约束通过的可行候选集 $\mathcal F_i$\;
-    \If{$\mathcal F_i = \varnothing$}{
-        $\text{fallback\_count} \leftarrow \text{fallback\_count} + 1$\;
-        对原基准位置 $(o_i, a_i)$ 重新执行完整硬约束检查\;
-        \If{基准位置不可行}{\textbf{FAIL}：任务 $i$ 无合法候选\;}
-        \Else{选择基准位置 $(o_i, a_i)$\;}
-        \KwContinue
+\KwIn{任务集 $\mathcal I$，各区域逐时能源参数 $(\text{AvailableRenewable},\text{Price},\text{CarbonIntensity})$，基准运行状态 $(\text{Curtailment}_0,G_0,L_0)$，容量边界，收敛容差 $\epsilon$，最大迭代次数 $K_{\max}$}
+\KwInit{$k \leftarrow 1$，$\mathbf x^{(0)} \leftarrow$ 基准位置 $(o_i, a_i)$，$J^{(0)} \leftarrow \infty$}
+\While{$k \le K_{\max}$}{
+    \ForEach{任务 $i \in \mathcal I$}{
+        计算空间可行域 $R_i \gets \{\, r \mid \text{Latency}[o_i,r] \le L_i \,\}$\;
+        计算时间可行域 $T_i$ 按式\eqref{eq:q2-temporal-domain}\;
+        若 $|R_i|=0$ 或 $|T_i|=0$ 则标记 $\text{FAIL}$ 并终止\;
     }
-    按边际评价排序 $\mathcal F_i$：
-        $\Delta\text{Cost}$ 升序 $\to$ $\Delta\text{Carbon}$ 升序\;
-    若存在多个候选在数值容差内等价，执行 tie-break：
-        更早 $s$ $\to$ 保持 $r=o_i$ $\to$ 更低 $\text{Latency}[o_i,r]$\;
-    选择最优候选 $(r_i^*, s_i^*)$\;
-    更新 $\mathcal L_{\text{current}} \gets \mathcal L_{\text{current}} + \Delta L_{i,r_i^*,s_i^*}$\;
-    记录 $x_{i,r_i^*,s_i^*} \gets 1$\;
+    按优先规则排序任务集 $\mathcal I$：
+        $|R_i|$ 升序 $\to$ $\text{Slack}_i$ 升序 $\to$ $g_i \cdot p_i$ 降序\;
+    $\mathcal L_{\text{current}} \leftarrow L_0$\;
+    \ForEach{排序后的任务 $i \in \mathcal I$}{
+        生成候选列表 $\mathcal C_i \gets R_i \times T_i$\;
+        对每个候选 $(r,s) \in \mathcal C_i$ 计算边际能源后果：
+            $\Delta L_{i,r,s} \gets$ 候选调度引起的设施负荷增量\;
+            $\Delta G_{i,r,s} \gets$ 按分段式\eqref{eq:q2-delta-g}计算\;
+            $\Delta\text{Cost}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{Price}[r,s] \cdot \Delta t$\;
+            $\Delta\text{Carbon}_{i,r,s} \gets \Delta G_{i,r,s} \cdot \text{CarbonIntensity}[r,s] \cdot \Delta t$\;
+        检查 GPU-hour/IT/Facility/GridImport/SLA/deadline 约束\;
+        筛选全部约束通过的可行候选集 $\mathcal F_i$\;
+        \If{$\mathcal F_i = \varnothing$}{
+            对原基准位置 $(o_i, a_i)$ 重新执行完整硬约束检查\;
+            \If{基准位置不可行}{\textbf{FAIL}：任务 $i$ 无合法候选\;}
+            \Else{选择基准位置 $(o_i, a_i)$\;}
+            \KwContinue
+        }
+        按边际评价排序 $\mathcal F_i$：
+            $\Delta\text{Cost}$ 升序 $\to$ $\Delta\text{Carbon}$ 升序\;
+        若存在多个候选在数值容差内等价，执行 tie-break：
+            更早 $s$ $\to$ 保持 $r=o_i$ $\to$ 更低 $\text{Latency}[o_i,r]$\;
+        选择最优候选 $(r_i^*, s_i^*)$\;
+        更新 $\mathcal L_{\text{current}} \gets \mathcal L_{\text{current}} + \Delta L_{i,r_i^*,s_i^*}$\;
+        记录 $x_{i,r_i^*,s_i^*}^{(k)} \gets 1$\;
+    }
+    计算当前迭代目标值 $J^{(k)} \gets \text{Cost}(\mathbf x^{(k)})$ 或 $\text{Carbon}(\mathbf x^{(k)})$\;
+    \If{$(J^{(k-1)} - J^{(k)}) / |J^{(k-1)}| < \epsilon$}{
+        \textbf{break}\;
+    }
+    $k \leftarrow k + 1$\;
 }
 计算 $\text{Cost}$、$\text{Carbon}$、$\eta_R$ 及调度统计指标\;
-\KwRet 调度方案 $\mathbf x$、目标值与评价指标\;
+\KwRet 调度方案 $\mathbf x^{(k)}$、目标值与评价指标\;
 \KwOut{各任务的执行区域与开工时刻、运行成本、碳排放、新能源利用率、迁移率、等待时间分布及柔性捕获率}
 \end{algorithm}
