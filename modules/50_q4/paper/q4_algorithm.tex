@@ -1,4 +1,4 @@
-% 算法: Region multi-cut Benders + Exact Column Generation + 字典序再认证
+% 算法：区域多割 Benders + 完整域列生成 + 字典序再认证
 \begin{algorithm}[H]
 \setstretch{0.92}
 \SetAlFnt{\normalsize}
@@ -10,77 +10,65 @@
 \SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwFor{While}{while}{do}{end while}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{KwRet}{return}
 \SetKw{Continue}{continue}
-\SetKw{Break}{break}
-\caption{Region multi-cut Benders + Exact Column Generation 的联合字典序求解}
+\caption{区域多割 Benders 与完整域列生成的联合字典序求解}
 \label{alg:q4-benders-cg}
-\KwIn{任务集 $\mathcal I$，完整合法域 $\Omega_i$，区域 GPU/IT/Facility 容量，新能源出力 $\bar R_{rt}$，BESS 参数，购售电价格，SLA 与时域 $0,\dots,2406$}
-\KwInit{由可行参考排程生成初始活动列池 $\mathcal C$；区域 Benders 割集置空；阶段 $z\leftarrow\mathrm{Cost}$}
+\KwIn{任务集 $\mathcal I$，完整合法域 $\Omega_i$，区域 GPU/IT 容量，新能源出力 $\bar R_{rt}$，储能参数，购售电价格，SLA 与时域 $0,\dots,2406$}
+\KwInit{由可行参考排程生成初始活动列池 $\mathcal C$，各区域 Benders 割集置空}
 \BlankLine
 
-\emph{阶段一：Cost root 的 Benders--CG 双闭环}\;
-\While{Cost root 未闭合}{
-    在活动列池 $\mathcal C$ 与当前区域割集上求解 Restricted Master LP：
-    \begin{minipage}[t]{0.86\linewidth}
-    \vspace{0.4em}
-    $\min \sum_r \theta_r$ \\
-    s.t. $\sum_{(r,s)\in\mathcal C_i}x_{irs}=1,\ \forall i$ \\
-    \hspace{1.2em}GPU/IT 容量约束（Facility 重复行可 exact presolve）\\
-    \hspace{1.2em}$\theta_r\ge Q_r(L_r^k)+(\boldsymbol\lambda_r^k)^\top(L_r(\mathbf x)-L_r^k),\ \forall r,k$\\
-    \hspace{1.2em}$0\le x_{irs}\le1$
-    \end{minipage}\;
-    得到 workload LP 解 $\mathbf x^{LP}$ 与 Master dual\;
+\emph{阶段一：最小成本层的 Benders--列生成双闭环}\;
+\While{最小成本层尚未闭合}{
+    在活动列池 $\mathcal C$ 与当前区域割集上求解限制主问题线性松弛，得到任务排程松弛解 $\mathbf x^{LP}$ 与相应对偶变量\;
     \ForEach{区域 $r$}{
-        由 $\mathbf x^{LP}$ 计算 $L_{rt}^{\mathrm{Fac}}$ 并求真实 Energy LP，得到 $Q_r(L_r)$ 与 load dual $\boldsymbol\lambda_r$\;
-        \If{$Q_r(L_r)-\theta_r>\varepsilon_B$}{添加该区域 Benders cut\;}
+        由 $\mathbf x^{LP}$ 计算设施负荷 $L_{rt}^{\mathrm{Fac}}$，并求解该区域真实能源再优化子问题，得到 $Q_r(L_r)$ 与负荷平衡对偶 $\boldsymbol\lambda_r$\;
+        \If{$Q_r(L_r)-\theta_r>\varepsilon_B$}{加入该区域的 Benders 最优性割\;}
     }
-    \If{本轮新增任一区域 cut}{\Continue}
-    对所有任务执行\textbf{完整隐式合法域 Exact Pricing}\;
-    \If{存在 reduced cost $< -\varepsilon_P$ 的 placement}{加入对应新列到 $\mathcal C$；\Continue}
-    Cost root LP 双门禁闭合\;
+    \If{本轮新增任一区域割}{\Continue}
+    对全部任务的完整隐式合法域执行精确定价\;
+    \If{存在约化成本 $< -\varepsilon_P$ 的合法放置}{将对应任务列加入 $\mathcal C$；\Continue}
+    最小成本层线性松弛完成“区域能源复核 + 完整域定价”双门禁闭合\;
 }
-在当前扩展列池上求 restricted MIP，得到真实 Energy LP 复核通过的 Cost 可行整数 incumbent，记其成本为 $C^{\mathrm{anc}}$；\textbf{不据此声称 50k 全局整数最优}\;
+在当前扩展列池上求整数任务排程，并以完整能源子问题复核；得到真实能源可行的成本层整数方案及成本代表值 $C^{\mathrm{anc}}$，但不据此声称完整域整数全局最优\;
 \BlankLine
 
-\emph{阶段二：Wait 字典序精化}\;
-设置 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，目标改为 $\min\sum_i w_i$\;
-\While{Wait 阶段未闭合}{
-    在当前活动列上求 Wait Restricted Master LP\;
-    对各区域求真实 Energy LP；若 Cost-cap underestimator 低估则加入对应 region cut\;
-    若 Benders 已闭合，则对\textbf{完整合法域}做 Wait reduced-cost pricing\;
-    若发现负 reduced-cost placement，则加列并继续闭合\;
-    若 Benders 与 Wait pricing 同时闭合，则求 restricted MIP，并用真实 Energy LP 复核 Cost cap\;
-    若整数候选违反真实 Cost cap，则在违规区域加入 integer Benders cuts 并继续\;
-    否则得到 Wait 可行整数 anchor $W^{\mathrm{anc}}$ 与对应排程\;
-}
-\BlankLine
-
-\emph{阶段三：Latency 字典序精化}\;
-保持 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$ 与 $\mathrm{Wait}(\mathbf x)\le W^{\mathrm{anc}}+\varepsilon_W$，目标改为 $\min\sum_i\ell_i$\;
-\While{Latency 阶段未闭合}{
-    求 Latency Restricted Master LP\;
-    对各区域真实 Energy LP 做 region multi-cut 复核\;
-    Benders 闭合后，对\textbf{完整合法域}执行 Latency pricing\;
-    若有负 reduced-cost placement，则加列并重新闭合\;
-    若 LP 双门禁闭合，则求 restricted MIP；用真实 Energy LP 复核 Cost cap 与全部能源约束\;
-    若整数候选不满足真实 recourse，则对违规区域添加 integer Benders cuts 并继续\;
-    否则得到 Latency 可行整数 incumbent\;
+\emph{阶段二：总等待时间精化}\;
+增加真实能源成本约束 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，目标改为最小化总等待时间\;
+\While{等待时间层尚未闭合}{
+    求当前活动列上的等待时间限制主问题线性松弛\;
+    对六区域重新求真实能源子问题；若成本约束被低估，则加入相应区域 Benders 割\;
+    区域能源复核闭合后，对完整合法域执行等待时间约化成本定价\;
+    若发现负约化成本任务列，则加入活动列池并继续闭合\;
+    两个门禁均闭合后求整数排程，并以完整能源子问题复核成本约束\;
+    若整数候选违反真实成本约束，则在对应区域加入整数 Benders 割并继续\;
+    否则得到等待时间层可行整数方案及代表值 $W^{\mathrm{anc}}$\;
 }
 \BlankLine
 
-\emph{阶段四：最终列池字典序再认证}\;
-\While{后序阶段新增列仍能改善前序整数 anchor}{
-    在最终扩展列池上重新执行 Cost 层，更新 $C^{\mathrm{anc}}$\;
-    在新 Cost cap 下重新执行 Wait 层，更新 $W^{\mathrm{anc}}$\;
-    在新 Cost/Wait cap 下重新执行 Latency 层\;
-    每一层仍保留 region Benders 真实 recourse 复核与 full-domain exact pricing\;
+\emph{阶段三：网络时延精化}\;
+保持真实能源成本不超过 $C^{\mathrm{anc}}+\varepsilon_C$，并增加总等待不超过 $W^{\mathrm{anc}}+\varepsilon_W$，目标改为最小化总网络时延\;
+\While{网络时延层尚未闭合}{
+    求当前活动列上的网络时延限制主问题线性松弛\;
+    对六区域执行真实能源复核并补充区域 Benders 割\;
+    Benders 闭合后，对完整合法域执行网络时延定价\;
+    若存在负约化成本任务列，则加入活动列池并重新闭合\;
+    两个门禁均闭合后求整数排程，再以完整能源子问题复核成本和能源约束\;
+    若整数候选违反真实能源条件，则对相应区域加入整数 Benders 割并继续\;
+    否则得到网络时延层可行整数方案\;
 }
 \BlankLine
 
-\emph{阶段五：硬约束与证据边界审计}\;
-检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、Renewable/Load balance、SOC 递推与终端 SOC、GridImport/Export、SellLimit；报告 full-domain root certificate、integer incumbent 与可得的 LB/UB/gap，不把 restricted MIP 写成全局整数最优\;
+\emph{阶段四：最终扩展列池再认证}\;
+\While{后序阶段新增任务列仍能改变前序字典序结果}{
+    在最终扩展列池上重新求最小成本层，更新 $C^{\mathrm{anc}}$\;
+    在新成本约束下重新求总等待层，更新 $W^{\mathrm{anc}}$\;
+    在新成本与等待约束下重新求网络时延层\;
+    每一层均保留区域真实能源复核与完整域精确定价\;
+}
 \BlankLine
-\KwRet{通过真实能源复核的计算排程与能源排程，以及 Cost/Wait/Latency/Carbon/Renewable/Peak 等指标}
-\KwOut{任务区域--时间分配、BESS 充放电计划、电网购售电计划、约束审计与最优性证据边界}
+
+\emph{阶段五：硬约束与最优性证据审计}\;
+检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、能源平衡、SOC 递推与终端 SOC、GridImport/Export 和 SellLimit；分别报告完整域线性松弛下界、最终整数可行方案及可计算的上下界差，不把活动列池上的 MIP gap 写成完整域整数最优证书\;
+\BlankLine
+\KwOut{任务区域--时间排程、储能充放电与电网购售电方案，以及 Cost/Wait/Latency/Carbon/Renewable/Peak 指标和最优性证据边界}
 \end{algorithm}
