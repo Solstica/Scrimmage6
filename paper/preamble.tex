@@ -1,4 +1,4 @@
-% CUMCM paper style baseline extracted from the team's validated competition paper.
+% CUMCM paper style baseline: team-validated shell + 2025 award-paper reverse-engineered sizing.
 % Public typography/layout belongs to feature/paper-shell only.
 \usepackage[UTF8,fontset=fandol]{ctex}
 \usepackage{fontspec}
@@ -26,20 +26,26 @@
 \geometry{top=25mm,bottom=25mm,left=25mm,right=25mm}
 \setlength{\parindent}{2em}
 \setlength{\parskip}{0pt}
+% 12 pt body with about 19.9 pt baseline spacing after article-class scaling.
 \renewcommand{\baselinestretch}{1.38}
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{2}
 
-% ---------- fonts: Windows competition machine first, portable fallback second ----------
+% ---------- fonts ----------
+% Team convention: Chinese body uses Song style; bold Chinese uses a Song-style bold face,
+% not Heiti. Latin text/numerals use Times New Roman when available.
 \IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{TeX Gyre Termes}}
 \IfFontExistsTF{Arial}{\setsansfont{Arial}}{\setsansfont{TeX Gyre Heros}}
 \IfFontExistsTF{SimSun}{%
   \setCJKmainfont{SimSun}[BoldFont=FandolSong-Bold.otf,ItalicFont=SimSun]
   \setCJKfamilyfont{zhsong}{SimSun}[BoldFont=FandolSong-Bold.otf,ItalicFont=SimSun]
-}{}
-\AtBeginDocument{\zihao{-4}}
+}{%
+  \setCJKmainfont{FandolSong-Regular}[BoldFont=FandolSong-Bold.otf]
+  \setCJKfamilyfont{zhsong}{FandolSong-Regular}[BoldFont=FandolSong-Bold.otf]
+}
+\AtBeginDocument{\zihao{-4}\songti}
 
-% ---------- colors inherited from the validated paper ----------
+% ---------- colors ----------
 \definecolor{CumcmBlue}{HTML}{2F75B5}
 \definecolor{CumcmLightBlue}{HTML}{DCEAF7}
 \definecolor{CumcmGray}{HTML}{F2F2F2}
@@ -49,13 +55,13 @@
 \makeatletter
 \renewcommand{\maketitle}{%
   \begin{center}
-    {\zihao{3}\bfseries\@title\par}
+    {\zihao{3}\songti\bfseries\@title\par}
   \end{center}
   \vskip 1ex
 }
 \renewenvironment{abstract}{%
   \begin{center}
-    {\zihao{4}\bfseries 摘要\par}
+    {\zihao{4}\songti\bfseries 摘要\par}
   \end{center}
   \vspace{-.35em}
   \begin{list}{}{%
@@ -64,44 +70,53 @@
     \setlength{\leftmargin}{0pt}%
     \setlength{\rightmargin}{0pt}%
     \setlength{\parsep}{0pt}%
-  }\item\relax\zihao{-4}
+  }\item\relax\zihao{-4}\songti
 }{\end{list}}
 \makeatother
 \newcommand{\keywords}[1]{%
   \par\vskip .8ex
-  {\noindent\zihao{-4}\heiti 关键词：}\zihao{-4}#1
+  {\noindent\zihao{-4}\heiti 关键词：}\zihao{-4}\songti#1
 }
 
 % ---------- Chinese section numbering and hierarchy ----------
+% Reverse-engineered target: level 1 about 15 pt centered; level 2/3 12 pt bold left.
 \makeatletter
 \def\@seccntformat#1{\csname the#1\endcsname\ }
 \renewcommand\thesection{\chinese{section}、}
 \renewcommand\thesubsection{\arabic{section}.\arabic{subsection}}
 \renewcommand\thesubsubsection{\thesubsection.\arabic{subsubsection}}
 \renewcommand\section{\@startsection{section}{1}{\z@}%
-  {-3.5ex \@plus -1ex \@minus -.2ex}%
-  {2.3ex \@plus .2ex}%
-  {\centering\normalfont\Large\bfseries}}
+  {-2.4ex \@plus -.6ex \@minus -.2ex}%
+  {1.5ex \@plus .2ex}%
+  {\centering\normalfont\songti\bfseries\fontsize{15pt}{18pt}\selectfont}}
 \renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-  {-3.25ex\@plus -1ex \@minus -.2ex}%
-  {1.5ex \@plus .2ex}%
-  {\normalfont\large\bfseries}}
+  {-1.8ex\@plus -.5ex \@minus -.2ex}%
+  {0.9ex \@plus .15ex}%
+  {\normalfont\songti\bfseries\zihao{-4}}}
 \renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
-  {-3.25ex\@plus -1ex \@minus -.2ex}%
-  {1.5ex \@plus .2ex}%
-  {\normalfont\normalsize\bfseries}}
+  {-1.35ex\@plus -.4ex \@minus -.2ex}%
+  {0.65ex \@plus .1ex}%
+  {\normalfont\songti\bfseries\zihao{-4}}}
 \makeatother
 
 % ---------- table of contents ----------
+% Fine-grained TOC spacing/indent is finalized in settings.tex, loaded after this file.
 \renewcommand{\contentsname}{目录}
 \renewcommand{\cftdot}{$\cdot$}
-\renewcommand{\cftsecdotsep}{1.5}
-\setlength{\cftbeforesecskip}{7pt}
-\setlength{\cftbeforesubsecskip}{3pt}
+\renewcommand{\cftsecdotsep}{2.2}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{1.0em}
+\renewcommand{\cfttoctitlefont}{\hfill\zihao{4}\bfseries\songti}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\setlength{\cftbeforesecskip}{2.5pt}
+\setlength{\cftbeforesubsecskip}{0pt}
+\setlength{\cftsecindent}{0em}
+\setlength{\cftsubsecindent}{1.6em}
+\setlength{\cftsubsecnumwidth}{2.8em}
 \renewcommand{\cftsecfont}{\bfseries\zihao{-4}\songti}
 \renewcommand{\cftsecpagefont}{\bfseries\zihao{-4}\songti}
-\renewcommand{\cftsubsecfont}{\zihao{-4}\songti}
-\renewcommand{\cftsubsecpagefont}{\zihao{-4}\songti}
+\renewcommand{\cftsubsecfont}{\zihao{5}\songti}
+\renewcommand{\cftsubsecpagefont}{\zihao{5}\songti}
 \renewcommand{\cftsecleader}{\cftdotfill{\cftsecdotsep}}
 \renewcommand{\cftsecaftersnumb}{\hskip .4em}
 
@@ -119,11 +134,11 @@
 \AtBeginEnvironment{tabular}{\renewcommand{\arraystretch}{1.38}}
 \AtBeginEnvironment{tabularx}{\renewcommand{\arraystretch}{1.38}}
 
-% Figure-size conventions. Do not hard-code ad-hoc widths in chapter files unless justified.
+% Figure-size defaults; final chapter-facing widths are overridden in settings.tex.
 \newcommand{\FigureSingleWidth}{0.44\textwidth}
 \newcommand{\FigureDoubleWidth}{0.88\textwidth}
-\newcommand{\FigureFlowWidth}{\textwidth}
-\newcommand{\FigureMechanismWidth}{0.70\textwidth}
+\newcommand{\FigureFlowWidth}{0.88\textwidth}
+\newcommand{\FigureMechanismWidth}{0.60\textwidth}
 
 % ---------- lists ----------
 \setlist{topsep=.3em,partopsep=0pt,itemsep=.1ex,parsep=0pt,leftmargin=1.5em,rightmargin=0em,labelsep=.5em}
