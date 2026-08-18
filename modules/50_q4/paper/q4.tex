@@ -29,24 +29,8 @@ Benders 与列生成只是求解该联合模型的工具，而不是联合建模
 
 \begin{figure}[!htbp]
 \centering
-\resizebox{\FigureFlowWidth}{!}{%
-\begin{tikzpicture}[
-  node distance=1.2cm and 1.0cm,
-  box/.style={draw,rounded corners=2pt,minimum width=2.9cm,minimum height=0.9cm,align=center,fill=CumcmLightBlue},
-  line/.style={-{Latex[length=2.5mm]},thick}
-]
-\node[box] (data) {数据结构诊断\\任务柔性/区域异质性\\算--储争用新能源};
-\node[box,right=of data] (joint) {联合模型\\$x\to AI\ IT\to Facility$\\$\to$ Energy Recourse};
-\node[box,right=of joint] (solve) {Benders + Exact CG\\隐式完整合法域\\Region multi-cut};
-\node[box,right=of solve] (lex) {字典序精化\\Cost $\to$ Wait $\to$ Latency\\Final-pool 再认证};
-\node[box,right=of lex] (result) {验证与输出\\40-task exact\\50k canonical + 场景};
-\draw[line] (data)--(joint);
-\draw[line] (joint)--(solve);
-\draw[line] (solve)--(lex);
-\draw[line] (lex)--(result);
-\end{tikzpicture}%
-}
-\caption{问题四从数据耦合识别到大规模联合求解的总体流程。}
+\includegraphics[width=\FigureFlowWidth]{\ProjectRoot/modules/50_q4/figures/q4_flow.png}
+\caption{问题四从数据耦合识别到大规模联合求解的总体流程。图中从左至右依次为数据结构诊断、联合模型建立、Benders+Exact CG 求解框架、字典序精化与最终验证输出。}
 \label{fig:q4-flow}
 \end{figure}
 
