@@ -1,24 +1,38 @@
 \section{符号说明}
 
-全文共用的主要符号建议集中列于表\ref{tab:notation-demo}；仅在单问内部使用的局部参数可在首次出现处定义，避免符号表过长。
+全文共用的主要符号如表\ref{tab:notation-main}所示。仅在单个问题内部使用的局部变量在首次出现处定义，以避免符号表过长；同一符号在不同问题中不重复赋予新的全局含义。
 
-\begin{table}[H]
-    \centering
-    \caption{主要符号及单位示例}
-    \label{tab:notation-demo}
-    \begin{tabularx}{0.97\textwidth}{
-        >{\centering\arraybackslash}p{3.0cm}
-        >{\centering\arraybackslash}X
-        >{\centering\arraybackslash}p{2.5cm}}
-        \toprule
-        \rowcolor{CumcmLightBlue}
-        \textbf{符号} & \textbf{含义} & \textbf{单位} \\
-        \midrule
-        $x_i$ & 第$i$个观测对象或自变量 & 按题意填写 \\
-        $y_i$ & 第$i$个观测值或响应变量 & 按题意填写 \\
-        $\boldsymbol\theta$ & 待估参数向量 & --- \\
-        $J(\boldsymbol\theta)$ & 目标函数或损失函数 & --- \\
-        \bottomrule
-    \end{tabularx}
+\begin{table}[!htbp]
+\centering
+\caption{主要符号及其含义}
+\label{tab:notation-main}
+\small
+\begin{tabularx}{0.97\textwidth}{>{\centering\arraybackslash}p{2.5cm}X>{\centering\arraybackslash}p{2.2cm}}
+\toprule
+\rowcolor{CumcmLightBlue}
+\textbf{符号} & \textbf{含义} & \textbf{单位} \\
+\midrule
+$i,r,t,s$ & 任务、区域、小时索引及任务开工时刻索引 & --- \\
+$k_i$ & 任务 $i$ 的业务类型（RT、Batch 或 Training） & --- \\
+$a_i$ & 任务 $i$ 的到达时刻 & h \\
+$p_i$ & 任务 $i$ 的执行时长 & h \\
+$g_i$ & 任务 $i$ 的 GPU 需求量 & GPU \\
+$o_i$ & 任务 $i$ 的来源区域 & --- \\
+$\omega_{ist}$ & 任务 $i$ 在 $s$ 时刻开工后与小时 $t$ 的重叠时长 & h \\
+$\alpha_k$ & 类型 $k$ 的单位 GPU AI IT 功率映射系数 & MW/GPU \\
+$L^{\mathrm{AI}}_{rt}$ & 区域 $r$、小时 $t$ 的 AI IT 负荷 & MW \\
+$L^{\mathrm{IT}}_{rt}$ & 区域 $r$、小时 $t$ 的总 IT 负荷 & MW \\
+$L^{\mathrm{Fac}}_{rt}$ & 经 PUE 修正后的设施侧负荷 & MW \\
+$R_{rt}$ & 区域 $r$、小时 $t$ 的可用新能源功率 & MW \\
+$G^{\mathrm{buy}}_{rt}$ & 电网购电功率 & MW \\
+$E_{rt}$ & 小时末储能荷电状态（SOC） & MWh \\
+$\eta_{c,r},\eta_{d,r}$ & 区域 $r$ 储能充电、放电效率 & --- \\
+$x_{irs}$ & 任务 $i$ 是否选择区域 $r$、时刻 $s$ 开工的 0--1 变量 & --- \\
+$Q_r(L_r)$ & 给定区域负荷轨迹 $L_r$ 时的最优能源调度成本 & CNY \\
+$\mathrm{Cost}$ & 系统净运行成本（购电成本减售电收益） & CNY \\
+$\mathrm{Carbon}$ & 系统电网购电对应的碳排放量 & tCO$_2$ \\
+$\eta_R$ & 新能源利用率 & \% \\
+\bottomrule
+\end{tabularx}
 \end{table}
 \FloatBarrier
