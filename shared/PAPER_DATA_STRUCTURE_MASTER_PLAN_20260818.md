@@ -11,7 +11,7 @@
 - Q1：从任务统计结构提取短期计算需求规律；
 - Q2：利用 workload 时空柔性修复“弃电与购电并存”的算电错配；
 - Q3：固定 workload 后利用 BESS 时间柔性识别三类储能角色；
-- Q4：计算柔性与储能柔性争用同一新能源余量，因此必须联合优化。
+- Q4：计算柔性与储能柔性争用同一新能源余量，因此必须联合优化；最终 canonical 结果进一步显示两类柔性存在强替代关系。
 
 ---
 
@@ -47,6 +47,26 @@ A--E 全时段 H>=0，F 仅 1 h H<0；结合 SellLimit 自然得到 A/B/C、D/E�
 ### D10 数据结构不仅决定模型，还决定可计算性
 Facility/IT 约束严格重复、Benders dual support 稀疏、合法域约 2.33e8 placements，直接导出 exact presolve / sparse cuts / column generation。
 
+### D11 Q4 最终结果揭示两类柔性的强替代关系
+50k final-pool 两轮 `Cost -> Wait -> Latency` 再认证得到：
+
+- Cost = -459,340,688.8007 CNY；
+- Total Wait = 0 h；
+- Total Latency = 250,860 ms；
+- migrated = 61 / 50,000 = 0.122%；
+- mean latency = 5.0172 ms；
+- active columns = 137,158；
+- Benders cuts = 1,173；
+- hard audit PASS。
+
+相比 Q2 Cost-primary 在冻结能源动作时需要约 74.896% 的迁移率、平均等待约 20.475 h，Q4 联合 BESS/Grid 后几乎消除了 workload 时间平移并将迁移压缩至 0.122%。因此全文新的机制结论是：
+
+> 储能时间柔性吸收了绝大部分原本由 workload 时间/空间移动承担的调节需求；计算柔性与储能柔性在当前附件数据下存在显著替代关系。
+
+这不是“Q4 不需要计算柔性”，而是说明 Q2 的高迁移/高等待是能源侧被冻结时 workload flexibility 单独承担调节责任的结果。
+
+Q4 的最优性口径仍需严格：Latency full-domain LP lower bound=250469.9546 ms，integer representative=250860 ms，相对 gap≈0.1555%；restricted MIP gap=0 不等于 full-domain global integer optimum proved。
+
 ---
 
 ## 2. 公共章节必须怎样改
@@ -59,14 +79,14 @@ Facility/IT 约束严格重复、Benders dual support 稀疏、合法域约 2.33
 算法名最多保留一个核心求解词作为副标题候选。
 
 ### 2.2 摘要
-摘要必须体现四问递进和三条关键数据发现，不能写成四段方法清单。
+摘要必须体现四问递进和关键数据发现，不能写成四段方法清单。
 
 建议摘要逻辑：
 1. 数据先验：任务/区域/能源存在明显异构与错配；
 2. Q1 提取结构化需求；
 3. Q2 释放 workload 柔性；
 4. Q3 释放 BESS 柔性；
-5. Q4 联合两类柔性；
+5. Q4 联合两类柔性，并给出“Q2 高迁移/等待 -> Q4 0 wait、0.122% migration”的替代关系；
 6. 给出最终数字与验证，不堆算法缩写。
 
 ### 2.3 问题重述
@@ -93,12 +113,13 @@ Facility/IT 约束严格重复、Benders dual support 稀疏、合法域约 2.33
 - Q2/Q3 分离识别两类柔性，Q4 再联合；
 - 不使用主观权重；
 - 完整合法域不裁剪；
-- 结果有 hard-audit / exact benchmark / multi-start / recourse check。
+- 结果有 hard-audit / exact benchmark / multi-start / recourse check / final-pool recertification。
 
 局限必须真实写：
 - Q1 仅 24 h test；
 - Q2 构造式启发式存在初始化路径依赖；
-- Q4 50k 全局整数最优尚未证明，需报告 root LB / integer UB / gap；
+- Q4 50k 全局整数最优尚未证明；当前 Latency 完整域 LP--integer gap≈0.1555%；
+- Q4 canonical 已完成，但题目正式 Carbon/price/renewable 场景仍需完成后才能整问冻结；
 - 场景结论仅对题给数据和透明构造有效。
 
 ### 2.7 参考文献
@@ -120,10 +141,12 @@ Facility/IT 约束严格重复、Benders dual support 稀疏、合法域约 2.33
 Q1 Region×Type / Poisson；Q2 弃电购电错配；Q3 H+SellLimit；Q4 区域结构矩阵/顺序优化失真。
 
 ### B. 算法是否可信（Method evidence）
-Q1 prediction interval；Q2 convergence/multi-start；Q3 SOC/constraint audit；Q4 exact benchmark / closure。
+Q1 prediction interval；Q2 convergence/multi-start；Q3 SOC/constraint audit；Q4 exact benchmark / final-pool closure。
 
 ### C. 模型带来了什么（Result evidence）
-Q1 GPU utilization；Q2 migration + Cost/Carbon；Q3 BESS value + grid interaction；Q4 Q2/Q3/Q4 unified comparison + scenarios。
+Q1 Gantt + GPU utilization；Q2 migration + Cost/Carbon；Q3 BESS value + grid interaction；Q4 `Q2-only/Q3-only/Q4-joint` unified comparison + scenarios。
+
+Q4 unified comparison 必须突出 workload 侧：`74.896% migration / 20.475 h mean wait -> 0.122% migration / 0 h wait`。Q3 E1 与 Q4 的绝对成本差在 accounting 统一前不得冻结为 synergy。
 
 不要把同一个数值用柱图、散点、表格重复三次。
 
@@ -137,17 +160,34 @@ Q1 GPU utilization；Q2 migration + Cost/Carbon；Q3 BESS value + grid interacti
 - PeakImport 定义；
 - RT immediate-start；
 - “global optimum”只能在有 certificate 时使用；
-- Q2 不是 energy dispatch，Q3 不是 workload scheduling，Q4 才联合。
+- Q2 不是 energy dispatch，Q3 不是 workload scheduling，Q4 才联合；
+- `restricted MIP gap=0` 不得写成 full-domain integer optimum；
+- 跨问成本比较必须先统一 Hour 2406 accounting。
 
 ---
 
-## 5. 总论文最终验收问题
+## 5. 当前整篇剩余最高优先级
+
+1. Q4 正式 Carbon constraints 场景；
+2. Q4 electricity-price mechanisms；
+3. Q4 renewable fluctuation scenarios；
+4. canonical 与场景六指标统一输出；
+5. Q2/Q3/Q4 accounting 对齐；
+6. `Q2-only vs Q3-only vs Q4-joint` 统一结果图；
+7. 摘要、标题、评价、参考文献总装。
+
+canonical Q4 主算法不再继续加复杂度。
+
+---
+
+## 6. 总论文最终验收问题
 
 评委只看摘要、每问第一张数据图、流程图和结果表时，应能回答：
 1. 这题的数据里最关键的非显然关系是什么？
 2. 这些关系分别改变了哪些模型结构？
 3. 为什么 Q2/Q3 不能直接替代 Q4？
-4. 为什么不使用 AHP/熵权/六指标加权？
-5. 为什么算法复杂度是数据规模与结构逼出来的，而不是为了炫技？
+4. 为什么 Q2 出现大规模 workload 调整，而 Q4 联合后几乎不需要等待和迁移？
+5. 为什么不使用 AHP/熵权/六指标加权？
+6. 为什么算法复杂度是数据规模与结构逼出来的，而不是为了炫技？
 
-若这五点不能从论文直接看出，即使代码正确也不算全文完成。
+若这些点不能从论文直接看出，即使代码正确也不算全文完成。
