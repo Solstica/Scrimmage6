@@ -17,6 +17,7 @@
       "branch": "feature/shared",
       "path": "shared",
       "task": "work/tasks/shared.md",
+      "extra_paths": ["scripts/", "config/project.json"],
       "active": true,
       "merge_order": 5
     },
