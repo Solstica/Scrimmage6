@@ -1,6 +1,16 @@
 {
   "project_name": "第三次训练赛",
   "default_base": "main",
+  "integration": {
+    "base_branch": "feature/paper-shell",
+    "skip_module_keys": ["paper-shell"],
+    "curated_references": {
+      "module_key": "references",
+      "branch": "feature/references",
+      "source": "modules/70_references/paper/references_final15.tex",
+      "destination": "modules/70_references/paper/references.tex"
+    }
+  },
   "modules": [
     {
       "key": "shared",
