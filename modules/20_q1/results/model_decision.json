@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "question": "问题一",
+  "candidates": [
+    {
+      "model": "历史均值",
+      "role": "点预测基线",
+      "validation_wape": 0.2751120470828773
+    },
+    {
+      "model": "24小时前季节朴素",
+      "role": "日周期基线",
+      "validation_wape": 0.42613555964341304
+    },
+    {
+      "model": "168小时前季节朴素",
+      "role": "周周期基线",
+      "validation_wape": 0.2973680486769492
+    },
+    {
+      "model": "经验标记复合Poisson",
+      "role": "最终模型",
+      "validation_wape": 0.2751120470828773,
+      "selection_reason": "点预测达到最优基线水平，同时提供区域任务类型一致分解、GPU-hour解释与概率区间。"
+    }
+  ],
+  "selected_model": "经验标记复合Poisson",
+  "test_used_for_selection": false
+}

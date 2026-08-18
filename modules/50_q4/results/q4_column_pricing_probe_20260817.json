@@ -1,0 +1,29 @@
+{
+  "status": "DRAFT / NEEDS_REVIEW",
+  "40_tasks": 40,
+  "40_candidates_explicit": 3139,
+  "cg_iterations": 5,
+  "cg_final_active_columns": 110,
+  "cg_columns_per_task": 2.75,
+  "cg_final_lb_CNY": -5450201.934545999,
+  "full_explicit_lb_CNY": -5450201.934545999,
+  "lb_abs_diff_CNY": 0.0,
+  "full_50k_flexible_task_region_pricing_lookups": 194292,
+  "full_50k_RT_explicit_candidates": 48050,
+  "pricing_suffix_precompute_seconds": 7.839820623397827,
+  "pricing_lookup_seconds": 1.3094220161437988,
+  "pricing_suffix_arrays_MB": 112.46472,
+  "probe_peak_RSS_MB": 548.25,
+  "full_horizon_energy_recourse_6regions_serial_seconds": 1.5617516040802002,
+  "full_horizon_energy_probe_peak_RSS_MB": 381.515625,
+  "rmp_synthetic_scaling": [
+    {"tasks": 2000, "columns": 10000, "nnz": 131875, "solve_seconds": 0.7694, "peak_RSS_MB": 223.62},
+    {"tasks": 5000, "columns": 25000, "nnz": 323755, "solve_seconds": 7.7631, "peak_RSS_MB": 293.05},
+    {"tasks": 10000, "columns": 50000, "result": "did not finish within remaining 300 s probe budget in deliberately degenerate random benchmark"}
+  ],
+  "engineering_budget": {
+    "target_peak_RAM_GB": 10,
+    "absolute_peak_RAM_GB": 20,
+    "wall_clock_limit_hours": 9
+  }
+}

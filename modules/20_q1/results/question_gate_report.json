@@ -1,0 +1,24 @@
+{
+  "gate": "QUESTION",
+  "status": "FAIL",
+  "problem_type": "C",
+  "question": "问题一",
+  "errors": [
+    "result is not FROZEN: q1_test_wape (DRAFT)",
+    "result is not FROZEN: q1_interval_picp (DRAFT)",
+    "result is not FROZEN: q1_scheduled_tasks (DRAFT)",
+    "result is not FROZEN: q1_max_gpu_util (DRAFT)",
+    "result is not FROZEN: q1_baseline_error (DRAFT)"
+  ],
+  "metrics": {
+    "required_checks": [
+      "data_quality",
+      "leakage_control",
+      "baseline",
+      "validation",
+      "error_analysis",
+      "sensitivity",
+      "extrapolation_limit"
+    ]
+  }
+}

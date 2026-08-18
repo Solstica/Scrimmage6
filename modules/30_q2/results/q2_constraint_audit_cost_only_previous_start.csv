@@ -1,0 +1,10 @@
+﻿检查项,通过,最大误差
+重复完整扫描收敛,True,0.0
+逐任务LatestFinish,True,0.0
+RT到达即开工,True,0.0
+2406边界,True,0.0
+GPU/IT/Facility容量,True,1.1368683772161603e-13
+GridImport/GridExport,True,0.0
+SLA,True,0.0
+统一能量平衡,True,0.00020041666675751912
+最终fallback为零,True,0.0

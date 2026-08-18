@@ -1,0 +1,28 @@
+{
+  "模型版本": "region_multicut_v1",
+  "状态": "FINISHED_DRAFT",
+  "算法": "final-pool Cost -> Wait -> Latency lexicographic recertification",
+  "完整候选域": "每个阶段均执行完整合法域精确定价；无 top-k 或等待窗裁剪",
+  "任务数": 50000,
+  "best-known integer Cost anchor_CNY": -459340688.8007043,
+  "best-known integer Wait anchor_h": 0.0,
+  "best-known integer Latency anchor_ms": 250860.0,
+  "final-pool lexicographic recertified representative solution": true,
+  "最终真实能源成本_CNY": -459340688.8007043,
+  "最终活动列数": 137158,
+  "Benders切数": 1173,
+  "阶段记录": [
+    {"sweep":1,"阶段":"cost","活动列数":137139,"新增列数":0,"Benders切数":1135,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":-459340688.80070555,"restricted_MIP目标":-459340688.80070555,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":-459340688.8007043,"轮次":106,"运行秒":227.61495184898376,"峰值RSS_GiB":0.4220390319824219,"global_integer_optimum_proved":false},
+    {"sweep":1,"阶段":"wait","活动列数":137139,"新增列数":0,"Benders切数":1149,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":0.0,"restricted_MIP目标":0.0,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":0.0,"轮次":11,"运行秒":4362.911784410477,"峰值RSS_GiB":0.4330940246582031,"global_integer_optimum_proved":false},
+    {"sweep":1,"阶段":"latency","活动列数":137158,"新增列数":19,"Benders切数":1160,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":250469.95457912493,"restricted_MIP目标":250860.0,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":250860.0,"轮次":10,"运行秒":686.4041979312897,"峰值RSS_GiB":0.6671600341796875,"global_integer_optimum_proved":false},
+    {"sweep":2,"阶段":"cost","活动列数":137158,"新增列数":0,"Benders切数":1170,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":-459340688.80070555,"restricted_MIP目标":-459340688.80070555,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":-459340688.8007043,"轮次":8,"运行秒":775.0530261993408,"峰值RSS_GiB":0.6718330383300781,"global_integer_optimum_proved":false},
+    {"sweep":2,"阶段":"wait","活动列数":137158,"新增列数":0,"Benders切数":1173,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":0.0,"restricted_MIP目标":0.0,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":0.0,"轮次":4,"运行秒":8493.108902931213,"峰值RSS_GiB":0.6649208068847656,"global_integer_optimum_proved":false},
+    {"sweep":2,"阶段":"latency","活动列数":137158,"新增列数":0,"Benders切数":1173,"最大区域Benders违反_CNY":0.0,"最小缺失列约化成本":0.0,"LP界":250469.95457912493,"restricted_MIP目标":250860.0,"restricted_MIP_gap":0.0,"真实能源成本_CNY":-459340688.8007043,"阶段目标":250860.0,"轮次":1,"运行秒":753.4428985118866,"峰值RSS_GiB":0.4959716796875,"global_integer_optimum_proved":false}
+  ],
+  "约束审计": {
+    "任务覆盖违规数":0,"GPU或IT容量违规行数":0,"最大容量越界":0.0,"到达时间违规数":0,"RT即到即开违规数":0,"SLA区域违规数":0,"LatestFinish违规数":0,"完成晚于2406违规数":0,"最大电网购电越界_MW":0.0,"最大电网上网越界_MW":0.0,"最大售电上限越界_MW":0.0,"最大SOC下界越界_MWh":0.0,"最大SOC上界越界_MWh":0.0,"终端SOC缺口_MWh":0.0,"可再生分配平衡最大残差_MW":1.1368683772161603e-13,"设施负荷平衡最大残差_MW":0.0,"SOC递推最大残差_MWh":7.105427357601002e-14,"充电功率上限越界_MW":0.0,"放电功率上限越界_MW":0.0
+  },
+  "约束审计通过": true,
+  "运行分钟": 255.1699544151624,
+  "全局整数最优已证明": false
+}

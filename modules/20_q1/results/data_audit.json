@@ -1,0 +1,36 @@
+{
+  "description_scope": "all_50000_tasks",
+  "model_diagnostic_scope": "training_hours_0_2351_only",
+  "task_count": 50000,
+  "train_count": 48963,
+  "validation_count": 499,
+  "test_count": 538,
+  "mean_hourly_arrivals": 20.817602040816325,
+  "fano_total": 0.9742260957594409,
+  "acf": {
+    "1": -0.0058871723446723544,
+    "24": -0.03846063017106368,
+    "168": 0.03355078939822889
+  },
+  "poisson_chisquare_p": 0.9321809056651204,
+  "cramers_v_region_tasktype": 0.43360460495493747,
+  "gpu_source_given_type": {
+    "RealTimeInference": {
+      "p_value": 0.7443114257046475,
+      "eta2": 0.0,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
+    },
+    "BatchInference": {
+      "p_value": 0.1095187717404919,
+      "eta2": 8.14719844948017e-05,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
+    },
+    "AITraining": {
+      "p_value": 0.8240325169832461,
+      "eta2": 0.0,
+      "eta2_formula": "max(0,(H-k+1)/(n-k))"
+    }
+  },
+  "all_deadlines_feasible_at_arrival": true,
+  "missing_values": 0
+}

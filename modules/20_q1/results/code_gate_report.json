@@ -1,0 +1,54 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.7.8\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+      "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q1",
+    "python": "3.7.8 (tags/v3.7.8:4b47a5b6ba, Jun 28 2020, 08:53:46) [MSC v.1916 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\code\\q1_solver.py",
+    "script_sha256": "e4a602d12dd9975215312e258e44b7133bedeccf0afba3b12b14ba8c41f47afe",
+    "started_at": "2026-08-16T15:05:10+00:00",
+    "finished_at": "2026-08-16T15:05:23+00:00",
+    "returncode": 0,
+    "stdout": "{\"status\": \"PASS\", \"scheduled_tasks\": 538, \"max_gpu_util_pct\": 99.01656314699392, \"baseline_error\": 3.333344800182658e-07}\n",
+    "stderr": "",
+    "inputs": [
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+        "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba",
+        "size": 3496931
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\GPU_information.xlsx",
+        "sha256": "68f978ff242da0bab54259283f647c7552693acf6db5e2212ff4e10f6a5d5d2f",
+        "size": 12226
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+        "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba",
+        "size": 2845390
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\network_latency.xlsx",
+        "sha256": "f7e16fc33d8c188b0889e358497e0d96451e04c77ce765a667a50488f02ac157",
+        "size": 13544
+      }
+    ],
+    "outputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q1\\modules\\20_q1\\results\\run_summary.json",
+        "sha256": "e7d5e8df211c0782ee7a68cfc3efeac1a3fa83e7114ca98e9f1fc5b019b67ac8",
+        "size": 2487
+      }
+    ]
+  },
+  "metrics": {
+    "syntax": "PASS"
+  }
+}

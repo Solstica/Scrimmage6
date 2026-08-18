@@ -1,0 +1,16 @@
+Item,TaskType,Value,Unit,Note
+FlexibleIT,BatchInference,76909.78,MWh,IT energy
+FlexibleIT,AITraining,643766.1946666667,MWh,IT energy
+FlexibleFacilityBaseline,BatchInference,101371.96723333334,MWh,Baseline facility contribution
+FlexibleFacilityBaseline,AITraining,825622.4518933333,MWh,Baseline facility contribution
+RemovalCostHeadroom,BatchInference,52758234.46624367,CNY,Standalone type headroom
+RemovalCostHeadroom,AITraining,290836037.4804853,CNY,Standalone type headroom
+RemovalCarbonHeadroom,BatchInference,45647.19454758001,tCO2,Standalone type headroom
+RemovalCarbonHeadroom,AITraining,257475.26317257536,tCO2,Standalone type headroom
+RemovalCostHeadroomCombined,AllFlexible,342323537.5067641,CNY,Shared G0 cap handled jointly
+RemovalCarbonHeadroomCombined,AllFlexible,302280.0539628704,tCO2,Shared G0 cap handled jointly
+ZeroAdditionalGridFluidPlacementFeasible,AllFlexible,1,bool,Spatial SLA and GPU/IT/Facility capacity retained; task time and indivisibility relaxed
+OldDraftCostSaving,AllFlexible,132192823.42,CNY,DRAFT old static SFETA only
+OldDraftCarbonSaving,AllFlexible,127153.983,tCO2,DRAFT old static SFETA only
+OldDraftCostCapture,AllFlexible,0.386163406649734,ratio,Must recompute after dynamic marginal SFETA rerun
+OldDraftCarbonCapture,AllFlexible,0.4206495973949328,ratio,Must recompute after dynamic marginal SFETA rerun

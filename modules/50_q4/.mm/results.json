@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "results": [
+    {
+      "result_id": "q4-lexicographic-40-validation",
+      "question": "Q4",
+      "metric": "40-task完整域字典序CG验收",
+      "value_text": "PASS",
+      "unit": "status",
+      "status": "STALE",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_probe_benders.py",
+          "sha256": "1b024220925b72104c6f3cd54b7974754b6ce5f931c34653cdd0deb971396786"
+        },
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_qos_refinement.py",
+          "sha256": "72bf12db03e81cef0608cd2ed5b9d77b0688721d993f2616d14d647c76f19a66"
+        },
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_full_solver.py",
+          "sha256": "4c27c0a1811b0458d1fffe20b96e259128726ab2b245123fe1c7bbacbe8616f8"
+        },
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+          "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba"
+        },
+        {
+          "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+          "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\lexicographic_40task_validation\\q4_lexicographic_40task_validation.json",
+        "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\.mm\\code_gate_40task.json"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_probe_benders.py",
+      "created_at": "2026-08-17T07:36:58+00:00",
+      "updated_at": "2026-08-18T02:15:51+00:00",
+      "verified_at": "2026-08-17T07:37:05+00:00",
+      "frozen_at": "2026-08-17T07:37:11+00:00"
+    },
+    {
+      "result_id": "q4-final-recertified-50000",
+      "question": "Q4",
+      "metric": "50000任务final-pool字典序再认证",
+      "value_text": "Cost=-459340688.8007043 CNY; Wait=0 h; Latency=250860 ms; FINISHED_DRAFT",
+      "unit": "mixed",
+      "status": "FROZEN",
+      "dependencies": [
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_qos_refinement.py",
+          "sha256": "5e237f41ed4144322f613177e9559d7e9f76f64e8070b68d6b920d6f7bffc91b"
+        },
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_final_recertification\\q4_qos_summary.json",
+          "sha256": "8fa5b655b395bf8434a8807d47ee7f309ecc455726b0e14c28bbdd7d43d79cae"
+        },
+        {
+          "path": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_final_recertification\\q4_字典序最终排程.csv",
+          "sha256": "1997162331f90006f3e376e82fde7b2a92b0b63d0d899f40215cae68749b2633"
+        }
+      ],
+      "evidence_paths": [
+        "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_final_recertification\\q4_qos_summary.json",
+        "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_final_recertification\\q4_recertification_stage_metrics.csv"
+      ],
+      "source_script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_final_recertification.py",
+      "created_at": "2026-08-18T10:36:03+00:00",
+      "updated_at": "2026-08-18T10:36:38+00:00",
+      "verified_at": "2026-08-18T10:36:21+00:00",
+      "frozen_at": "2026-08-18T10:36:38+00:00"
+    }
+  ]
+}

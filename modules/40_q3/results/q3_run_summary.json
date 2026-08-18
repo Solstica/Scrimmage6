@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "model_status": "DRAFT / NEEDS_REVIEW",
+  "e0_cost_cny": -419820327.73900986,
+  "e1_cost_cny": -459217791.0387695,
+  "bess_value_cny": 39397463.29975963,
+  "e0_carbon_tco2": 8.85056419829166,
+  "e1_carbon_tco2": 4.1168346472401127e-07,
+  "stage2_scd_hours": 0
+}
