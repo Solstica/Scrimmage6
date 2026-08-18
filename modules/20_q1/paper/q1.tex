@@ -10,27 +10,8 @@
 
 \begin{figure}[!htbp]
 \centering
-\resizebox{\FigureFlowWidth}{!}{%
-\begin{tikzpicture}[
-  node distance=1.2cm and 1.0cm,
-  box/.style={draw,rounded corners=2pt,minimum width=2.8cm,minimum height=0.9cm,align=center,fill=CumcmLightBlue},
-  line/.style={-{Latex[length=2.5mm]},thick}
-]
-\node[box] (data) {原始数据\\50000条任务记录};
-\node[box,right=of data] (stat) {统计分析\\到达过程、业务\\组成、资源标记};
-\node[box,right=of stat] (model) {标记复合\\Poisson模型\\三层结构};
-\node[box,below=of model] (predict) {24\,h预测\\解析均值与\\90\%概率区间};
-\node[box,left=of predict] (schedule) {基础算力调度\\本地优先\\必要迁移};
-\node[box,left=of schedule] (result) {结果分析\\GPU利用率\\评价指标};
-\draw[line] (data)--(stat);
-\draw[line] (stat)--(model);
-\draw[line] (model)--(predict);
-\draw[line] (model)--(schedule);
-\draw[line] (predict)--(result);
-\draw[line] (schedule)--(result);
-\end{tikzpicture}%
-}
-\caption{问题一建模求解总体流程。}
+\includegraphics[width=\FigureFlowWidth]{\ProjectRoot/modules/20_q1/figures/q1_flow.png}
+\caption{问题一建模求解总体流程：数据驱动诊断 $\rightarrow$ 结构化标记复合 Poisson 模型 $\rightarrow$ 24 h 概率预测 $\rightarrow$ 基础算力调度与评价。}
 \label{fig:q1-flow}
 \end{figure}
 
@@ -38,77 +19,33 @@
 
 \subsubsection{到达过程诊断}
 
-基于 0--2351\,h 训练段数据，首先检验小时任务到达数的分布特征。图\ref{fig:q1-fig05}展示了小时到达任务数的经验频率与 Poisson 理论概率的对比，图\ref{fig:q1-fig06}给出了自相关函数（ACF）。训练段小时到达数均值 $\hat\lambda = 20.8$，Fano 因子（方差均值比）$\approx 0.97$，接近 1；卡方拟合优度检验未能拒绝 Poisson 分布假设。自相关分析显示，lag~1、24 和 168 的自相关系数均接近零，未观察到足以支持额外短期记忆项或稳定日/周周期项的证据。因此，在 24\,h 短期预测尺度内采用齐次 Poisson 过程是与数据复杂度相匹配的基线，而不是对真实长期到达机制的强假设。
+基于 0--2351\,h 训练段数据，首先检验小时任务到达数的分布特征。图\ref{fig:q1-arrival-diagnosis}展示了小时到达任务数的经验频率与 Poisson 理论概率的对比以及自相关函数（ACF）。训练段小时到达数均值 $\hat\lambda = 20.8$，Fano 因子（方差均值比）$\approx 0.97$，接近 1；卡方拟合优度检验未能拒绝 Poisson 分布假设。自相关分析显示，lag~1、24 和 168 的自相关系数均接近零，未观察到足以支持额外短期记忆项或稳定日/周周期项的证据。因此，在 24\,h 短期预测尺度内采用齐次 Poisson 过程是与数据复杂度相匹配的基线，而不是对真实长期到达机制的强假设。
 
 \begin{figure}[!htbp]
 \centering
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig05_hourly_arrivals_poisson.pdf}
-\caption{小时到达任务数与 Poisson 拟合}
-\label{fig:q1-fig05}
-\end{subfigure}
-\hspace{0.02\textwidth}
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig06_acf.pdf}
-\caption{小时到达任务数自相关函数}
-\label{fig:q1-fig06}
-\end{subfigure}
-\caption{到达过程诊断：小时任务数分布与自相关。}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_poisson_diagnostic.png}
+\caption{Poisson 适用性诊断双面板：(a) 小时到达任务数与 Poisson 拟合，(b) 小时到达任务数自相关函数。Fano$\approx 0.97$，$\hat\lambda\approx 20.8$；关键滞后 1、24、168 的自相关系数均未形成稳定短期/日/周周期结构，$\pm 0.0404$ 参考带基于白噪声近似。}
 \label{fig:q1-arrival-diagnosis}
 \end{figure}
 \FloatBarrier
 
 \subsubsection{业务组成诊断}
 
-进一步考察任务类型（TaskType）与源区域（SourceRegion）之间的关联结构。图\ref{fig:q1-fig01}展示了各区域与各任务类型组合下的任务数热图。统计分析表明，TaskType 与 SourceRegion 之间存在明显的关联结构，Cram\'{e}r's~V 系数约为 0.434。具体而言，实时推理任务（RealTimeInference）主要集中在 RegionA、B、C，而 AI 训练任务（AITraining）在 RegionD、E、F 中更为集中，批量推理任务（BatchInference）在各区域分布相对均匀。这一结构意味着业务组成不能简化为独立边际分布的乘积，即 $P(R,K) \neq P(R)P(K)$，须采用联合概率建模。
+进一步考察任务类型（TaskType）与源区域（SourceRegion）之间的关联结构。图\ref{fig:q1-composition}展示了各区域与各任务类型组合下的任务数分布。统计分析表明，TaskType 与 SourceRegion 之间存在明显的关联结构，Cram\'{e}r's~V 系数约为 0.434。具体而言，实时推理任务（RealTimeInference）主要集中在 RegionA、B、C，而 AI 训练任务（AITraining）在 RegionD、E、F 中更为集中，批量推理任务（BatchInference）在各区域分布相对均匀。这一结构意味着业务组成不能简化为独立边际分布的乘积，即 $P(R,K) \neq P(R)P(K)$，须采用联合概率建模。
 
 \begin{figure}[!htbp]
 \centering
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig01_region_type_heatmap.pdf}
-\caption{区域与任务类型任务数分布}
-\label{fig:q1-fig01}
-\end{subfigure}
-\hspace{0.02\textwidth}
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig02_task_gpuhour_bar.pdf}
-\caption{任务数与 GPU-hour 占比}
-\label{fig:q1-fig02}
-\end{subfigure}
-\caption{业务组成分析：Region$\times$TaskType 结构与计算工作量分布。}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_task_structure.png}
+\caption{区域与任务类型任务数分布热图。RegionA/B/C 的实时推理任务相对集中，RegionD/E/F 的 AI 训练任务更为集中，Cram\'{e}r's~V$\approx 0.434$，表明 $P(R,K)\neq P(R)P(K)$，须采用联合业务标记 $\pi_{rk}$。}
 \label{fig:q1-composition}
 \end{figure}
 \FloatBarrier
 
-从计算工作量角度，图\ref{fig:q1-fig02}展示了任务数占比与 GPU-hour 占比的对比。AI 训练任务数约占全部任务的 1/3，但其 GPU-hour 占比超过 80\%，说明“任务数”不能代表计算负荷强度；后续预测和调度必须同时保留业务类型与 GPU 资源标记。
+从计算工作量角度，图\ref{fig:q1-composition}的热图还显示（结合正文表\ref{tab:q1-stat-summary}），AI 训练任务数约占全部任务的 1/3，但其 GPU-hour 占比超过 80\%，说明“任务数”不能代表计算负荷强度；后续预测和调度必须同时保留业务类型与 GPU 资源标记。
 
 \subsubsection{条件资源诊断}
 
-对 GPU 需求与执行时长这两个核心资源标记展开条件分析。图\ref{fig:q1-fig03}的箱线图显示，三类任务的 GPU 需求呈清晰分层：实时推理最低（中位数约 4 GPU），批量推理居中，AI 训练最高（中位数约 72 GPU）。图\ref{fig:q1-fig04}的散点图进一步表明，GPU 需求与执行时长之间不存在显著的单调关系，但 GPU 需求在不同任务类型间的层级差异十分稳定。
-
-\begin{figure}[!htbp]
-\centering
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig03_gpu_boxplot.pdf}
-\caption{三类任务 GPU 需求分布}
-\label{fig:q1-fig03}
-\end{subfigure}
-\hspace{0.02\textwidth}
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\includegraphics[width=\linewidth]{figures/fig04_gpu_duration_scatter.pdf}
-\caption{GPU 需求与执行时长关系}
-\label{fig:q1-fig04}
-\end{subfigure}
-\caption{条件资源标记分析。}
-\label{fig:q1-resource}
-\end{figure}
-\FloatBarrier
+对 GPU 需求与执行时长这两个核心资源标记展开条件分析。条件资源诊断显示，三类任务的 GPU 需求呈清晰分层：实时推理最低（中位数约 4 GPU），批量推理居中，AI 训练最高（中位数约 72 GPU）。GPU 需求与执行时长之间不存在显著的单调关系，但 GPU 需求在不同任务类型间的层级差异十分稳定（相关箱线图与散点图见附录）。
 
 进一步检验表明，给定 TaskType 后，SourceRegion 对 GPU 需求和执行时长的附加影响很弱；GPU 与执行时长之间的线性相关系数接近 0，但尚不能将其升级为严格独立关系。因此，本文保留 $(GPU, Duration) \mid TaskType$ 的联合经验分布作为资源标记。需要指出的是，在 GPU 需求概率预测中，实际使用的是该联合经验分布所诱导的 GPU 边际抽样；执行时长 $D$ 用于保持任务资源结构与后续 Q1-3 调度的语义一致性，并不直接参与 $Y_{rkt}$ 的 GPU 总量计算。
 
@@ -300,12 +237,12 @@ Region$\times$TaskType & 26.49  & 53.74  & 0.656 & 94.21\% & 97.67 \\
 \end{table}
 \FloatBarrier
 
-各层级的 90\% 预测区间覆盖率总体接近名义水平 90\%：Region$\times$TaskType 层达到 94.21\%，TaskType 层 90.28\%，Region 层 89.58\%，System 层为 87.5\%（21/24）。测试集仅包含 24 个小时样本点，System 层与名义水平的偏差不构成调参依据。图\ref{fig:q1-fig08}展示了测试集系统层 GPU 需求的预测均值与 90\% 预测区间。
+各层级的 90\% 预测区间覆盖率总体接近名义水平 90\%：Region$\times$TaskType 层达到 94.21\%，TaskType 层 90.28\%，Region 层 89.58\%，System 层为 87.5\%（21/24）。测试集仅包含 24 个小时样本点，System 层与名义水平的偏差不构成调参依据。图\ref{fig:q1-fig08}展示了测试集系统层 GPU 需求的预测均值与 90\% 预测区间，Y 轴为"新到达 GPU 需求（等效 GPU）"。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{figures/fig08_forecast_interval.pdf}
-\caption{测试集 GPU 需求预测与 90\% 预测区间。}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_forecast_24h.png}
+\caption{测试集 24 h 概率预测：预测均值、90\% 预测区间与实际观测值。PICP = 87.5\%（21/24），Y 轴为"新到达 GPU 需求（等效 GPU）"。}
 \label{fig:q1-fig08}
 \end{figure}
 \FloatBarrier
@@ -329,21 +266,21 @@ Region$\times$TaskType & 26.49  & 53.74  & 0.656 & 94.21\% & 97.67 \\
 \end{table}
 \FloatBarrier
 
-图\ref{fig:q1-fig09}的甘特图展示了最后 24\,h 的任务调度时序，图\ref{fig:q1-fig10}的热图展示了各区域 GPU 利用率的时间演化。由于 canonical 结果中迁移任务数为 0，甘特图仅用于展示本地执行与少量顺延，不将其解释为跨区迁移证据。
+图\ref{fig:q1-fig09}的甘特图展示了最后 24\,h 的任务调度时序，图\ref{fig:q1-fig10}的热图展示了各区域 GPU 利用率的时间演化。全部任务保持来源区域执行（Moved=0），4 个弹性任务通过本地时间平移消解局部容量冲突（Delayed=4），不将其解释为跨区迁移证据。
 
 \begin{figure}[!htbp]
 \centering
 \begin{subfigure}[t]{\FigureDoubleWidth}
 \centering
-\includegraphics[width=\linewidth]{figures/fig09_gantt.pdf}
-\caption{最后 24\,h 任务调度甘特图}
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_gantt.png}
+\caption{最后 24\,h 任务调度甘特图。全部任务保持来源区域执行（Moved=0）；4 个弹性任务通过本地时间平移消解局部容量冲突（Delayed=4）。部分 2376--2399 h 到达任务跨越 2399 在 2400--2405 h 收尾，最晚完成于 2405.6 h，未占用 2406 h。}
 \label{fig:q1-fig09}
 \end{subfigure}
 \vspace{1em}
 \begin{subfigure}[t]{\FigureDoubleWidth}
 \centering
-\includegraphics[width=\linewidth]{figures/fig10_gpu_utilization_heatmap.pdf}
-\caption{区域 GPU 利用率热图}
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_gpu_util.png}
+\caption{区域 GPU 利用率热图（2376--2405 h）。利用率包含 carry-in 历史任务与 2376--2399 新到达任务的共同占用，六区均未超过 100\% 容量边界，最大利用率约 99.02\%。}
 \label{fig:q1-fig10}
 \end{subfigure}
 \caption{调度结果可视化。}
