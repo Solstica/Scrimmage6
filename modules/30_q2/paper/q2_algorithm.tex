@@ -1,0 +1,62 @@
+地理分布式数据中心的任务调度已有基于可再生能源富余、时延容忍度和区域电价进行分配的规则算法。Yang 等提出的 REPTA 明确区分时延敏感与时延容忍任务，并优先利用可再生能源富余；CarbonScaler 则从云负载弹性角度刻画碳效率调节价值\cite{yang_repta_2026,hanafy_carbonscaler_2023}。本题保留这类“利用任务柔性响应能源状态”的思想，但不照搬其区域新能源排序，而是依据附件的完整任务合法域和动态弃电/购电边际重新定义候选评价。
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{For}{for}{do}{end for}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKw{KwRet}{return}
+\caption{SFETA：完整合法域动态边际任务分配}
+\label{alg:q2-sfeta}
+\KwIn{任务集 $\mathcal I$，附件能源基准状态，网络与资源边界，目标模式 $m\in\{\mathrm{Cost},\mathrm{Carbon}\}$，收敛容差 $\epsilon$，最大扫描次数 $K_{\max}$}
+\KwInit{按“来源区域、到达即执行”构造附件参考排程 $\mathbf x^{(0)}$；该状态允许存在待首轮扫描消除的局部容量超限；$J^{(0)}\leftarrow+\infty$}
+\BlankLine
+\ForEach{任务 $i\in\mathcal I$}{
+    构造空间合法域 $R_i=\{r:\mathrm{Latency}[o_i,r]\le L_i\}$\;
+    构造时间合法域 $T_i$：RT 仅含 $a_i$；Batch/Training 包含全部满足 Arrival、LatestFinish 与 2406 边界的整数开工时刻\;
+    记 $\Omega_i=R_i\times T_i$；若 $\Omega_i=\varnothing$ 则返回 FAIL\;
+}
+按 $|R_i|$ 升序 $\to$ 时间余量升序 $\to$ GPU-hour 降序固定扫描顺序\;
+\BlankLine
+\For{$k\leftarrow1$ \KwTo $K_{\max}$}{
+    由上一遍排程 $\mathbf x^{(k-1)}$ 重构 GPU、IT、设施负荷和逐时能源状态\;
+    $\mathrm{changed}\leftarrow0$，$\mathrm{fallback}\leftarrow0$\;
+    \ForEach{排序后的任务 $i\in\mathcal I$}{
+        读取任务 $i$ 当前执行区域与开工时刻 $(r_i^{old},s_i^{old})$\;
+        \textbf{暂时移除任务 $i$}，得到不含该任务的残余状态 $S^{-i}$\;
+        \ForEach{候选 $(r,s)\in\Omega_i$}{
+            按实际小时重叠量将任务加入 $S^{-i}$\;
+            检查 GPU、IT、Facility、GridImport、SLA、LatestFinish 与 finish$\le2406$；RT 额外检查 $s=a_i$\;
+            若候选可行，则计算
+            \[
+            \Delta E_{i,r,s}=\mathrm{EnergyResponse}(S^{-i}\oplus(i,r,s))-\mathrm{EnergyResponse}(S^{-i}),
+            \]
+            并得到 $\Delta\mathrm{GridPurchase}$、$\Delta\mathrm{Curtailment}$、$\Delta\mathrm{Cost}$ 与 $\Delta\mathrm{Carbon}$\;
+        }
+        得到全部可行候选集合 $\mathcal F_i$\;
+        \If{$\mathcal F_i=\varnothing$}{
+            对旧位置重新执行硬约束检查；若旧位置也不可行则返回 FAIL，否则保留旧位置并令 $\mathrm{fallback}\leftarrow\mathrm{fallback}+1$\;
+        }
+        \Else{
+            \If{$m=\mathrm{Cost}$}{按边际成本升序、边际碳排次序选择候选\;}
+            \Else{按边际碳排升序、边际成本次序选择候选\;}
+            对数值等价候选依次选择更早开工、保持来源区域、网络时延更低者\;
+            将所选候选重新插入当前状态；若位置改变则 $\mathrm{changed}\leftarrow\mathrm{changed}+1$\;
+        }
+    }
+    由完整排程重新计算真实目标 $J^{(k)}$ 和全部硬约束残差；首轮扫描同时承担附件参考状态的可行化与目标改善\;
+    \If{$k\ge2$ 且 $(J^{(k-1)}-J^{(k)})/|J^{(k-1)}|<\epsilon$ 且 $\mathrm{fallback}=0$ 且硬约束全部通过}{
+        \textbf{break}\;
+    }
+}
+\BlankLine
+计算运行成本、碳排放、新能源利用率、迁移率、等待分布和网络时延；必要时从不同初始排程重复求解以审计路径依赖\;
+\KwRet 调度方案 $\mathbf x$、主目标、平行评价指标和硬约束审计结果\;
+\KwOut{各任务执行区域与开工时刻，以及成本、碳排、新能源利用率和服务质量指标}
+\end{algorithm}

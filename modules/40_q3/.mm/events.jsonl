@@ -1,0 +1,8 @@
+{"time": "2026-08-17T10:51:29+00:00", "event": "INIT", "stage": "INGESTED", "project_id": "q3-2026"}
+{"time": "2026-08-17T10:56:12+00:00", "event": "REGISTER_RESULT", "result_id": "q3_e0_cost", "status": "DRAFT"}
+{"time": "2026-08-17T10:56:17+00:00", "event": "REGISTER_RESULT", "result_id": "q3_e1_cost", "status": "DRAFT"}
+{"time": "2026-08-17T10:56:24+00:00", "event": "REGISTER_RESULT", "result_id": "q3_bess_value", "status": "DRAFT"}
+{"time": "2026-08-17T10:56:31+00:00", "event": "REGISTER_RESULT", "result_id": "q3_e1_throughput", "status": "DRAFT"}
+{"time": "2026-08-17T10:56:36+00:00", "event": "REGISTER_RESULT", "result_id": "q3_stage2_scd", "status": "DRAFT"}
+{"time": "2026-08-17T10:56:54+00:00", "event": "ADVANCE_STAGE", "from": "INGESTED", "to": "MODELED", "gates": ["INGEST"]}
+{"time": "2026-08-17T10:57:11+00:00", "event": "ADVANCE_STAGE", "from": "MODELED", "to": "SOLVED", "gates": ["CODE"]}

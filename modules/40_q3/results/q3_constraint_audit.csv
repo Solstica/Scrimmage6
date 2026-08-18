@@ -1,0 +1,7 @@
+﻿Region,renewable_balance_max_mw,load_balance_max_mw,grid_purchase_split_max_mw,charge_split_max_mw,soc_dynamics_max_mwh,terminal_soc_gap_mwh,min_soc_margin_mwh,max_soc_margin_mwh,max_charge_margin_mw,max_discharge_margin_mw,max_grid_import_margin_mw,max_grid_export_margin_mw,stage2_scd_hours,Passed
+RegionA,0.0,9.245403609266042e-15,0.0,0.0,0.0,0.0,122.5,192.5,100.0,100.0,549.9999997889939,0.0,0,True
+RegionB,0.0,2.3620181699074414e-14,0.0,0.0,0.0,0.0,112.0,176.0,90.0,90.0,519.9999997805044,0.0,0,True
+RegionC,0.0,1.8585023116771652e-14,0.0,0.0,0.0,0.0,105.0,165.0,85.0,85.0,509.9999997808027,0.0,0,True
+RegionD,5.684341886080802e-14,0.0,0.0,0.0,5.684341886080802e-14,0.0,0.0,272.0064529891097,0.0,132.89400042662396,510.0,0.0,0,True
+RegionE,1.1368683772161603e-13,5.684341886080802e-14,0.0,0.0,7.105427357601002e-14,0.0,0.0,0.0,0.0,59.55708375000006,370.0,0.0,0,True
+RegionF,1.1368683772161603e-13,4.263256414560601e-14,0.0,0.0,7.105427357601002e-14,0.0,0.0,0.0,0.0,0.0,340.0,0.0,0,True

@@ -1,0 +1,17 @@
+{
+  "gate": "QUESTION",
+  "status": "PASS",
+  "problem_type": "B",
+  "question": "问题四算法修正验收",
+  "errors": [],
+  "metrics": {
+    "required_checks": [
+      "complete_model",
+      "feasibility",
+      "baseline_or_bound",
+      "complexity",
+      "sensitivity",
+      "pareto_or_weight_change"
+    ]
+  }
+}

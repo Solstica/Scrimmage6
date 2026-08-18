@@ -1,0 +1,64 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+      "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q3",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\code\\q3_solver.py",
+    "script_sha256": "672bc2c4b740da4a8ffda3ed1c21950d0047a845dd927910593993f59a1926ad",
+    "started_at": "2026-08-17T10:54:11+00:00",
+    "finished_at": "2026-08-17T10:54:17+00:00",
+    "returncode": 0,
+    "stdout": "{\"status\": \"PASS\", \"model_status\": \"DRAFT / NEEDS_REVIEW\", \"e0_cost_cny\": -419820327.73900986, \"e1_cost_cny\": -459217791.0387695, \"bess_value_cny\": 39397463.29975963, \"e0_carbon_tco2\": 8.85056419829166, \"e1_carbon_tco2\": 4.1168346472401127e-07, \"stage2_scd_hours\": 0}\n",
+    "stderr": "",
+    "inputs": [
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+        "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba",
+        "size": 2845390
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\storage_information.xlsx",
+        "sha256": "ff5384eb6e955079766b22432e630dfdec9f347f11cd334d950716b21692b3e4",
+        "size": 11766
+      },
+      {
+        "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\GPU_information.xlsx",
+        "sha256": "68f978ff242da0bab54259283f647c7552693acf6db5e2212ff4e10f6a5d5d2f",
+        "size": 12226
+      }
+    ],
+    "outputs": [
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\tables\\q3_metrics_summary.csv",
+        "sha256": "19bd99c513ea120ac4cc6551de05555fd55b9fc27ad86a6da57663c697dcfc85",
+        "size": 4975
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\data\\processed\\q3_energy_dispatch_0_2406.csv",
+        "sha256": "1893bd11badf523c44f6796f1f00fddc4954907ab58915b39f6038f9262d273b",
+        "size": 3627065
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_constraint_audit.csv",
+        "sha256": "889dc9bd4fe9004d23c2dcc6c81cbb8d843022f2ebd0a87ddf7b609900c699b1",
+        "size": 1001
+      },
+      {
+        "path": "D:\\第三次训练赛-worktrees\\q3\\modules\\40_q3\\results\\q3_run_summary.json",
+        "sha256": "aeca130a72d5717c53d92704e1b3af05132b7b1121bbcfc9d4df5f68cf92e495",
+        "size": 294
+      }
+    ]
+  },
+  "metrics": {
+    "syntax": "PASS"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "question": "问题一",
+  "problem_type": "C",
+  "subtypes": [],
+  "objective": "统计不同区域和任务类型的GPU需求，完成2376至2399小时短期概率预测，并对该区间实际到达任务形成满足全部硬约束的基础调度。",
+  "final_model": "经验标记复合Poisson概率预测与确定性最早可行基础调度模型",
+  "model_definition": "总任务数服从常强度Poisson过程，区域与任务类型使用联合经验标记，GPU与时长按任务类型保留联合经验分布；调度按到达、时延、GPU、IT、设施功率和完成时限约束确定执行区域与整数开工小时。",
+  "algorithm": "严格按官方训练验证测试切分估计、比较、重估和测试；概率区间以固定种子联合Monte Carlo生成；调度按实时任务优先、到达顺序和最早可行时段枚举全部SLA可行区域。",
+  "result_ids": [
+    "q1_test_wape",
+    "q1_interval_picp",
+    "q1_scheduled_tasks",
+    "q1_max_gpu_util",
+    "q1_baseline_error"
+  ],
+  "checks": {
+    "data_quality": {
+      "status": "PASS",
+      "evidence": "data_audit.json",
+      "metric": "50000个任务，缺失值为0，TaskID无重复，全部任务在到达即执行时满足自身时限。"
+    },
+    "leakage_control": {
+      "status": "PASS",
+      "evidence": "../data/processed/forecast_validation.csv",
+      "metric": "0至2351小时仅训练与诊断，2352至2375小时唯一验证，0至2375小时重估，2376至2399小时一次性测试。"
+    },
+    "baseline": {
+      "status": "PASS",
+      "evidence": "../tables/q1_forecast_metrics.csv",
+      "metric": "历史均值、24小时前和168小时前三种基线均已比较；到达即执行基准AI IT负荷最大重构误差为3.333344800182658e-07 MW。"
+    },
+    "validation": {
+      "status": "PASS",
+      "evidence": "code_gate_report.json",
+      "metric": "经验标记复合Poisson模型验证集MAE为162.0181，RMSE为181.2371，WAPE为27.5112%。"
+    },
+    "error_analysis": {
+      "status": "PASS",
+      "evidence": "../tables/q1_forecast_metrics.csv",
+      "metric": "独立测试集MAE为176.6816，RMSE为221.0539，WAPE为24.3014%；90%区间覆盖率为87.5%，平均宽度为695.05等效GPU。"
+    },
+    "sensitivity": {
+      "status": "PASS",
+      "evidence": "../tables/q1_forecast_sensitivity.csv",
+      "metric": "到达率上下扰动5%时测试WAPE为22.5453%至26.1926%；均匀GPU标记对照WAPE为24.2198%，与经验标记24.3014%接近。"
+    },
+    "extrapolation_limit": {
+      "status": "PASS",
+      "evidence": "data_audit.json",
+      "metric": "训练集lag 1、24、168自相关分别为-0.0059、-0.0385、0.0336；结论限定于当前98天历史和未来24小时短期预测。"
+    }
+  }
+}

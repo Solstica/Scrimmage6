@@ -1,4 +1,357 @@
 \section{问题二模型的建立与求解}
 
-% 模板默认只保留本章一级标题，用于展示全文层级与目录效果。
-% 开赛后在 feature/q2 中按问题一的结构增删二级、三级标题，不要在 paper/ 中复制正文。
+\subsection{问题二的描述与分析}
+
+问题二要求在 0--2399\,h 的全部 50000 个实际到达任务上，同时考虑任务类型、网络时延、截止时间、GPU/IT/设施容量及区域能源状态，通过跨区域迁移和开工时段调整降低运行成本与碳排放，并提高新能源利用率。与问题一不同，本问开始释放任务的时空柔性，但仍固定附件给出的储能和购售电动作，以便单独识别\textbf{计算任务调度}本身能够带来的能源价值。
+
+附件数据给出两个决定模型结构的事实。首先，三类任务柔性高度不均衡：实时推理必须到达即开工，批量推理和 AI 训练具有大范围时空可调域，而 AI 训练承担约 80\% 的 GPU-hour。其次，基准能源状态存在明显的时空错配：0--2399\,h 的 14400 个区域—小时中，有 13230 个同时存在弃电和供负荷购电，占 91.9\%；累计弃电量约 $7.748\times10^6$ MWh，是基准 AI 设施侧能量约 $0.951\times10^6$ MWh 的 8.15 倍。由此可见，本问的主要机会不是新能源总量不足，而是\textbf{计算负荷与既有绿色能源状态的时空位置不匹配}。
+
+因此，本问按“任务柔性识别—能源错配识别—边际能源响应—完整合法域调度”的顺序建模。Cost、Carbon 与新能源利用率不做主观加权，而让任务在真实合法域中依据当前残余能源状态逐个比较边际后果。总体流程见图\ref{fig:q2-flow}。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureFlowWidth]{\ProjectRoot/modules/30_q2/figures/q2_flow.png}
+\caption{问题二建模求解总体流程}
+\label{fig:q2-flow}
+\end{figure}
+
+\subsection{任务时空柔性分析}
+
+\subsubsection{任务参数与合法域}
+
+设任务 $i$ 的到达时刻、来源区域、任务类型、GPU 需求、持续时长、最晚完成时刻和最大允许网络时延分别为
+\begin{equation}
+a_i,\;o_i,\;k_i,\;g_i,\;p_i,\;d_i,\;L_i,
+\label{eq:q2-task-params}
+\end{equation}
+其中 $p_i=\mathrm{EstimatedDuration}_{\min}/60$（h），$k_i\in\{\mathrm{RT},\mathrm{Batch},\mathrm{Training}\}$。
+
+空间合法域由网络时延约束确定：
+\begin{equation}
+R_i=\{r\mid \mathrm{NetworkLatency}[o_i,r]\le L_i\}.
+\label{eq:q2-spatial-domain}
+\end{equation}
+时间合法域为
+\begin{equation}
+T_i=\begin{cases}
+\{a_i\},&k_i=\mathrm{RT},\\[2pt]
+\{s\mid a_i\le s,\ s+p_i\le\min(d_i,2406)\},&k_i\in\{\mathrm{Batch},\mathrm{Training}\}.
+\end{cases}
+\label{eq:q2-temporal-domain}
+\end{equation}
+完整合法时空域为 $C_i=R_i\times T_i$。实时推理虽可在 SLA 合法区域之间迁移，但 $s_i=a_i$ 为硬约束，因此其\textbf{时间决策柔性严格为 0}。
+
+\subsubsection{三类任务的柔性差异}
+
+对 Batch 和 Training 定义时间余量
+\begin{equation}
+\mathrm{Slack}_i=\min(d_i,2406)-a_i-p_i.
+\label{eq:q2-slack}
+\end{equation}
+图\ref{fig:q2-flexibility}从空间合法区域数、可调时间余量和 GPU-hour 三个维度比较任务类型。实时推理通常仅有 2--3 个合法区域且时间不可延迟；Batch 主要有 5--6 个合法区域，slack 中位数约 1207 h；Training 六区均可执行，slack 中位数约 1184 h，单任务 GPU-hour 中位数约 194.35，并贡献约 80\% 的总 GPU-hour 和 87\% 的 AI IT 能耗。
+
+这说明调度顺序应优先保护空间最受限、时间最紧迫的任务，并在此基础上处理高 GPU-hour 任务；无须再为三项柔性人为设置综合权重。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/30_q2/figures/Q2-1 任务柔性三面板.png}
+\caption{三类任务的空间柔性、时间柔性与 GPU-hour 对比}
+\label{fig:q2-flexibility}
+\end{figure}
+\FloatBarrier
+
+\subsection{基准能源结构与边际响应}
+
+\subsubsection{弃电与购电并存的时空错配}
+
+定义基准供负荷购电功率
+\begin{equation}
+\mathrm{GridToLoad}_0[r,t]=\max\bigl(\mathrm{GridPurchase}_0[r,t]-\mathrm{GridCharge}_0[r,t],0\bigr).
+\label{eq:q2-gridtoload0}
+\end{equation}
+0--2399\,h 共 14400 个区域—小时中，14400 个存在弃电，13230 个存在正的供负荷购电，且这 13230 个区域—小时同时存在弃电，即占 91.9\%。全系统累计弃电量约 $7.748\times10^6$ MWh，是基准 AI 设施侧能量的 8.15 倍。
+
+这一结构表明，大量电网供给与新能源弃置在同一系统中并存，任务时空重排具有真实的能源调节空间。图\ref{fig:q2-energy-mismatch}同时给出错配规模及弃电与碳强度、可用新能源的关系。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/30_q2/figures/Q2-2 基准能源时空错配及低碳属性.png}
+\caption{基准能源时空错配及弃电的低碳属性}
+\label{fig:q2-energy-mismatch}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{区域能源差异的真实来源}
+
+六区域的 $\mathrm{AvailableRenewable}[r,t]$ 在同一小时数值完全相同，因此不能根据“新能源区”等文字标签预设 E/F 具有更多可用新能源。真正形成区域差异的是设施负荷、PUE、基准弃电、电价、碳强度以及资源容量。
+
+各区域基准弃电与可用新能源的相关系数约为 0.925--0.995，与碳强度的 Pearson 相关系数约为 $-0.690$ 至 $-0.849$。因此，弃电富余时段通常也是低碳时段，\textbf{优先吸收弃电本身就具有数据支持的低碳属性}。当弃电裕量耗尽并进入新增购电区后，Price 与 CarbonIntensity 在全部区域—小时上的 Pearson 相关约 0.578、Spearman 约 0.613，说明成本与碳排总体同向但并未完全退化。由此采用成本优先方案为主、碳排优先方案为对照，而不构造固定 Cost--Carbon 权重。
+
+\subsubsection{基准状态的增量能量平衡}
+
+为隔离问题二与问题三、四的决策自由度，本问固定附件基准储能和购售电动作，仅由任务调度改变设施负荷。定义
+\begin{equation}
+G_0[r,t]=\mathrm{GridPurchase}_0[r,t]-\mathrm{GridCharge}_0[r,t]\ge0,
+\label{eq:q2-g0}
+\end{equation}
+以及设施负荷增量
+\begin{equation}
+\Delta L[r,t]=L[r,t](\mathbf x)-L_0[r,t].
+\label{eq:q2-delta-l}
+\end{equation}
+其中
+\begin{equation}
+L[r,t](\mathbf x)=\mathrm{PUE}[r]\Bigl(\mathrm{NonAI\_IT\_Load}[r,t]+P_{\mathrm{AI}}[r,t](\mathbf x)\Bigr).
+\label{eq:q2-facility-load}
+\end{equation}
+
+设施负荷变化引起的购电增量为
+\begin{equation}
+\Delta G[r,t]=
+\begin{cases}
+0,&0\le\Delta L[r,t]\le\mathrm{Curtailment}_0[r,t],\\
+\Delta L[r,t]-\mathrm{Curtailment}_0[r,t],&\Delta L[r,t]>\mathrm{Curtailment}_0[r,t],\\
+-\min\bigl(-\Delta L[r,t],G_0[r,t]\bigr),&\Delta L[r,t]<0.
+\end{cases}
+\label{eq:q2-delta-g}
+\end{equation}
+相应弃电变化为
+\begin{equation}
+\Delta\mathrm{Curtailment}[r,t]=\Delta G[r,t]-\Delta L[r,t].
+\label{eq:q2-delta-curtailment}
+\end{equation}
+该分段关系意味着：新增负荷先吸收原有弃电，弃电耗尽后才增加购电；负荷下降则先减少原有供负荷购电，购电归零后继续下降才会增加弃电。图\ref{fig:q2-marginal-response}给出这一机制。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/30_q2/figures/Q2-3 分段能源边际响应.png}
+\caption{设施负荷变化引起的分段购电与弃电响应}
+\label{fig:q2-marginal-response}
+\end{figure}
+\FloatBarrier
+
+\subsection{完整合法域任务调度模型}
+
+\subsubsection{决策变量与 AI 功率映射}
+
+对每个合法候选 $(r,s)\in C_i$ 定义二元变量
+\begin{equation}
+x_{i,r,s}=\begin{cases}
+1,&\text{任务 $i$ 在区域 $r$、时刻 $s$ 开工},\\
+0,&\text{否则}.
+\end{cases}
+\label{eq:q2-decision}
+\end{equation}
+任务 $i$ 在小时 $t$ 的执行重叠量为
+\begin{equation}
+\omega(i,s,t)=\max\bigl(0,\min(t+1,s+p_i)-\max(t,s)\bigr).
+\label{eq:q2-overlap}
+\end{equation}
+利用附件唯一的功率映射系数 $\alpha[k]$，区域 AI IT 功率为
+\begin{equation}
+P_{\mathrm{AI}}[r,t](\mathbf x)=\sum_{i,s}\alpha[k_i]g_i\omega(i,s,t)x_{i,r,s}.
+\label{eq:q2-ai-power}
+\end{equation}
+
+\subsubsection{约束条件}
+
+每个任务必须且仅能选择一个合法候选：
+\begin{equation}
+\sum_{r\in R_i}\sum_{s\in T_i}x_{i,r,s}=1,\qquad\forall i.
+\label{eq:q2-unique}
+\end{equation}
+GPU 容量约束为
+\begin{equation}
+\sum_{i,s}g_i\omega(i,s,t)x_{i,r,s}\le\mathrm{AvailableGPU}[r],\qquad\forall r,t.
+\label{eq:q2-gpu}
+\end{equation}
+IT 与设施功率分别满足
+\begin{equation}
+P_{\mathrm{IT}}[r,t](\mathbf x)\le\mathrm{MaxITPower}[r],\qquad
+L[r,t](\mathbf x)\le\mathrm{MaxFacilityPower}[r].
+\label{eq:q2-power-bounds}
+\end{equation}
+购电受接入容量限制，附件给定的售电动作保持不变：
+\begin{equation}
+0\le\mathrm{GridPurchase}[r,t]\le\mathrm{MaxGridImport}[r],\qquad
+\mathrm{GridSell}_0[r,t]\le\mathrm{MaxGridExport}[r].
+\label{eq:q2-grid}
+\end{equation}
+网络时延、Arrival、LatestFinish 和 2406 边界均已通过 $R_i,T_i$ 构造进入合法域；实时推理另满足 $s_i=a_i$。任务不可抢占、不可拆分，执行过程中区域固定。
+
+\subsubsection{目标与评价指标}
+
+运行成本为
+\begin{equation}
+\mathrm{Cost}=\sum_{r,t}\Bigl[\mathrm{GridPurchase}[r,t]\mathrm{Price}[r,t]-\mathrm{GridSell}_0[r,t]\mathrm{SellPrice}[r,t]\Bigr]\Delta t,
+\label{eq:q2-cost}
+\end{equation}
+碳排放为
+\begin{equation}
+\mathrm{Carbon}=\sum_{r,t}\mathrm{GridPurchase}[r,t]\mathrm{CarbonIntensity}[r,t]\Delta t,
+\label{eq:q2-carbon}
+\end{equation}
+新能源利用率为
+\begin{equation}
+\eta_R=\frac{\sum_{r,t}\bigl(\mathrm{UsedRenewable}+\mathrm{RenewableCharge}_0+\mathrm{GridSell}_0\bigr)\Delta t}{\sum_{r,t}\mathrm{AvailableRenewable}\Delta t}.
+\label{eq:q2-eta-r}
+\end{equation}
+正文以\textbf{成本优先方案}作为代表解，同时独立求得\textbf{碳排优先方案}用于检验二者的冲突程度；不使用人工加权和。
+
+\subsubsection{模型汇总}
+
+问题二可归纳为
+\begin{equation}
+\left\{
+\begin{aligned}
+&x_{i,r,s}\in\{0,1\},\quad (r,s)\in C_i,\\
+&\min\ \mathrm{Cost},\\
+&\text{s.t. 唯一指派、GPU、IT、设施功率、购电、SLA、截止时间、非抢占约束},\\
+&\Delta G=\mathcal E(\Delta L;\mathrm{Curtailment}_0,G_0),\\
+&\mathrm{Carbon},\ \eta_R\ \text{作为平行评价指标},\\
+&0--2405\ \text{为任务调度影响时域，2406 仅保留终端能源结算语义}.
+\end{aligned}
+\right.
+\label{eq:q2-summary}
+\end{equation}
+
+\subsection{模型求解：时空柔性—能源感知任务分配算法}
+
+完整合法域约含 $2.33\times10^8$ 个候选放置，直接显式整数求解代价过高，而人为 Top-k 或固定等待窗又会删除题面赋予的真实柔性。为此，本文设计时空柔性—能源感知任务分配算法（Spatio-temporal Flexibility and Energy-aware Task Assignment，SFETA），在不截断合法域的前提下执行重复完整扫描。
+
+任务排序依次采用：空间合法区域数 $|R_i|$ 升序、时间余量升序、GPU-hour 降序。处理任务 $i$ 时，先从当前排程暂时移除该任务，得到残余 GPU/IT/能源状态，再枚举 $C_i$ 中全部合法候选，计算候选重新插入后的边际成本、边际碳排与弃电变化，并检查全部硬约束。成本相同到数值容差时，依次选择更早开工、保持来源区域、网络时延更低的候选。
+
+首轮扫描从附件“来源区域、到达即执行”的参考状态开始。该参考状态在 44 个区域—小时存在 GPU 超限，\textbf{首轮完整扫描同时完成可行化和目标改善}，并非先额外构造一个独立的“可行修复模型”。随后重复完整扫描，直到主目标相对改善率小于 $10^{-3}$、末轮无回退任务且硬约束审计全部通过。算法\ref{alg:q2-sfeta}给出具体步骤。
+
+\input{\ProjectRoot/modules/30_q2/paper/q2_algorithm.tex}
+
+\subsection{结果与分析}
+
+\subsubsection{成本优先代表方案}
+
+全部 50000 个任务均获得合法排程，任务级硬约束全部通过。按当前 Q2 运行时域 0--2405 的核算口径，结果见表\ref{tab:q2-metrics}。由于第 2406 小时跨问终端结算尚需与问题三、四统一，表中绝对经济数值仅用于本问内部比较，跨问并表时再按统一口径重算。
+
+\begin{table}[!htbp]
+\centering
+\caption{成本优先方案与附件参考状态对比（0--2405 h 口径）}
+\label{tab:q2-metrics}
+\begin{tabular}{lccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+指标 & 附件参考状态 & 成本优先方案 & 变化 \\
+\midrule
+运行成本/CNY & 1,801,786,872.69 & 1,555,371,304.13 & $-13.68\%$ \\
+碳排放/tCO$_2$ & 2,045,367.48 & 1,826,774.35 & $-10.69\%$ \\
+新能源利用率 & 32.85\% & 37.29\% & $+4.44$ 个百分点 \\
+跨区迁移任务数 & 0 & 37,448 & 迁移率 74.90\% \\
+RT 迁移任务数 & 0 & 11,685 & 全部即时开工 \\
+最大 GPU 利用率 & 135.58\% & 100.00\% & 超限消除 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+成本与碳排同步下降、同时新能源利用率提高，说明算法确实利用了前述“弃电与购电并存”的时空错配，而不是把任务机械迁往某个预设绿色区域。真实迁移方向由逐时弃电、PUE、电价、碳强度和容量约束共同决定。
+
+成本优先方案从附件参考起点出发完成 3 遍完整扫描，最后一遍相对改善率为 $5.77\times10^{-4}<10^{-3}$，且末轮回退任务数为 0。图\ref{fig:q2-convergence}给出收敛轨迹和不同初始化的结果差异。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/30_q2/figures/Q2-2 收敛与初始化敏感性.png}
+\caption{SFETA 收敛轨迹与初始化敏感性}
+\label{fig:q2-convergence}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{迁移与等待行为}
+
+按任务类型统计的迁移与等待分布见表\ref{tab:q2-wait}。实时推理全部保持 $s_i=a_i$，但允许在 SLA 合法区域之间迁移，因此 11,685 个 RT 任务发生跨区执行而等待为 0。Batch 和 Training 则同时利用空间迁移和时间平移。
+
+\begin{table}[!htbp]
+\centering
+\caption{成本优先方案的任务迁移与等待分布}
+\label{tab:q2-wait}
+\begin{tabular}{lcccccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+任务类型 & 任务数 & 迁移数 & 迁移率 & 平均等待/h & P95 等待/h & 最大等待/h \\
+\midrule
+AITraining & 16,559 & 12,059 & 72.824\% & 28.47 & 113 & 2010 \\
+BatchInference & 16,717 & 13,704 & 81.976\% & 33.03 & 168.2 & 2016 \\
+RealTimeInference & 16,724 & 11,685 & 69.870\% & 0 & 0 & 0 \\
+\midrule
+合计 & 50,000 & 37,448 & 74.90\% & 20.48 & 76 & 2016 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+全部任务平均网络时延为 26.75 ms，P95 为 \textbf{76 ms}，最大为 82 ms，均满足相应 SLA。代表性甘特图见图\ref{fig:q2-gantt}；其作用是展示 RT 即时开工、Batch/Training 时间平移和跨区执行的典型结构，不替代 50000 个任务的总体统计。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\ProjectRoot/modules/30_q2/figures/q2 甘特图.png}
+\caption{代表性任务的执行区间与到达时刻}
+\label{fig:q2-gantt}
+\end{figure}
+\FloatBarrier
+
+图\ref{fig:q2-migration-heatmap}给出来源区域到执行区域的迁移矩阵。对角线表示保持来源区域，非对角线表示跨区执行；图中不预设任何“绿色承接中心”。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-4 区域迁移热图.png}
+\caption{来源区域到执行区域的任务迁移矩阵}
+\label{fig:q2-migration-heatmap}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{成本与碳排双端点对照}
+
+为检验两个环境目标是否完全同向，本文独立运行碳排优先方案。结果见表\ref{tab:q2-cmp}。碳排优先方案相对成本优先方案仅增加约 0.18\% 的成本，而成本优先方案相对碳排优先方案增加约 0.62\% 的碳排，说明二者总体高度同向，但仍存在可测的边际冲突。
+
+\begin{table}[!htbp]
+\centering
+\caption{成本优先与碳排优先方案对照}
+\label{tab:q2-cmp}
+\begin{tabular}{lcc}
+\toprule
+\rowcolor{CumcmLightBlue}
+指标 & 成本优先方案 & 碳排优先方案 \\
+\midrule
+运行成本/CNY & 1,555,371,304.13 & 1,558,153,356.53 \\
+碳排放/tCO$_2$ & 1,826,774.35 & 1,815,531.61 \\
+相对成本代价 & -- & $+0.18\%$ \\
+相对碳排代价 & $+0.62\%$ & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-5 Cost–Carbon 端点关系.png}
+\caption{成本与碳排代表方案的端点关系}
+\label{fig:q2-cost-carbon-endpoints}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{初始化依赖与极端等待}
+
+从“附件参考状态”与“前一排程状态”两种可行初始化出发，最终成本分别约为 $1.555\times10^9$ CNY 与 $1.576\times10^9$ CNY，后者高约 1.34\%。因此，本文采用硬约束满足且主目标更优的附件参考起点结果作为代表方案，但不声称构造式算法与初始化无关，也不声称 50000 任务调度为全局整数最优。
+
+成本优先方案的最大等待为 2016 h。人工复核 TaskID~13051：Arrival=69，Start=2085，Finish=2090.0667，LatestFinish=2406，可用 slack 约 2331.93 h，实际使用约 86.45\%，Latency=22 ms$<80$ ms。前若干极端等待任务均为 Batch/Training，且全部满足 SLA 与截止时间。该现象反映了能源主目标充分利用官方长时间柔性所付出的服务代价，而不是时间索引错误；Cost 与 QoS 的正式联合权衡留到问题四处理。
+
+\subsection{模型检验}
+
+\subsubsection{硬约束审计}
+
+最终任务排程中，GPU、IT、设施功率、购电边界、SLA、LatestFinish、2406 终端边界和 RT 即时开工均无违规；末轮回退任务数为 0。统一能量平衡及新能源分解最大残差约 $2.00\times10^{-4}$ MW，小于 $10^{-3}$ MW 容差；基准 AI IT 重构最大误差约 $3.33\times10^{-7}$ MW，任务执行重叠量守恒和能源变量非负性均通过检查。
+
+\subsubsection{基准复现与连续松弛上界}
+
+当 $\Delta L[r,t]\equiv0$ 时，增量能量平衡能够复现附件基准能源状态，说明边际核算与原始数据语义一致。进一步放松任务级不可拆分和时间约束后，连续松弛分析显示附件存在足够的时空弃电与容量承接全部 Batch 和 Training 工作量而不增加购电。该结果支持前述判断：本题的困难主要来自离散任务、SLA 和时间边界，而不是新能源总量不足。
+
+\subsubsection{第 2406 小时的跨问结算口径}
+
+问题二当前经济统计覆盖 0--2405\,h；问题三的固定负荷能源模型包含第 2406 小时终端结算。两种口径之间存在公共常数差异，因此本节的绝对 Cost、Carbon 与新能源利用率只用于问题二内部比较。全文最终横向比较时，统一采用同一终端结算口径后再冻结跨问经济指标。

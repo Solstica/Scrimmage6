@@ -1,0 +1,33 @@
+数据中心储能调度通常可在给定负荷下写成连续能源流优化，并通过购售电价格与 SOC 约束刻画跨时价值；近期研究也强调，应区分储能本身的调节贡献与其他能源重分配带来的收益\cite{zhang_dc_bess_2025,vaicys_convex_bess_2024}。对于线性成本模型中的同时充放电退化，已有研究表明可通过等价松弛或附加选择规则获得物理可解释解\cite{wang_exact_relax_2024}。结合本题没有电池退化成本参数这一事实，本文采用“先最小成本、再在成本最优面内最小吞吐量”的两层字典序求解。
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\setstretch{0.92}
+\SetAlFnt{\normalsize}
+\SetArgSty{textnormal}
+\SetKwInput{KwIn}{Input}
+\SetKwInput{KwInit}{Initialize}
+\SetKwInput{KwOut}{Output}
+\SetKwFor{ForEach}{for each}{do}{end for}
+\caption{固定负荷下的两层字典序储能经济调度}
+\label{alg:q3-two-stage}
+\KwIn{各区域固定设施负荷 $L[r,\cdot]$，新能源出力 $\mathrm{AR}[r,\cdot]$，购售电价格，碳强度，储能容量、初始/最小 SOC、充放电功率与效率，$\mathrm{MaxGridImport}$、$\mathrm{MaxGridExport}$ 和 $\mathrm{SellLimit}$}
+\KwInit{$\varepsilon\leftarrow10^{-4}$ CNY}
+\ForEach{区域 $r\in\{A,B,C,D,E,F\}$}{
+  \textbf{第一层：最小化净运行成本}\;
+  在新能源平衡、固定负荷平衡、SOC 动态、充放电功率及购售电边界下求解
+  \[
+  \min\sum_{t=0}^{2406}\bigl[\mathrm{Price}[r,t](gL[r,t]+qG[r,t])-\mathrm{SellPrice}[r,t]s[r,t]\bigr]\Delta t,
+  \]
+  得到区域最优成本 $\mathrm{Cost}_r^*$\;
+  \textbf{第二层：在成本最优面上最小化储能吞吐量}\;
+  增加 $\mathrm{Cost}_r\le\mathrm{Cost}_r^*+\varepsilon$，求解
+  \[
+  \min\sum_{t=0}^{2406}\bigl[qR[r,t]+qG[r,t]+d[r,t]\bigr]\Delta t;
+  \]
+  得到物理代表解 $(u,qR,qG,d,gL,s,w,E)$\;
+  计算区域运行成本、碳排放、峰值净购电、电网交互波动和储能吞吐量\;
+}
+汇总六区指标，并与“附件原始能源基准”和“固定负荷无储能优化方案”比较，以“储能协同方案 $-$ 无储能优化方案”量化储能增量价值\;
+\KwOut{六区域储能充放电与购售电方案，以及成本、碳排、新能源利用率、峰值净购电和电网交互波动指标}
+\end{algorithm}

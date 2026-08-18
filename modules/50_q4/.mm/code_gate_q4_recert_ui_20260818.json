@@ -1,0 +1,62 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_final_recertification.py",
+      "--help"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_final_recertification.py",
+    "script_sha256": "56d81a9ef65079a8a40a501ab2e8371c944e33db11e3d4172e1782ebde1be5d4",
+    "started_at": "2026-08-18T02:14:50+00:00",
+    "finished_at": "2026-08-18T02:14:51+00:00",
+    "returncode": 0,
+    "stdout": "usage: q4_final_recertification.py [-h] [--attachment-dir ATTACHMENT_DIR]\n                                   [--input-dir INPUT_DIR]\n                                   [--output-dir OUTPUT_DIR] [--resume]\n                                   [--max-stage-iter MAX_STAGE_ITER]\n                                   [--max-sweeps MAX_SWEEPS]\n                                   [--cost-tolerance COST_TOLERANCE]\n                                   [--wait-tolerance WAIT_TOLERANCE]\n                                   [--latency-tolerance LATENCY_TOLERANCE]\n                                   [--benders-tol-cny BENDERS_TOL_CNY]\n                                   [--cost-feas-tol-cny COST_FEAS_TOL_CNY]\n                                   [--price-tol PRICE_TOL]\n                                   [--columns-per-task COLUMNS_PER_TASK]\n                                   [--integer-time-limit-s INTEGER_TIME_LIMIT_S]\n                                   [--mip-rel-gap MIP_REL_GAP]\n                                   [--max-hours MAX_HOURS]\n                                   [--max-active-columns MAX_ACTIVE_COLUMNS]\n                                   [--max-rss-gib MAX_RSS_GIB]\n                                   [--min-free-gib MIN_FREE_GIB]\n                                   [--progress-mode {auto,bar,plain}]\n                                   [--heartbeat-seconds HEARTBEAT_SECONDS]\n\nQ4 final-pool 字典序再认证\n\noptions:\n  -h, --help            show this help message and exit\n  --attachment-dir ATTACHMENT_DIR\n  --input-dir INPUT_DIR\n  --output-dir OUTPUT_DIR\n  --resume\n  --max-stage-iter MAX_STAGE_ITER\n                        0 表示每阶段持续到真实闭合\n  --max-sweeps MAX_SWEEPS\n                        0 表示持续到完整 sweep 锚点不变\n  --cost-tolerance COST_TOLERANCE\n  --wait-tolerance WAIT_TOLERANCE\n  --latency-tolerance LATENCY_TOLERANCE\n  --benders-tol-cny BENDERS_TOL_CNY\n  --cost-feas-tol-cny COST_FEAS_TOL_CNY\n  --price-tol PRICE_TOL\n  --columns-per-task COLUMNS_PER_TASK\n  --integer-time-limit-s INTEGER_TIME_LIMIT_S\n                        0 表示单次 MIP 不设时限\n  --mip-rel-gap MIP_REL_GAP\n  --max-hours MAX_HOURS\n                        0 表示不设总时长门槛\n  --max-active-columns MAX_ACTIVE_COLUMNS\n  --max-rss-gib MAX_RSS_GIB\n  --min-free-gib MIN_FREE_GIB\n  --progress-mode {auto,bar,plain}\n                        auto在PyCharm输出窗使用清晰逐行反馈，在真实终端使用动态进度条\n  --heartbeat-seconds HEARTBEAT_SECONDS\n                        MIP长时间求解时的心跳间隔；0表示关闭心跳\n",
+    "stderr": "",
+    "inputs": [],
+    "outputs": []
+  },
+  "metrics": {
+    "naming": {
+      "status": "PASS",
+      "identifier_max_length": 8,
+      "filename_max_length": 12,
+      "underscore_max": 1,
+      "allowed_names": [
+        "CONTROL_NAME",
+        "DEFAULT_OUTPUT",
+        "anchors_changed",
+        "audit_passes",
+        "available",
+        "checkpoint",
+        "control_path",
+        "ensure_completed_qos",
+        "finite_or_none",
+        "initial_columns",
+        "initial_control",
+        "input_dir",
+        "latency_raw",
+        "pool_size",
+        "q4_final_recertification",
+        "read_json",
+        "reference",
+        "save_control",
+        "saved_iter",
+        "saved_stage",
+        "stage_record",
+        "stage_spec",
+        "start_iter",
+        "temporary",
+        "tolerance",
+        "write_json"
+      ],
+      "violations": []
+    },
+    "syntax": "PASS"
+  }
+}

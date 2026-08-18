@@ -1,0 +1,18 @@
+{
+  "gate": "QUESTION",
+  "status": "PASS",
+  "problem_type": "C",
+  "question": "问题一",
+  "errors": [],
+  "metrics": {
+    "required_checks": [
+      "data_quality",
+      "leakage_control",
+      "baseline",
+      "validation",
+      "error_analysis",
+      "sensitivity",
+      "extrapolation_limit"
+    ]
+  }
+}
