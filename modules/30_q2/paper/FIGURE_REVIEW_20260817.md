@@ -8,6 +8,12 @@
 
 当前正文图组不能只回答“算法怎么收敛、结果迁到哪里”，还必须先回答“为什么 Q2 有必要”。
 
+另需澄清：**Q2 并不存在“任务数据被锁死，因此没有甘特图数据”的问题。**正式迭代 solver 会为每个任务更新并保存 `ExecutionRegion`、`StartHour`、`FinishHour`。canonical Cost-primary 的完整任务级排程位于：
+
+`modules/30_q2/data/processed/q2_schedule_cost_only.csv`
+
+Carbon-primary 对照为 `q2_schedule_carbon_only.csv`。如果绘图端只在 `modules/30_q2/results/` 查找，会看到聚合 convergence/audit 文件而误以为没有任务级 schedule。
+
 ## P0 修正
 
 1. **RT 时间柔性口径**：数据层 `deadline slack` 可约为 0.5 h，但 Q2 对 RealTimeInference 有硬约束 `StartHour = ArrivalHour`，所以其**决策时间柔性严格为 0**。Q2-1 第二面板必须使用真正可调开始时间自由度；若沿用 Deadline Slack，则图题和注释必须明确“RT 的实际调度自由度仍为 0”。
@@ -97,6 +103,21 @@
 
 若当前图中缺 Baseline 或 previous-start，应补齐。不得称为 Pareto frontier。
 
+## 可选强化：代表性任务调度甘特图
+
+Q2 技术上**可以画甘特图**，但不建议画 50,000 个任务的全量 Gantt：那会退化成不可读的色块。若需要增强“调度方案”直观性，建议新增一张代表性 48–72 h 时窗或典型任务 Gantt，优先从 canonical Cost-primary：
+
+`modules/30_q2/data/processed/q2_schedule_cost_only.csv`
+
+直接读取任务级 `ArrivalHour`、`StartHour`、`FinishHour`、`SourceRegion`、`ExecutionRegion`、`TaskType`。
+
+绘图要求：
+- 甘特条必须是 `StartHour -> FinishHour`；
+- `ArrivalHour` 只能作为等待时间参考点/辅助标记，不能把 `ArrivalHour -> StartHour` 误当甘特条；
+- 尽量覆盖 RT 到达即开工、Batch/Training 时间平移、跨区迁移、高 GPU-hour Training；
+- 图题必须写“代表性时窗/典型任务调度甘特图”，不得暗示是全 50,000 个任务；
+- 正文优先级低于能源错配、动态边际响应、迁移矩阵和 Cost–Carbon 端点图；版面不足时放附录。
+
 ## 正文推荐最终图序
 
 1. **Q2-1 任务柔性结构**；
@@ -104,7 +125,8 @@
 3. **Q2-3 分段能源边际响应**；
 4. **Q2-4 SFETA 收敛与初始化敏感性**；
 5. **Q2-5 Source→Execution 迁移热图**；
-6. **Cost–Carbon 端点关系**：篇幅允许时正文，否则与结果表配合或降为次级图。
+6. **Cost–Carbon 端点关系**：篇幅允许时正文，否则与结果表配合或降为次级图；
+7. **代表性任务 Gantt**：仅作为可选强化/附录，不替代前述机制与结果图。
 
 图号可以在最终排版时重编号，不要求文件名立即跟随重命名。
 
