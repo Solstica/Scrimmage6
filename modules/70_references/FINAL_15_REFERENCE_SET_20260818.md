@@ -6,7 +6,7 @@
 
 - `feature/references`：参考文献研究主库、支持范围说明和最终引用子集的真源。
 - `modules/70_references/paper/references.tex`：继续保留较宽的研究主库，不为最终篇数要求裁掉历史候选。
-- `modules/70_references/paper/references_final15.tex`：面向最终论文的约 15 篇引用子集。
+- `modules/70_references/paper/references_final15.tex`：面向最终论文的 15 篇研究文献子集。
 - `feature/q1`--`feature/q4`：正文只写稳定的 `\cite{key}`，不各自维护 bibliography。
 - `feature/paper-shell`：在总装阶段复制最终引用子集，并做 `cite-key -> bibliography` 双向审计。
 
@@ -14,17 +14,18 @@
 
 ## 2. 当前数量与年份
 
-最终子集共 15 条：
+最终子集严格保留 **15 篇研究论文**：
 
-- 题目/附件说明：1；
 - 中文研究论文：4；
-- 英文研究论文：10。
+- 英文研究论文：11；
+- 年份：全部为 2022--2026。
 
-14 篇研究论文全部发表于 2022--2026，满足“近三四年为主”的要求；中文来源集中在《中国电机工程学报》《电力系统自动化》《电网技术》，英文来源包括 Operations Research、Applied Energy、Energy、Omega、EuroSys、OSDI、POMACS 等。
+赛题及附件属于本文原始问题来源，不占用“约15篇研究文献”的名额，也不放入最终 bibliography。中文来源集中在《中国电机工程学报》《电力系统自动化》《电网技术》，英文来源包括 IEEE TPDS、Operations Research、Applied Energy、Energy、Omega、EuroSys、OSDI、POMACS 等。
 
 ## 3. 按问题分工
 
-### Q1 工作负载统计与预测
+### 总览与 Q1 工作负载统计/预测
+- `wu_survey_2025`：支持 geo-distributed task scheduling 中网络条件、区域资源与调度目标异质性的总体研究定位。
 - `cohen_dac_2022`：支持根据数据结构选择参数聚合/估计层级，不等于本题采用 DAC 算法。
 - `zou_poissonity_2022`：支持 Poisson 假设必须结合时间尺度、相关性与实际工作负载诊断；不直接证明本附件一定服从 Poisson。
 
@@ -40,7 +41,7 @@
 - `zhang_dc_bess_2025`：支持数据中心 BESS 的最优调度和电网灵活性价值。
 - `wang_exact_relax_2024`：支持储能充放电互补约束及连续松弛/物理可行性讨论；本题最终采用字典序吞吐量去退化，不应声称直接使用该论文的 exact-relaxation 定理。
 
-### Q4 算力—储能联合优化
+### Q4 算力—储能联合优化与场景
 - `zhou_multiflex_2024`：支持激活数据中心多元柔性并进行协同运行的中文研究背景。
 - `zhang_flex_dro_2024`：支持数据中心集群灵活边界和可再生不确定性下的调度框架；主要用于正式 renewable scenario 讨论，不应覆盖本题附件确定性主场景。
 - `guo_integrated_2025`：直接支持 workload transfer 与 energy dispatch 之间存在耦合和相互影响，是 Q4 联合优化最直接的领域依据之一。
@@ -52,7 +53,7 @@
 2. 附件实证结论（如 91.9% 弃电与购电并存、六区 AvailableRenewable 同时刻相同、Training GPU-hour 占比等）不由外部文献背书，直接写为本文数据诊断。
 3. 写法优先采用“已有研究说明 X；而本题附件具有 Y，因此本文只借鉴 Z”，明确文献与本题的边界。
 4. 最终正文不为凑数量强行引用；如果某条最终未被正文实际使用，则从 `references_final15.tex` 删除并用主库中真正被使用的候选替换。
-5. 最终提交 bibliography 按老师要求保持统一格式，不需要显示 DOI/URL。
+5. 最终提交 bibliography 按老师要求保持统一格式，不显示 DOI/URL。
 
 ## 5. Merge 顺序
 
