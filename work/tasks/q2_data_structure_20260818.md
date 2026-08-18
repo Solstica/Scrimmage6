@@ -49,6 +49,16 @@
 - [x] 已有 `图09_区域迁移矩阵.csv`。
 - [ ] 按真实矩阵完成 Origin 图，结论只按实际承接关系写，不预设 C/E/F 为“绿色中心”。
 
+### Q2-G 代表性任务调度甘特图（可选强化，不是题面硬要求）
+- [ ] **先纠正数据口径：Q2 并非“任务输入被锁死所以没有排程数据”。**正式迭代 solver 会更新每个任务的 `ExecutionRegion`、`StartHour`、`FinishHour`，并已将完整任务级排程保存到 `modules/30_q2/data/processed/`。
+- [ ] canonical Cost-primary 排程真源使用 `modules/30_q2/data/processed/q2_schedule_cost_only.csv`；Carbon 对照使用 `q2_schedule_carbon_only.csv`；不得从 `results/` 目录的聚合指标文件反推任务排程。
+- [ ] 不画 50,000 行全量 Gantt。若需要展示调度机制，选一个具有解释力的 48--72 h 时窗，或按若干典型任务/区域抽样，画 `StartHour -> FinishHour` 的执行区间。
+- [ ] 甘特图至少同时包含三种任务类型中的代表任务，并尽量覆盖：RT 到达即开工、Batch/Training 时间平移、跨区迁移、高 GPU-hour Training。
+- [ ] 颜色优先按 TaskType 或 ExecutionRegion 中的一种编码，避免双重视觉编码；若按 ExecutionRegion 着色，必须同时标出 SourceRegion/迁移状态，才能解释跨区行为。
+- [ ] 可增加 `ArrivalHour` 参考点或竖线，用于直观看出 `StartHour-ArrivalHour` 等待时间；**不得把 ArrivalHour→StartHour 误当成甘特条本体**。甘特条本体必须是 `StartHour→FinishHour`。
+- [ ] 图注只能称“代表性时窗/典型任务调度甘特图”，不得暗示它覆盖全 50,000 个任务。
+- [ ] 正文优先级低于 Q2-A/B/C、迁移矩阵和 Cost–Carbon 端点图；若篇幅紧张，可放附录，不得为了 Gantt 删除能源错配和动态边际机制图。
+
 ## P1 图表删并
 - [ ] 若 Q2-E 已存在，删除单独 Cost 柱图 + Carbon 柱图的正文重复展示。
 - [ ] Mean/P95/Max wait 不用同一线性柱图；max=2016 h 只用标注或审计表说明。
@@ -59,3 +69,4 @@
 - [ ] `DeltaG` 分段公式前有明确数据动机，而不是公式先行。
 - [ ] 正文明确区分“原始 AvailableRenewable 空间相同”和“基准 Curtailment 空间不同”。
 - [ ] Q2 最终创新表述优先写“数据驱动的完整域动态边际调度”，而不是只写“改进启发式算法”。
+- [ ] 若加入代表性 Gantt，正文必须明确它是对任务级排程 `q2_schedule_cost_only.csv` 的局部可视化，不作为整体优化效果的唯一证据。
