@@ -1,7 +1,9 @@
+地理分布式数据中心的任务调度已有利用任务时延容忍度、区域能源状态和负载弹性进行跨区域分配的研究。REPTA 区分时延敏感与时延容忍任务，CarbonScaler 则从云负载弹性角度刻画碳效率调节价值\cite{yang_repta_2026,hanafy_carbonscaler_2023}。本文只保留“利用任务柔性响应能源状态”的思想；由于附件六区域逐时可用新能源相同，候选评价改由完整合法域和动态弃电/购电边际决定。
+
 \begin{algorithm}[H]
 \SetAlgoLined
-\setstretch{0.92}
-\SetAlFnt{\normalsize}
+\setstretch{0.82}
+\SetAlFnt{\small}
 \SetArgSty{textnormal}
 \SetKwInput{KwIn}{Input}
 \SetKwInput{KwInit}{Initialize}
@@ -9,54 +11,25 @@
 \SetKwFor{For}{for}{do}{end for}
 \SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{KwRet}{return}
-\SetKw{KwContinue}{continue}
-\caption{SFETA：完整合法域动态边际任务分配（迭代收敛版）}
+\caption{SFETA：完整合法域动态边际任务分配}
 \label{alg:q2-sfeta}
-\KwIn{任务集 $\mathcal I$，完整能源基准状态，网络/资源边界，目标模式 $m\in\{\mathrm{Cost},\mathrm{Carbon}\}$，相对收敛容差 $\epsilon$，最大完整扫描次数 $K_{\max}$}
-\KwInit{由附件 source-local immediate 状态构造 $\mathbf x^{(0)}$；若该状态存在 GPU 超限，则先在完整合法域内执行可行性修复；$J^{(0)}\leftarrow+\infty$}
-\BlankLine
-\ForEach{任务 $i\in\mathcal I$}{
-    构造空间合法域 $R_i=\{r:\mathrm{Latency}[o_i,r]\le L_i\}$\;
-    构造时间合法域 $T_i$：RT 仅含 $a_i$；Batch/Training 使用全部满足 Arrival、LatestFinish 与 2406 的整数开工时刻\;
-    记 $\Omega_i=R_i\times T_i$；若 $\Omega_i=\varnothing$ 则返回 FAIL\;
-}
-按 $|R_i|$ 升序 $\to$ Slack 升序 $\to$ GPU-hour 降序固定任务扫描顺序\;
-\BlankLine
+\KwIn{任务集 $\mathcal I$，附件能源基准，网络/资源边界，目标模式 $m\in\{\mathrm{Cost},\mathrm{Carbon}\}$，收敛容差 $\epsilon$}
+\KwInit{以“来源区域、到达即执行”构造参考排程；允许首轮扫描消除少量容量超限}
+\ForEach{任务 $i$}{构造空间合法域 $R_i$ 与完整时间合法域 $T_i$，记 $\Omega_i=R_i\times T_i$；}
+按 $|R_i|$ 升序 $\to$ 时间余量升序 $\to$ GPU-hour 降序固定扫描顺序\;
 \For{$k\leftarrow1$ \KwTo $K_{\max}$}{
-    从上一遍排程 $\mathbf x^{(k-1)}$ 重构 GPU/IT/Facility 与逐时能源状态\;
-    $\mathrm{changed}\leftarrow0$，$\mathrm{fallback}\leftarrow0$\;
-    \ForEach{排序后的任务 $i\in\mathcal I$}{
-        读取任务 $i$ 的当前 placement $(r_i^{old},s_i^{old})$\;
-        \textbf{暂时移除任务 $i$}，得到不含该任务的残余 workload 状态与能源状态 $S^{-i}$\;
-        \ForEach{候选 $(r,s)\in\Omega_i$}{
-            将任务 $i$ 按 fractional overlap 加回 $S^{-i}$，形成候选状态 $S^{-i}\oplus(i,r,s)$\;
-            检查 GPU-hour、IT、Facility、GridImport、SLA、LatestFinish、finish$\le2406$；RT 额外检查 $s=a_i$\;
-            若移除旧任务使某些能源小时暂时触及非负边界，则仅保留能够覆盖并修复这些 removal-dependent 小时的候选\;
-            对通过硬约束的候选，计算动态边际响应
-            \[
-            \Delta E_{i,r,s}=\mathrm{EnergyResponse}(S^{-i}\oplus(i,r,s))-\mathrm{EnergyResponse}(S^{-i}),
-            \]
-            并由其得到 $\Delta\mathrm{GridPurchase}$、$\Delta\mathrm{Curtailment}$、$\Delta\mathrm{Cost}$ 与 $\Delta\mathrm{Carbon}$\;
-        }
-        得到全部合法候选集合 $\mathcal F_i$\;
-        \If{$\mathcal F_i=\varnothing$}{
-            对旧 placement 重新执行完整硬约束检查；若仍不可行则返回 FAIL，否则保留旧 placement 并令 $\mathrm{fallback}\leftarrow\mathrm{fallback}+1$\;
-        }
-        \Else{
-            \If{$m=\mathrm{Cost}$}{按 $\Delta\mathrm{Cost}$ 升序、$\Delta\mathrm{Carbon}$ 次序选择候选\;}
-            \Else{按 $\Delta\mathrm{Carbon}$ 升序、$\Delta\mathrm{Cost}$ 次序选择候选\;}
-            对数值等价候选执行 tie-break：更早开工 $\to$ 保持 SourceRegion $\to$ 更低网络时延\;
-            将最优候选重新插入当前状态；若 placement 改变则 $\mathrm{changed}\leftarrow\mathrm{changed}+1$\;
-        }
-    }
-    由完整排程重新计算真实目标 $J^{(k)}$、硬约束审计和能源平衡残差\;
-    \If{$k\ge2$ 且 $(J^{(k-1)}-J^{(k)})/|J^{(k-1)}|<\epsilon$ 且 $\mathrm{fallback}=0$ 且硬约束全部 PASS}{
-        \textbf{break}\;
-    }
+  重构当前 GPU、IT、Facility 与逐时能源状态\;
+  \ForEach{排序后的任务 $i$}{
+    暂时移除 $i$，得到残余状态 $S^{-i}$\;
+    枚举 $(r,s)\in\Omega_i$，逐一检查 GPU、IT、Facility、GridImport、SLA、LatestFinish 与 finish$\le2406$；RT 另要求 $s=a_i$\;
+    对可行候选计算 $\Delta\mathrm{GridPurchase}$、$\Delta\mathrm{Curtailment}$、$\Delta\mathrm{Cost}$ 与 $\Delta\mathrm{Carbon}$\;
+    \If{$m=\mathrm{Cost}$}{按 Cost$\to$Carbon$\to$Curtailment$\to$早开工$\to$本地$\to$低时延选择\;}
+    \Else{按 Carbon$\to$Cost$\to$Curtailment$\to$早开工$\to$本地$\to$低时延选择\;}
+    将任务插回所选候选；若无新候选，则仅在旧位置仍满足硬约束时保留，否则返回 FAIL\;
+  }
+  重新计算真实目标与全部硬约束；首轮同时承担参考状态可行化\;
+  \If{$k\ge2$ 且相对改善 $<\epsilon$ 且无回退且硬约束通过}{\textbf{break}\;}
 }
-\BlankLine
-计算 $\mathrm{Cost}$、$\mathrm{Carbon}$、$\eta_R$、迁移/等待/网络时延及收敛轨迹；对 Cost-primary 可从不同初始可行排程重复运行用于路径依赖审计\;
-\KwRet 调度方案 $\mathbf x$、主目标、平行评价指标和硬约束审计\;
-\KwOut{各任务执行区域与开工时刻、Cost/Carbon/新能源利用率、迁移率、等待分布、收敛与初始化稳健性结果}
+计算 Cost、Carbon、RenewableUtilization、迁移、等待与网络时延，并从不同初始排程重复求解以审计路径依赖\;
+\KwOut{任务执行区域与开工时刻，以及目标值、平行评价指标和硬约束审计}
 \end{algorithm}
