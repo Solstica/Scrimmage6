@@ -80,6 +80,13 @@ A、B、C、D、E 全部 2407 个小时均满足 $H[r,t]\ge0$；RegionF 仅 1 �
   \item 当前数据使 GridPurchase 近乎退化为零，故 Cost 为主目标、Carbon/Peak/Fluctuation 作为结果评价，比人为四指标加权更符合数据实际。
 \end{enumerate}
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureFlowWidth]{../modules/40_q3/figures/q3_flow.png}
+\caption{问题三数据到模型的完整决策流程}
+\label{fig:q3-flow}
+\end{figure}
+
 \subsection{模型建立}
 
 \subsubsection{决策变量}
@@ -285,6 +292,15 @@ E0 中最大区域峰值净购电发生在 RegionF，为 31.60 MW；E1 中六区
 
 系统聚合净电网交互功率的标准差由 E0 的 115.39 MW 降至 E1 的 4.98 MW，下降约 95.68\%；平均绝对爬坡由 29.29 MW 降至 0.40 MW，下降约 98.62\%。结果表明，BESS 协同调度显著平滑了电网交互功率，但在论文表述中应明确区别为“电网交互功率波动”，不得替换为“设施负荷波动降低”。
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{../modules/40_q3/figures/q3_netgrid_daily.png}
+\caption{E0与E1方案系统净电网交互功率日统计对比}
+\label{fig:q3-netgrid-daily}
+\medskip
+\small 正值表示净购电，负值表示净售电。图中比较的是外部电网交互波动，不能理解为设施计算负荷波动变化。
+\end{figure}
+
 \subsubsection{分区储能角色验证}
 
 \paragraph{A/B/C类区域：持续盈余且不可售电下的零储能动作}
@@ -298,6 +314,15 @@ RegionD 和 E 的储能主要用于新能源跨时段价值转移。储能系统
 \paragraph{F类区域：售电时移与短缺覆盖}
 
 RegionF 的储能增量价值为 15,957,570.01 CNY，是六区中最高的。除通过放电承担设施负荷、释放同期新能源售电实现价值时移外，F 区域还在唯一的新能源短缺小时通过放电替代高价电网购电；该短缺小时进一步增加了 F 区储能的购电替代价值，但其总体增量价值还同时受储能容量、效率及购售电价格结构等因素影响。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureDoubleWidth]{../modules/40_q3/figures/q3_soc_daily_def.png}
+\caption{D/E/F区储能荷电状态日统计}
+\label{fig:q3-soc-daily}
+\medskip
+\small 每区独立面板，分别标出储能容量、最小荷电状态和初始荷电状态参考线。日内范围展示每天充放电幅度，日终值展示跨日状态转移和终端约束满足情况。
+\end{figure}
 
 \begin{table}[!htbp]
 \centering
@@ -319,6 +344,15 @@ F & 15,957,570.01 & 139,058.35 & 74,196.11 & 64,862.24 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureMechanismWidth]{../modules/40_q3/figures/q3_f_mechanism.png}
+\caption{F区唯一短缺小时运行机制}
+\label{fig:q3-f-mechanism}
+\medskip
+\small 上层为可用新能源与设施负荷，中层为储能充放电，下层为购售电功率。竖直虚线标记唯一新能源短缺小时（2400 h）。
+\end{figure}
 
 \subsubsection{同时充放电消除}
 
