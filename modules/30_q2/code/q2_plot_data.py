@@ -50,7 +50,7 @@ def main() -> None:
         pd.DataFrame(
             {
                 "类别_任务类型": ["AI训练", "批量推理", "实时推理"],
-                "Y_截止时间余量中位数（h）": [1184.22, 1207.22, 0.50],
+                "Y_实际可调开工时长中位数（h）": [1184.22, 1207.22, 0.0],
             }
         ),
         "图02_截止时间余量中位数.csv",
@@ -90,7 +90,7 @@ def main() -> None:
     cost_metrics = pd.read_csv(TABLES / "q2_metrics_cost_only.csv").iloc[0]
     carbon_metrics = pd.read_csv(TABLES / "q2_metrics_carbon_only.csv").iloc[0]
     previous_metrics = pd.read_csv(TABLES / "q2_metrics_cost_only_previous_start.csv").iloc[0]
-    endpoint_labels = ["附件基准", "Cost主端点", "Carbon主端点", "前次起点Cost"]
+    endpoint_labels = ["附件基准", "Cost主端点", "Carbon主端点", "前次起点"]
     endpoint_cost = pd.DataFrame(
         {
             "类别_方案": endpoint_labels,
@@ -214,6 +214,107 @@ def main() -> None:
         ),
         "图12_成本碳排端点散点.csv",
     )
+
+    # 基准能源错配与低碳属性：数据来自已核验的 Q2_DATA_PROBES.md。
+    # 该探针使用附件基准状态（Hour 0--2399），不混入调度后的端点结果。
+    save(
+        pd.DataFrame(
+            {
+                "类别_统计范围": ["0–2399 h，六区域"],
+                "Y_同时弃电且购电区域时数（个）": [13230],
+                "Y_其他区域时数（个）": [1170],
+            }
+        ),
+        "图13a_弃电购电共存统计.csv",
+    )
+    save(
+        pd.DataFrame(
+            {
+                "类别_能量指标": ["累计弃电量", "基准AI设施侧能量"],
+                "Y_累计能量（MWh）": [7748360.94, 950773.63],
+            }
+        ),
+        "图13a_弃电与AI设施侧能量.csv",
+    )
+    save(
+        pd.DataFrame(
+            {
+                "类别_区域": ["区域A", "区域B", "区域C", "区域D", "区域E", "区域F"],
+                "Y_弃电与碳强度Pearson相关系数": [-0.690, -0.693, -0.697, -0.789, -0.814, -0.849],
+                "Y_弃电与可用新能源Pearson相关系数": [0.995213, 0.995223, 0.994745, 0.968689, 0.948162, 0.925246],
+            }
+        ),
+        "图13b_弃电低碳属性相关性.csv",
+    )
+
+    # 代表性任务甘特图：只展示一个 72 h 开工时窗的 9 个特征任务。
+    gantt_groups = [
+        ("实时推理", [19264, 43240, 41451]),
+        ("批量推理", [33356, 10622, 46942]),
+        ("AI训练", [15694, 38894, 27293]),
+    ]
+    # 固定纵向位置，便于 Origin 直接按任务行绘制并保持三类任务的视觉分组。
+    gantt_y = {
+        19264: 11, 43240: 10, 41451: 9,
+        33356: 7, 10622: 6, 46942: 5,
+        15694: 3, 38894: 2, 27293: 1,
+    }
+    gantt_features = {
+        19264: "典型即到即执行",
+        43240: "长时高负载",
+        41451: "终端收尾",
+        33356: "跨区长等待",
+        10622: "长时高负载",
+        46942: "终端收尾",
+        15694: "跨区短时高负载",
+        38894: "高负载终端收尾",
+        27293: "跨区延期代表",
+    }
+    gantt_task_ids = [task_id for _, ids in gantt_groups for task_id in ids]
+    gantt_source = schedule.set_index("TaskID").loc[gantt_task_ids].copy()
+    gantt_source["等待_h"] = gantt_source["StartHour"] - gantt_source["ArrivalHour"]
+    gantt_source["GPU小时"] = gantt_source["GPU_Demand"] * gantt_source["Duration_h"]
+
+    if not (gantt_source.loc[[19264, 43240, 41451], "等待_h"] == 0).all():
+        raise ValueError("代表性RT任务不满足到达即开工")
+    if not (
+        gantt_source.loc[33356, "等待_h"] == 6
+        and gantt_source.loc[33356, "SourceRegion"] != gantt_source.loc[33356, "ExecutionRegion"]
+        and gantt_source.loc[10622, "等待_h"] == 0
+        and gantt_source.loc[46942, "等待_h"] == 0
+    ):
+        raise ValueError("代表性Batch任务不满足跨区长等待")
+    if not (
+        (gantt_source.loc[[15694, 38894, 27293], "GPU小时"] >= 150).all()
+        and (gantt_source.loc[27293, "等待_h"] == 5)
+        and (gantt_source.loc[[15694, 38894, 27293], "SourceRegion"] != gantt_source.loc[[15694, 38894, 27293], "ExecutionRegion"]).all()
+    ):
+        raise ValueError("代表性AI训练任务不满足高GPU-hour跨区时间平移")
+
+    gantt_rows: list[dict[str, object]] = []
+    for group_title, task_ids in gantt_groups:
+        for task_id in task_ids:
+            row = gantt_source.loc[task_id]
+            task_type = TYPE_ZH[row["TaskType"]]
+            execution = REGION_ZH[row["ExecutionRegion"]]
+            wait_h = float(row["等待_h"])
+            gpu = float(row["GPU_Demand"])
+            gpu_label = f"{gpu:.0f}" if gpu.is_integer() else f"{gpu:.1f}"
+            gantt_rows.append(
+                {
+                    "Y_绘图位置": gantt_y[task_id],
+                    "X_到达时间（h）": row["ArrivalHour"],
+                    "X_开始时间（h）": row["StartHour"],
+                    "X_结束时间（h）": row["FinishHour"],
+                    "类别_任务类型": task_type,
+                    "类别_特征分支": gantt_features[task_id],
+                    "类别_执行区域": execution,
+                    "类别_调度状态": "延期调整" if wait_h > 0 else "到达即执行",
+                    "标签_任务ID": task_id,
+                    "标签_显示文本": f"ID {task_id}｜{gantt_features[task_id]}｜{gpu_label} GPU",
+                }
+            )
+    save(pd.DataFrame(gantt_rows), "图14_九个代表性任务甘特图.csv")
 
     extreme = (
         schedule.sort_values(["等待_h", "TaskID"], ascending=[False, True])
