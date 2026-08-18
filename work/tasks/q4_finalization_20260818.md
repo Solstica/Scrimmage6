@@ -22,6 +22,8 @@
 - max region Benders violation = 0；
 - hard audit PASS。
 
+Canonical 关键结果已经在 `results/registry.csv` 中单独升级为 `FROZEN + CHECKED`；Q4 整问仍保持 `FINISHED_DRAFT`，因为正式 Carbon/price/renewable 场景尚未完成。
+
 **Q4 canonical solver closure 已完成。停止继续修改主模型/主算法。**
 
 不能写 `global integer optimum proved`。Latency full-domain LP / integer gap：
@@ -32,10 +34,13 @@
 
 ## P0-A 结果 artifact 归档
 
-- [ ] 把本轮最终 `q4_qos_summary.json` 推入 `modules/50_q4/results/qos_refinement_multicut/`。
-- [ ] 把 `q4_recertification_stage_metrics.csv` 推入同目录。
-- [ ] 把 50k `q4_字典序最终排程.csv` 推入同目录或明确的 final/ 子目录。
-- [ ] 保留 TaskID 全覆盖/唯一性、迁移、wait、latency、finish<=2406 的独立 audit。
+- [x] 最终 `q4_qos_summary.json` 已更新为 FINISHED_DRAFT final summary；
+- [x] 已生成 `q4_final_schedule_kpi_20260818.csv`；
+- [x] 已生成 `q4_final_migration_matrix_20260818.csv`；
+- [x] 已生成 `FINAL_RECERTIFICATION_REVIEW_20260818.md`；
+- [ ] 把完整 `q4_recertification_stage_metrics.csv` 推入 `modules/50_q4/results/qos_refinement_multicut/`；
+- [ ] 把 50k `q4_字典序最终排程.csv` 推入同目录或明确的 final/ 子目录；
+- [ ] 对完整排程文件保存 checksum/行数/TaskID唯一性说明；
 - [ ] 最终 artifact 文件名不再使用 round/temporary/recovery 字样。
 
 ## P0-B 正式场景分析——这是现在最高优先级
@@ -96,22 +101,24 @@ canonical 与全部正式场景统一输出：
 
 重点验证新机制结论：
 
-- Q2 canonical migration≈74.896%，mean wait≈20.475 h；
-- Q4 migration=0.122%，wait=0；
+- Q2 canonical workload KPI 已单独冻结：migration=74.896%，mean wait=20.47522 h，max wait=2016 h；
+- Q4 canonical：migration=0.122%，wait=0；
 - 判断 storage flexibility 是否替代绝大部分 workload temporal/spatial adjustment。
 
 Q3 E1 与 Q4 当前表面成本差约 122,897.76 CNY 只作 probe，accounting 未统一前不得写正式增量收益。
 
 ## P0-E 论文正文更新
 
-- [ ] 删除“50k Wait/Latency 仍在闭合”“最终排程继续 DRAFT 不进入结论”等过期文字。
-- [ ] 加入 50k final-pool recertification 正式结果表。
-- [ ] 加入两轮 sweep 锚点完全一致的稳定性说明。
-- [ ] 加入 `61/50000` migration、`Wait=0`、mean latency=5.0172 ms 的结果解释。
-- [ ] 将 Q4 机制结论升级为“计算柔性与储能柔性存在显著替代关系”。
-- [ ] 明确 `restricted MIP gap=0 != full-domain integer optimum proved`。
-- [ ] 报告 Latency LP--integer gap≈0.1555%。
-- [ ] 保留 40-task exact benchmark 作为算法验证，不再让它替代 50k 正式结果。
+- [x] 删除“50k Wait/Latency 仍在闭合”“最终排程继续 DRAFT 不进入结论”等过期文字；
+- [x] 加入 50k final-pool recertification 正式结果表；
+- [x] 加入两轮 sweep 锚点完全一致的稳定性说明；
+- [x] 加入 `61/50000` migration、`Wait=0`、mean latency=5.0172 ms 的结果解释；
+- [x] 将 Q4 机制结论升级为“计算柔性与储能柔性存在显著替代关系”；
+- [x] 明确 `restricted MIP gap=0 != full-domain integer optimum proved`；
+- [x] 报告 Latency LP--integer gap≈0.1555%；
+- [x] 保留 40-task exact benchmark 作为算法验证，不再让它替代 50k 正式结果；
+- [x] `modules/60_evaluation/paper/evaluation.tex` 已从模板改为问题特定评价；
+- [x] `modules/00_abstract/paper/abstract.tex` 已生成数据驱动 draft，且只使用当前允许冻结的关键数字。
 
 ## P1 图
 
@@ -132,7 +139,8 @@ Q3 E1 与 Q4 当前表面成本差约 122,897.76 CNY 只作 probe，accounting �
 
 - [x] canonical 50k recertification 完成；
 - [x] canonical hard audit PASS；
-- [ ] final artifacts 入库；
+- [x] canonical 关键 KPI 已在 registry 单独 FROZEN+CHECKED；
+- [ ] 完整 final schedule / recertification metrics 入库；
 - [ ] canonical 六指标齐全；
 - [ ] Carbon constraints 正式场景完成；
 - [ ] electricity-price mechanisms 完成；
