@@ -1,76 +1,39 @@
-算力--能源联合优化已有将数据中心负荷与电力系统协同建模的研究，说明任务位置变化会改变能源系统最优响应\cite{guo_integrated_2025,niu_benders_2021}；边际成本也可用于刻画负荷调整对能源目标的局部影响\cite{ji_marginal_2021}。从数学结构上，本文的区域能源分解属于 Benders 分解思想\cite{benders_1962}，完整合法任务放置域则通过列生成的 Dantzig--Wolfe 分解思想隐式搜索\cite{dantzig_wolfe_1960}。这些方法只负责求解已建立的联合模型，不替代前文由附件数据得到的耦合机制判断。
+算力--能源联合优化已有将数据中心负荷与能源系统协同建模的研究，说明任务位置变化会改变能源系统最优响应\cite{guo_integrated_2025}。针对“离散任务分配 + 连续能源再优化”形成的大规模耦合结构，近期研究已将 Benders 分解与列生成结合用于服务器分配与调度\cite{wang_bcg_2026}。本文只借用这类分解求解思想；区域能源子问题、完整合法任务域以及字典序目标均由本题附件数据和前文模型结构确定。
 
-% 算法：区域多割 Benders + 完整域列生成 + 字典序再认证
 \begin{algorithm}[H]
-\setstretch{0.92}
-\SetAlFnt{\normalsize}
+\setstretch{0.82}
+\SetAlFnt{\small}
 \SetArgSty{textnormal}
 \SetKwInput{KwIn}{Input}
 \SetKwInput{KwInit}{Initialize}
 \SetKwInput{KwOut}{Output}
-\SetKwFor{For}{for}{do}{end for}
-\SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwFor{While}{while}{do}{end while}
+\SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{Continue}{continue}
-\caption{区域多割 Benders 与完整域列生成的联合字典序求解}
+\caption{区域多割 Benders--列生成的字典序联合求解}
 \label{alg:q4-benders-cg}
-\KwIn{任务集 $\mathcal I$，完整合法域 $\Omega_i$，区域 GPU/IT 容量，新能源出力 $\bar R_{rt}$，储能参数，购售电价格，SLA 与时域 $0,\dots,2406$}
-\KwInit{由可行参考排程生成初始活动列池 $\mathcal C$，各区域 Benders 割集置空}
-\BlankLine
+\KwIn{任务集与完整合法域 $\Omega_i$，区域算力容量，新能源、储能、电价及 SLA 参数}
+\KwInit{由可行参考排程生成活动列池 $\mathcal C$；六区域 Benders 割集置空}
 
-\emph{阶段一：最小成本层的 Benders--列生成双闭环}\;
-\While{最小成本层尚未闭合}{
-    在活动列池 $\mathcal C$ 与当前区域割集上求解限制主问题线性松弛，得到任务排程松弛解 $\mathbf x^{LP}$ 与相应对偶变量\;
-    \ForEach{区域 $r$}{
-        由 $\mathbf x^{LP}$ 计算设施负荷 $L_{rt}^{\mathrm{Fac}}$，并求解该区域真实能源再优化子问题，得到 $Q_r(L_r)$ 与负荷平衡对偶 $\boldsymbol\lambda_r$\;
-        \If{$Q_r(L_r)-\theta_r>\varepsilon_B$}{加入该区域的 Benders 最优性割\;}
-    }
-    \If{本轮新增任一区域割}{\Continue}
-    对全部任务的完整隐式合法域执行精确定价\;
-    \If{存在约化成本 $< -\varepsilon_P$ 的合法放置}{将对应任务列加入 $\mathcal C$；\Continue}
-    最小成本层线性松弛完成“区域能源复核 + 完整域定价”双门禁闭合\;
+\textbf{第一层：Cost}\;
+\While{Cost 层未闭合}{
+  求限制主问题 LP；由排程负荷分别求六区域真实能源子问题\;
+  \If{任一区域能源值被 $\theta_r$ 低估}{加入对应区域最优性割并继续\;}
+  对全部任务的隐式完整合法域执行精确定价\;
+  \If{存在负约化成本列}{加入 $\mathcal C$ 并继续\;}
+  求当前扩展列池整数排程并执行真实能源复核；若违反则补整数 Benders 割，否则记录成本代表值 $C^{\mathrm{anc}}$\;
 }
-在当前扩展列池上求整数任务排程，并以完整能源子问题复核；得到真实能源可行的成本层整数方案及成本代表值 $C^{\mathrm{anc}}$，但不据此声称完整域整数全局最优\;
-\BlankLine
 
-\emph{阶段二：总等待时间精化}\;
-增加真实能源成本约束 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，目标改为最小化总等待时间\;
-\While{等待时间层尚未闭合}{
-    求当前活动列上的等待时间限制主问题线性松弛\;
-    对六区域重新求真实能源子问题；若成本约束被低估，则加入相应区域 Benders 割\;
-    区域能源复核闭合后，对完整合法域执行等待时间约化成本定价\;
-    若发现负约化成本任务列，则加入活动列池并继续闭合\;
-    两个门禁均闭合后求整数排程，并以完整能源子问题复核成本约束\;
-    若整数候选违反真实成本约束，则在对应区域加入整数 Benders 割并继续\;
-    否则得到等待时间层可行整数方案及代表值 $W^{\mathrm{anc}}$\;
-}
-\BlankLine
+\textbf{第二层：Wait}\;
+增加 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，以总等待为目标；重复“区域真实能源复核--完整域定价--整数复核”，得到 $W^{\mathrm{anc}}$\;
 
-\emph{阶段三：网络时延精化}\;
-保持真实能源成本不超过 $C^{\mathrm{anc}}+\varepsilon_C$，并增加总等待不超过 $W^{\mathrm{anc}}+\varepsilon_W$，目标改为最小化总网络时延\;
-\While{网络时延层尚未闭合}{
-    求当前活动列上的网络时延限制主问题线性松弛\;
-    对六区域执行真实能源复核并补充区域 Benders 割\;
-    Benders 闭合后，对完整合法域执行网络时延定价\;
-    若存在负约化成本任务列，则加入活动列池并重新闭合\;
-    两个门禁均闭合后求整数排程，再以完整能源子问题复核成本和能源约束\;
-    若整数候选违反真实能源条件，则对相应区域加入整数 Benders 割并继续\;
-    否则得到网络时延层可行整数方案\;
-}
-\BlankLine
+\textbf{第三层：Latency}\;
+保持成本约束并增加 $\mathrm{Wait}\le W^{\mathrm{anc}}+\varepsilon_W$，以总网络时延为目标；再次完成区域 Benders、完整域定价和整数能源复核\;
 
-\emph{阶段四：最终扩展列池再认证}\;
-\While{后序阶段新增任务列仍能改变前序字典序结果}{
-    在最终扩展列池上重新求最小成本层，更新 $C^{\mathrm{anc}}$\;
-    在新成本约束下重新求总等待层，更新 $W^{\mathrm{anc}}$\;
-    在新成本与等待约束下重新求网络时延层\;
-    每一层均保留区域真实能源复核与完整域精确定价\;
-}
-\BlankLine
+\textbf{最终再认证}\;
+若 Wait/Latency 阶段新增任务列，则在最终扩展列池上依次重求 Cost$\to$Wait$\to$Latency，直到两轮锚点一致且三个阶段均同时满足“完整域定价闭合 + 区域能源复核闭合”\;
 
-\emph{阶段五：硬约束与最优性证据审计}\;
-检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、能源平衡、SOC 递推与终端 SOC、GridImport/Export 和 SellLimit；分别报告完整域线性松弛下界、最终整数可行方案及可计算的上下界差，不把活动列池上的 MIP gap 写成完整域整数最优证书\;
-\BlankLine
-\KwOut{任务区域--时间排程、储能充放电与电网购售电方案，以及 Cost/Wait/Latency/Carbon/Renewable/Peak 指标和最优性证据边界}
+\textbf{审计}\;
+检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、能源平衡、SOC、电网及售电边界；分别报告完整域 LP 下界与最终整数可行解，不把活动列池 MIP gap 解释为完整域整数最优证书\;
+\KwOut{任务时空排程、储能/电网方案、六类评价指标及最优性证据边界}
 \end{algorithm}
