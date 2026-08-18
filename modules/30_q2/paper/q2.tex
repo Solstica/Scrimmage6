@@ -260,23 +260,37 @@ Cost 与 Carbon 在候选评价中具有近似同向性，但二者并不完全�
 
 \subsection{模型汇总}
 
-综合以上分析，Q2 的完整数学模型可汇总为
+综合任务时空柔性分析与基准能源错配诊断，问题二的完整数学模型可归纳为如下优化问题：
+
 \begin{equation}
 \left\{
 \begin{aligned}
-&\text{决策变量：}\quad x_{i,r,s} \in \{0,1\},\; \forall i, r\in R_i, s\in T_i,\\
-&\text{主目标：}\quad \min\; \text{Cost},\\
-&\text{评价指标：}\quad \text{Carbon},\; \eta_R,\\
-&\text{约束：}\quad \text{唯一指派、GPU-hour、IT 功率、设施功率、}\\
-&\qquad\qquad \text{购售电边界、网络时延、截止时间、非抢占、RT 即时开工},\\
-&\text{能源规则：}\quad \text{基准状态增量能量平衡},\\
-&\text{边界：}\quad \text{固定基准储能充放电与购售电策略},\\
-&\text{时域：}\quad \text{调度敏感时域 } [0, 2405];\; 2406 \text{ 仅做能源终端结算},\\
-&\text{求解：}\quad \text{外层重复完整扫描至 } (J_{k-1}-J_k)/|J_{k-1}| < 10^{-3}.
+& \text{决策变量：} && x_{i,r,s} \in \{0,1\}, && \forall i,\; r\in R_i,\; s\in T_i; \\
+& \text{主目标：} && \min \; \sum_{r,t} \bigl[ \mathrm{GridPurchase}[r,t] \cdot \mathrm{Price}[r,t] - \mathrm{GridSell}_0[r,t] \cdot \mathrm{SellPrice}[r,t] \bigr]; \\
+& \text{约束条件：} \\
+& && \sum_{r\in R_i}\sum_{s\in T_i} x_{i,r,s} = 1, && \forall i; \\
+& && \sum_{i,s} g_i \cdot \omega(i,s,t) \cdot x_{i,r,s} \le \mathrm{AvailableGPU}[r], && \forall r,t; \\
+& && P_{\mathrm{IT}}[r,t](\mathbf{x}) \le \mathrm{MaxITPower}[r], && \forall r,t; \\
+& && L[r,t](\mathbf{x}) \le \mathrm{MaxFacilityPower}[r], && \forall r,t; \\
+& && 0 \le \mathrm{GridPurchase}[r,t] \le \mathrm{MaxGridImport}[r], && \forall r,t; \\
+& && \sum_{s} x_{i,r,s} \cdot \mathrm{NetworkLatency}[o_i, r] \le L_i, && \forall i; \\
+& && s_i + p_i \le \min(d_i, 2406),\quad s_i = a_i \ (k_i = \mathrm{RT}), && \forall i; \\
+& \text{增量能源规则：} \\
+& && \Delta G[r,t] = 
+\begin{cases}
+0, & 0 \le \Delta L[r,t] \le \mathrm{Curtailment}_0[r,t],\\
+\Delta L[r,t] - \mathrm{Curtailment}_0[r,t], & \Delta L[r,t] > \mathrm{Curtailment}_0[r,t],\\
+-\min(-\Delta L[r,t], G_0[r,t]), & \Delta L[r,t] < 0;
+\end{cases} \\
+& \text{边界与口径：} && \text{固定基准储能与购售电策略；调度敏感时域 } [0,2405]; \\
+& \text{评价指标：} && \mathrm{Carbon},\; \eta_R \text{（平行评价，不纳入主目标）}; \\
+& \text{求解策略：} && \text{外层重复完整扫描至 } (J_{k-1}-J_k)/|J_{k-1}| < 10^{-3}.
 \end{aligned}
 \right.
 \label{eq:q2-summary}
 \end{equation}
+
+其中，$\mathrm{GridPurchase}[r,t] = \mathrm{GridPurchase}_0[r,t] + \Delta G[r,t]$，$L[r,t](\mathbf{x}) = \mathrm{PUE}[r] \cdot (\mathrm{NonAI\_IT\_Load}[r,t] + P_{\mathrm{AI}}[r,t](\mathbf{x}))$，$\Delta L[r,t] = L[r,t](\mathbf{x}) - L_0[r,t]$，$G_0[r,t]$为基准供负荷购电功率。模型采用Cost-primary为主目标，Carbon-primary作为对照端点，所有硬约束通过审计门禁后输出最终调度方案。
 
 \subsection{模型求解：SFETA 迭代收敛构造式启发式算法}
 
