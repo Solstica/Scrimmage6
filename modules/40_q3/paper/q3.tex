@@ -2,35 +2,40 @@
 
 \subsection{问题三的描述与分析}
 
-问题三要求为六个数据中心区域设计储能充放电策略，并在完全相同的固定计算负荷下，评估储能系统对运行成本、碳排放、区域峰值净购电功率和负荷波动四个核心指标的影响。与问题二不同，本问不再重新优化任务迁移与开工时段，而是将设施负荷固定为附件基准的 AI 与 NonAI 负荷之和：
-
+问题三固定计算任务排程，要求为六个区域设计储能充放电策略，并分析储能对运行成本、碳排放、区域峰值净购电功率和负荷波动的影响。根据题意，设施负荷不再是决策变量，而由附件给定的 AI 与 NonAI IT 负荷直接确定：
 \begin{equation}
-L[r,t] = \mathrm{PUE}[r] \times \bigl( \mathrm{BaselineAI\_IT\_Load\_MW}[r,t] + \mathrm{NonAI\_IT\_Load\_MW}[r,t] \bigr),
+L[r,t]=\mathrm{PUE}[r]\Bigl(\mathrm{BaselineAI\_IT\_Load\_MW}[r,t]+\mathrm{NonAI\_IT\_Load\_MW}[r,t]\Bigr),
 \label{eq:q3-fixed-load}
 \end{equation}
+其中 $r\in\{\mathrm{A},\ldots,\mathrm{F}\}$，$t=0,1,\ldots,2406$。本问只优化新能源直接供负荷、储能充放电、电网购电、新能源售电与弃电。
 
-其中 $r\in\{\mathrm{A},\mathrm{B},\mathrm{C},\mathrm{D},\mathrm{E},\mathrm{F}\}$ 表示区域，$t=0,1,\dots,2406$ 为小时索引。在此固定负荷下，本问只优化能源侧的分配决策，包括新能源直接消纳、储能充放电、电网购电、新能源售电和弃电。
+由于设施负荷被固定，储能不可能改变计算负荷本身的波动，因此题目中的“负荷波动”需要区分两层含义：\textbf{设施负荷波动在优化前后严格不变；储能能够改变的是数据中心与外部电网之间的净交互功率波动。} 后文同时报告二者，避免把电网侧平滑效果误写成计算负荷下降。
 
-本问不先假设“六个区域采用同一种储能策略”，而是先检查附件能源守恒、固定负荷与可用新能源的关系、售电边界和基准 SOC。数据表明六区总可用新能源约为总设施负荷的 1.74--1.81 倍，A--E 全时段新能源均不低于固定负荷，F 仅有 1 个短缺小时；同时 A/B/C 不允许售电而 D/E/F 允许外送。因此，区域储能角色并非由区域名称预设，而是由 $H[r,t]=\mathrm{AvailableRenewable}[r,t]-L[r,t]$ 与 SellLimit 的组合自然产生。基于这一结构，本文采用统一能源流 LP，由同一模型在不同区域自动产生不同策略。
+本问先从附件数据识别区域储能角色，而不预设六区采用同一种策略。六区总可用新能源约为总设施负荷的 1.74--1.81 倍，A--E 全时段新能源均不低于固定负荷，F 仅有 1 个短缺小时；A/B/C 不允许售电，而 D/E/F 允许外送。由此，储能价值主要取决于新能源盈余、售电边界和局部短缺，而不是区域名称。总体流程见图\ref{fig:q3-flow}。
 
-\subsection{数据结构诊断与区域储能角色识别}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\FigureFlowWidth]{\ProjectRoot/modules/40_q3/figures/q3_flow.png}
+\caption{问题三从能源结构诊断到储能经济调度的总体流程}
+\label{fig:q3-flow}
+\end{figure}
+
+\subsection{数据结构诊断与储能角色识别}
 
 \subsubsection{附件能源守恒与基准可比性}
 
-对附件 6$\times$2407 个 Region-Hour 逐点检查，新能源分配、设施负荷、充电分解、净电网交互和碳排放恒等式均可在约 $10^{-4}$--$2\times10^{-4}$ 的数值误差内复现。因此正式模型沿用附件的“新能源分配 $+$ 负荷平衡 $+$ 电网购电分解 $+$ SOC”四层守恒，而不另造新的能源流语义。
+对附件 $6\times2407$ 个区域—小时逐点检查，新能源分配、设施负荷、充电分解、净电网交互和碳排放恒等式均可在约 $10^{-4}$--$2\times10^{-4}$ 的数值误差内复现。因此，正式模型沿用附件的新能源分配、负荷平衡、电网购电分解和 SOC 动态，不另造能源流语义。
 
-同时，附件 B0 的储能状态并不完全满足 Q3 的统一终端约束：D/E/F 的 $SOC(2406)$ 低于 InitialSOC，RegionE 在 Hour 0 还存在约 1 MWh 的单点基准 SOC 不一致。原始数据本身不作修改，但这意味着 B0 只能作为 \emph{raw reference}，不能直接当成 Q3 约束下的可行优化点。为隔离“重新分配新能源”与“BESS 跨时搬移”两种收益来源，后文必须设置同口径无储能对照 E0。
+附件原始运行状态存在一个重要可比性问题：D/E/F 的 $SOC(2406)$ 低于 InitialSOC，RegionE 在 Hour~0 还存在约 1 MWh 的单点 SOC 不一致。因此，\textbf{附件原始能源基准只能作为参考状态，不能直接视为满足问题三终端约束的可行优化点。} 为区分“当期新能源重新分配”与“储能跨时搬移”两类收益，必须再设置一个同口径的无储能优化对照。
 
-\subsubsection{新能源盈余指标}
+\subsubsection{新能源盈余结构}
 
-定义区域 $r$ 在时刻 $t$ 的新能源盈余为
-
+定义固定设施负荷下的新能源盈余
 \begin{equation}
-H[r,t] = \mathrm{AvailableRenewable}[r,t] - L[r,t].
+H[r,t]=\mathrm{AvailableRenewable}[r,t]-L[r,t].
 \label{eq:q3-surplus}
 \end{equation}
-
-附件数据给出的结构非常极端，见表\ref{tab:q3-surplus-structure}。
+表\ref{tab:q3-surplus-structure}给出六区域的核心结构。
 
 \begin{table}[!htbp]
 \centering
@@ -41,207 +46,146 @@ H[r,t] = \mathrm{AvailableRenewable}[r,t] - L[r,t].
 \rowcolor{CumcmLightBlue}
 区域 & 总可用新能源/总设施负荷 & $H<0$ 小时数 & 售电能力 \\
 \midrule
-A & 1.756 & 0 & SellLimit=0 \\
-B & 1.775 & 0 & SellLimit=0 \\
-C & 1.745 & 0 & SellLimit=0 \\
-D & 1.770 & 0 & SellLimit$>0$ \\
-E & 1.812 & 0 & SellLimit$>0$ \\
-F & 1.782 & 1 & SellLimit$>0$ \\
+A & 1.756 & 0 & 不允许售电 \\
+B & 1.775 & 0 & 不允许售电 \\
+C & 1.745 & 0 & 不允许售电 \\
+D & 1.770 & 0 & 允许售电 \\
+E & 1.812 & 0 & 允许售电 \\
+F & 1.782 & 1 & 允许售电 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
-A、B、C、D、E 全部 2407 个小时均满足 $H[r,t]\ge0$；RegionF 仅 1 个小时 $H[r,t]<0$。因此，若按题意允许新能源在直接供负荷、充电、售电和弃电之间重新分配，则多数区域并不存在“能源总量不足”，真正决定 BESS 价值的是\textbf{是否允许售电、售电价格时序以及是否存在局部短缺小时}。
+A--E 的 2407 个小时均满足 $H[r,t]\ge0$；RegionF 仅 1 个小时 $H[r,t]<0$。因此，多数区域并不存在能源总量不足，真正决定储能价值的是售电边界、售电价格时序以及局部新能源短缺。
 
-\subsubsection{三类储能角色的识别}
+\subsubsection{三类区域储能角色}
 
-结合 $H[r,t]$ 的符号分布和各区域售电限额 $\mathrm{SellLimit}[r]$，六个区域自然形成三类机制：
-
+由 $H[r,t]$ 的符号和 SellLimit 可直接得到三类区域：
 \begin{enumerate}
-  \item \textbf{A/B/C类（持续盈余 + 不可售电）}：新能源持续大于负荷，且 $\mathrm{SellLimit}=0$。多余新能源只能弃电；在成本最优且最小吞吐量的代表解中，无需储能参与即可实现零购电，因此应出现零购电、零售电、零储能动作。
-  \item \textbf{D/E类（持续盈余 + 允许售电）}：新能源持续大于负荷，同时存在正售电价格。储能的主要作用是实现新能源的跨时段价值转移——低售电价值时段利用新能源充电，高售电价值时段由储能放电承担部分设施负荷，从而释放同期新能源用于外送售电。
-  \item \textbf{F类（盈余为主 + 单次短缺 + 允许售电）}：除具有 D/E 的售电时移价值外，还可在唯一新能源短缺小时通过放电替代电网购电，因此兼具“售电价值转移”和“购电替代”两种作用。
+  \item \textbf{A/B/C：持续盈余且不可售电。} 新能源始终可覆盖负荷，多余电量只能弃置；在成本最优且储能动作最少的代表解中，无需储能即可实现零购电，因此应出现零充放电动作。
+  \item \textbf{D/E：持续盈余且允许售电。} 储能主要承担新能源价值时移：低售电价值时段用新能源充电，高售电价值时段由储能承担部分设施负荷，从而释放同期新能源用于外送。
+  \item \textbf{F：盈余为主、存在单次短缺且允许售电。} 除售电价值时移外，还可在唯一短缺小时通过放电替代电网购电。
 \end{enumerate}
 
-上述分类由附件数据结构直接导出，而不是求解器人为预设。下文统一线性规划模型对六区保持同一数学形式，分类只用于解释为什么同一 LP 会在不同区域产生不同最优行为。
+上述分类由求解前的数据结构得到，同一线性规划在六区保持完全一致的数学形式；分类仅用于解释为什么统一模型会产生不同的最优行为。
 
 \subsubsection{价格、碳强度与新能源的时序关系}
 
-0--2399\,h 内，各区域 $\mathrm{Price}$ 与 $\mathrm{CarbonIntensity}$ 的时间相关系数约为 $-0.378$，$\mathrm{CarbonIntensity}$ 与 $\mathrm{AvailableRenewable}$ 的相关约为 $-0.663$。若系统仍需大量购电，则“低价购电”和“低碳购电”并不天然同向；但在本题数据下，E0 已把系统购电压缩到仅 F 区约 31.60 MWh，E1 更可实现数值零购电。因此 Carbon 在 Q3 中几乎退化为随购电量一起消失的结果指标，没有必要为了形式完整再构造 Cost--Carbon 主观加权目标。
+在\textbf{单一区域内部沿时间维度}计算，0--2399\,h 的 Price 与 CarbonIntensity 相关系数约为 $-0.378$，CarbonIntensity 与 AvailableRenewable 的相关约为 $-0.663$。这与问题二将六区域—小时\textbf{整体混合统计}后得到的 Price--Carbon 正相关并不矛盾：问题二的 pooled 相关同时包含区域间平均价格和平均碳水平差异，而本节只考察各区域内部的时间变化。
 
-\subsubsection{数据关系到模型结构的映射}
+如果系统仍需大量购电，低价时段并不一定低碳；但本题固定负荷下，无储能优化后系统购电已降至仅 F 区约 31.60 MWh，加入储能后进一步降为数值零。因此 Carbon 在问题三中主要随购电量一起退化为结果指标，没有必要为成本与碳排构造人工权重。
 
-本问的关键结构可由数据直接推导：
-\begin{enumerate}
-  \item 固定 Facility Load 后，多数区域逐时新能源均可覆盖负荷，故 Q3 不是“缺电调度”，而是新能源分配与跨时价值转移问题；
-  \item $H$ 与 SellLimit 自然分出 A/B/C、D/E、F 三类角色，故不需要为六区分别建立不同模型；
-  \item B0 不满足统一终端 SOC，可作为附件参考但不能直接用来量化 BESS 贡献，故必须增加 E0 无储能同口径对照；
-  \item 纯成本 LP 的最优面存在退化，具体 Stage 1 储能动作不稳定，故采用 Cost $\rightarrow$ Throughput 字典序选择物理代表解，而不是立即引入二元变量或电池退化参数；
-  \item 当前数据使 GridPurchase 近乎退化为零，故 Cost 为主目标、Carbon/Peak/Fluctuation 作为结果评价，比人为四指标加权更符合数据实际。
-\end{enumerate}
+综合上述数据，问题三的模型结构可概括为：固定设施负荷下先识别 $H$ 与售电边界，再用统一能源流线性规划完成当期分配和储能跨时搬移；为避免纯成本 LP 的多重最优造成无意义储能循环，采用“\textbf{净运行成本最小} $\rightarrow$ \textbf{储能吞吐量最小}”两层字典序选择物理代表解。
 
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\FigureFlowWidth]{../modules/40_q3/figures/q3_flow.png}
-\caption{问题三数据到模型的完整决策流程}
-\label{fig:q3-flow}
-\end{figure}
-
-\subsection{模型建立}
+\subsection{固定负荷下的能源—储能调度模型}
 
 \subsubsection{决策变量}
 
-对每个区域 $r$ 和小时 $t$，定义以下非负连续决策变量：
+对区域 $r$、小时 $t$ 定义非负连续变量：$u[r,t]$ 为新能源直接供负荷功率，$qR[r,t]$ 为新能源充电功率，$qG[r,t]$ 为电网充电功率，$d[r,t]$ 为储能放电功率，$gL[r,t]$ 为电网直接供负荷功率，$s[r,t]$ 为新能源售电功率，$w[r,t]$ 为弃电功率，$E[r,t]$ 为小时末 SOC。
 
-\begin{itemize}
-  \item $u[r,t]$：新能源直接满足设施负荷的功率（MW）；
-  \item $qR[r,t]$：新能源用于储能充电的功率（MW）；
-  \item $qG[r,t]$：从电网购电用于储能充电的功率（MW）；
-  \item $d[r,t]$：储能放电功率（MW）；
-  \item $gL[r,t]$：从电网购电直接供负荷的功率（MW）；
-  \item $s[r,t]$：新能源外送售电功率（MW）；
-  \item $w[r,t]$：新能源弃电功率（MW）；
-  \item $E[r,t]$：小时末储能荷电状态（SOC，MWh）。
-\end{itemize}
-
-派生量包括：购电功率 $\mathrm{GridPurchase}[r,t] = gL[r,t] + qG[r,t]$，充电功率 $\mathrm{ChargePower}[r,t] = qR[r,t] + qG[r,t]$，净电网交互功率 $\mathrm{NetGridImport}[r,t] = \mathrm{GridPurchase}[r,t] - s[r,t]$。
-
-\subsubsection{能量守恒关系}
-
-新能源分配必须满足
-
+派生量为
 \begin{equation}
-\mathrm{AvailableRenewable}[r,t] = u[r,t] + qR[r,t] + s[r,t] + w[r,t].
+\mathrm{GridPurchase}=gL+qG,\qquad
+\mathrm{ChargePower}=qR+qG,\qquad
+\mathrm{NetGridImport}=\mathrm{GridPurchase}-s.
+\label{eq:q3-derived}
+\end{equation}
+
+\subsubsection{能量守恒与 SOC 动态}
+
+新能源分配满足
+\begin{equation}
+\mathrm{AvailableRenewable}[r,t]=u[r,t]+qR[r,t]+s[r,t]+w[r,t],
 \label{eq:q3-renewable-balance}
 \end{equation}
-
-固定设施负荷由新能源直接消纳、储能放电和电网购电共同满足：
-
+固定设施负荷满足
 \begin{equation}
-L[r,t] = u[r,t] + d[r,t] + gL[r,t].
+L[r,t]=u[r,t]+d[r,t]+gL[r,t],
 \label{eq:q3-load-balance}
 \end{equation}
-
-电网购电分解为供负荷部分和充电部分：
-
+且
 \begin{equation}
-\mathrm{GridPurchase}[r,t] = gL[r,t] + qG[r,t].
+\mathrm{GridPurchase}[r,t]=gL[r,t]+qG[r,t].
 \label{eq:q3-grid-split}
 \end{equation}
+售电 $s[r,t]$ 仅允许来自当期新能源分配，不允许网购电或储能放电直接售电。
 
-售电 $s[r,t]$ 仅允许来自新能源分配，不得将网购电或储能放电直接作为售电来源。
-
-\subsubsection{SOC动态与储能约束}
-
-储能荷电状态从初始值开始递推：
-
+SOC 动态为
 \begin{equation}
-E[r,-1] = \mathrm{InitialSOC}[r],
-\label{eq:q3-soc-init}
-\end{equation}
-
-\begin{equation}
-E[r,t] = E[r,t-1] + \eta_c[r] \cdot \bigl(qR[r,t] + qG[r,t]\bigr) \cdot \Delta t
-          - \frac{d[r,t]}{\eta_d[r]} \cdot \Delta t,
+E[r,t]=E[r,t-1]+\eta_c[r]\bigl(qR[r,t]+qG[r,t]\bigr)\Delta t-\frac{d[r,t]}{\eta_d[r]}\Delta t,
 \label{eq:q3-soc-dynamics}
 \end{equation}
-
-其中 $\eta_c[r]$ 和 $\eta_d[r]$ 分别为充电和放电效率，$\Delta t = 1\,\mathrm{h}$。
-
-储能运行约束包括：
-
-\begin{align}
-& \mathrm{MinSOC}[r] \le E[r,t] \le \mathrm{StorageCapacity}[r], \label{eq:q3-soc-bound} \\
-& 0 \le qR[r,t] + qG[r,t] \le \mathrm{MaxChargePower}[r], \label{eq:q3-charge-bound} \\
-& 0 \le d[r,t] \le \mathrm{MaxDischargePower}[r], \label{eq:q3-discharge-bound} \\
-& E[r,2406] \ge \mathrm{InitialSOC}[r]. \label{eq:q3-terminal-soc}
-\end{align}
-
-\subsubsection{购售电边界}
-
-电网购电和新能源售电分别受限于电网接入容量和售电限额：
-
-\begin{align}
-& 0 \le \mathrm{GridPurchase}[r,t] \le \mathrm{MaxGridImport}[r], \label{eq:q3-grid-import} \\
-& 0 \le s[r,t] \le \min\bigl(\mathrm{SellLimit}[r], \mathrm{MaxGridExport}[r]\bigr). \label{eq:q3-sell-bound}
-\end{align}
-
-对于 A/B/C 区域，$\mathrm{SellLimit}=0$，因此 $s[r,t]=0$ 恒成立。
-
-\subsubsection{目标函数}
-
-题目要求设计储能充放电策略并分析其对多个指标的影响，但并未要求四个指标同时进入优化目标。结合前述数据结构，本问采用标准经济调度目标，先最小化总运行成本，再在成本最优解集中选择物理意义最清晰的代表解。
-
-\textbf{Stage 1：最小化净运行成本}
-
+其中
 \begin{equation}
-\min \; \mathrm{Cost} = \sum_{r,t} \Bigl[ \mathrm{Price}[r,t] \cdot \bigl(gL[r,t] + qG[r,t]\bigr)
-                      - \mathrm{SellPrice}[r,t] \cdot s[r,t] \Bigr] \cdot \Delta t.
+E[r,-1]=\mathrm{InitialSOC}[r],\qquad E[r,2406]\ge\mathrm{InitialSOC}[r].
+\label{eq:q3-terminal-soc}
+\end{equation}
+储能和电网边界为
+\begin{align}
+&\mathrm{MinSOC}[r]\le E[r,t]\le\mathrm{StorageCapacity}[r],\label{eq:q3-soc-bound}\\
+&0\le qR[r,t]+qG[r,t]\le\mathrm{MaxChargePower}[r],\label{eq:q3-charge-bound}\\
+&0\le d[r,t]\le\mathrm{MaxDischargePower}[r],\label{eq:q3-discharge-bound}\\
+&0\le\mathrm{GridPurchase}[r,t]\le\mathrm{MaxGridImport}[r],\label{eq:q3-grid-import}\\
+&0\le s[r,t]\le\min\bigl(\mathrm{SellLimit}[r],\mathrm{MaxGridExport}[r]\bigr).\label{eq:q3-sell-bound}
+\end{align}
+
+\subsubsection{两层字典序目标}
+
+第一层最小化净运行成本：
+\begin{equation}
+\min\ \mathrm{Cost}=\sum_{r,t}\Bigl[\mathrm{Price}[r,t]\bigl(gL[r,t]+qG[r,t]\bigr)-\mathrm{SellPrice}[r,t]s[r,t]\Bigr]\Delta t.
 \label{eq:q3-stage1-objective}
 \end{equation}
+售电收益可能大于购电支出，因此净运行成本允许为负，负值表示净售电收益。
 
-该目标为净购电成本减去售电收益，由于售电收益可能大于购电支出，净运行成本可为负值（即净收益）。
-
-\textbf{Stage 2：在成本最优面上最小化吞吐量}
-
-纯成本线性规划可能存在多重最优解，求解器可能返回包含无经济意义同时充放电（Simultaneous Charging and Discharging, SCD）的成本等价退化解。为此，在 Stage 1 求得最优成本 $\mathrm{Cost}^*$ 后，增加容差约束并最小化储能总吞吐量：
-
+纯成本 LP 可能存在多重最优解。为从成本等价解中选择储能动作最少、物理意义最清楚的方案，第二层在成本最优面上最小化储能总吞吐量：
 \begin{equation}
-\min \; \mathrm{Throughput} = \sum_{r,t} \bigl[ qR[r,t] + qG[r,t] + d[r,t] \bigr] \cdot \Delta t,
+\min\ \mathrm{Throughput}=\sum_{r,t}\bigl[qR[r,t]+qG[r,t]+d[r,t]\bigr]\Delta t,
 \label{eq:q3-stage2-objective}
 \end{equation}
-
+并增加
 \begin{equation}
-\text{s.t.} \quad \mathrm{Cost} \le \mathrm{Cost}^* + \varepsilon,
+\mathrm{Cost}\le\mathrm{Cost}^{*}+10^{-4}\ \mathrm{CNY}.
 \label{eq:q3-stage2-cost-tolerance}
 \end{equation}
-
-其中 $\varepsilon = 1 \times 10^{-4}\,\mathrm{CNY}$ 为求解容差。该两阶段字典序方法从成本等价解中选择储能动作最少的物理解，消除无经济意义的储能循环，同时不引入电池退化成本等额外参数。
+这样无需人为加入电池退化成本或二元变量，也能消除成本等价的同时充放电循环。
 
 \subsubsection{模型汇总}
 
-将上述决策变量、目标函数和约束汇总，问题三的完整优化模型为：
-
+问题三的统一模型可写为
 \begin{equation}
 \left\{
 \begin{aligned}
-& \text{Stage 1：}\quad \min \; \sum_{r,t} \bigl[ \mathrm{Price}\cdot(gL+qG) - \mathrm{SellPrice}\cdot s \bigr]\Delta t, \\
-& \text{Stage 2：}\quad \min \; \sum_{r,t} (qR+qG+d)\Delta t, \\
-& \text{s.t.}\quad \mathrm{AvailableRenewable} = u + qR + s + w, \\
-& \qquad\quad\;\; L = u + d + gL, \\
-& \qquad\quad\;\; \mathrm{GridPurchase} = gL + qG, \\
-& \qquad\quad\;\; E[t] = E[t-1] + \eta_c(qR+qG) - d/\eta_d, \\
-& \qquad\quad\;\; \mathrm{MinSOC} \le E[t] \le \mathrm{StorageCapacity}, \\
-& \qquad\quad\;\; 0 \le qR+qG \le \mathrm{MaxChargePower}, \\
-& \qquad\quad\;\; 0 \le d \le \mathrm{MaxDischargePower}, \\
-& \qquad\quad\;\; 0 \le \mathrm{GridPurchase} \le \mathrm{MaxGridImport}, \\
-& \qquad\quad\;\; 0 \le s \le \min(\mathrm{SellLimit}, \mathrm{MaxGridExport}), \\
-& \qquad\quad\;\; E[2406] \ge \mathrm{InitialSOC}, \\
-& \qquad\quad\;\; \text{所有变量非负}.
+&\text{第一层：}\min\ \sum_{r,t}[\mathrm{Price}(gL+qG)-\mathrm{SellPrice}\,s]\Delta t,\\
+&\text{第二层：}\min\ \sum_{r,t}(qR+qG+d)\Delta t,\\
+&\mathrm{AvailableRenewable}=u+qR+s+w,\\
+&L=u+d+gL,\qquad \mathrm{GridPurchase}=gL+qG,\\
+&E[t]=E[t-1]+\eta_c(qR+qG)-d/\eta_d,\\
+&\mathrm{MinSOC}\le E[t]\le\mathrm{StorageCapacity},\\
+&0\le qR+qG\le\mathrm{MaxChargePower},\quad0\le d\le\mathrm{MaxDischargePower},\\
+&0\le\mathrm{GridPurchase}\le\mathrm{MaxGridImport},\\
+&0\le s\le\min(\mathrm{SellLimit},\mathrm{MaxGridExport}),\\
+&E[2406]\ge\mathrm{InitialSOC},\qquad\text{其余能源流变量非负}.
 \end{aligned}
 \right.
 \label{eq:q3-model-summary}
 \end{equation}
+模型中不存在跨区域能量交换，因此六个区域可严格分解为 6 个独立线性规划并行求解，再汇总系统指标。
 
-由于目标函数和约束中不存在跨区域能量耦合，该模型可严格分解为 6 个独立的区域线性规划并行求解，再汇总系统指标。
+\subsection{模型求解与三层对照}
 
-\subsection{模型求解}
+为准确识别不同机制的贡献，设置三种物理意义明确的方案：
+\begin{enumerate}
+  \item \textbf{附件原始能源基准}：直接使用附件给定的运行状态，仅作为现实参考；其 D/E/F 终端 SOC 不满足本问统一终端约束。
+  \item \textbf{固定负荷无储能优化方案}：保持相同负荷和能源参数，令 $qR=qG=d=0$，仅优化新能源直接利用、售电、弃电和电网购电。该方案衡量“重新分配当期新能源”本身的价值。
+  \item \textbf{固定负荷储能协同方案}：使用完整模型，允许储能跨时段搬移新能源。
+\end{enumerate}
+为与程序和结果文件对应，上述三层分别对应内部结果标识 B0、E0、E1；\textbf{正文后续仅使用其实际物理名称，不再以代号作为模型名称。}
 
-\subsubsection{三层对照方案}
+储能的独立增量价值严格定义为“储能协同方案 $-$ 无储能优化方案”的指标变化；“附件原始基准 $-$ 无储能优化方案”反映原始运行策略与同口径能源再优化之间的差距，不归因于储能。
 
-为准确识别储能的增量价值，本问设计了三层对照方案：
-
-\begin{itemize}
-  \item \textbf{B0（附件原始基准）}：直接使用附件给出的原始运行状态，作为给定运行策略的参考。D/E/F 的 B0 终端 SOC 低于 $\mathrm{InitialSOC}$，因此 B0 不是满足 Q3 终端约束的可行优化点，仅作为 raw reference；
-  \item \textbf{E0（无储能能源调度）}：在完全相同的固定负荷和能源参数下，禁止储能动作（$qR=qG=d=0$），允许新能源直接消纳、售电、弃电和电网购电。E0 表示每个小时的新能源盈余只能当期处理，不能跨时段搬移；
-  \item \textbf{E1（BESS协同调度）}：使用完整模型，允许储能跨时段能量搬移。
-\end{itemize}
-
-储能的增量价值严格定义为 $\mathrm{E1}-\mathrm{E0}$ 的指标变化。$\mathrm{B0}-\mathrm{E0}$ 称为基准运行策略差距，$\mathrm{B0}-\mathrm{E1}$ 称为整体能源策略优化效果，两者均不归因于储能单独贡献。这一区分直接来源于前述基准 SOC 可比性审计，也是防止高估 BESS 价值的必要控制。
-
-\subsubsection{求解算法}
-
-每个区域独立求解两阶段线性规划，主要步骤如算法\ref{alg:q3-two-stage}所示。
+每个区域独立求解上述两层线性规划，具体流程见算法\ref{alg:q3-two-stage}。
 
 \input{\ProjectRoot/modules/40_q3/paper/q3_algorithm.tex}
 
@@ -249,89 +193,72 @@ E[r,t] = E[r,t-1] + \eta_c[r] \cdot \bigl(qR[r,t] + qG[r,t]\bigr) \cdot \Delta t
 
 \subsubsection{系统总体结果}
 
-表\ref{tab:q3-system-results}给出了六区聚合的系统级关键指标对比。
+表\ref{tab:q3-system-results}给出三种方案的系统级结果。
 
 \begin{table}[!htbp]
 \centering
-\caption{问题三系统级关键指标对比}
+\caption{固定负荷下三种能源调度方案的系统级结果}
 \label{tab:q3-system-results}
 \begin{tabular}{lrrr}
 \toprule
 \rowcolor{CumcmLightBlue}
-指标 & B0 附件基准 & E0 无储能 & E1 BESS协同 \\
+指标 & 附件原始能源基准 & 无储能优化方案 & 储能协同方案 \\
 \midrule
-净运行成本（CNY） & 1,801,660,137.89 & $-419,820,327.74$ & $-459,217,791.04$ \\
-碳排放（tCO$_2$） & 2,045,367.48 & 8.8506 & 数值零 \\
+净运行成本/CNY & 1,801,660,137.89 & $-419,820,327.74$ & $-459,217,791.04$ \\
+碳排放/tCO$_2$ & 2,045,367.48 & 8.8506 & 数值零 \\
 新能源利用率 & 32.86\% & 67.91\% & 69.51\% \\
-电网购电（MWh） & 4,134,366.12 & 31.60 & 数值零 \\
-新能源售电（MWh） & 1,375,256.18 & 1,330,267.77 & 1,491,718.26 \\
-电网交互功率标准差（MW） & 607.20 & 115.39 & 4.98 \\
-电网交互平均绝对爬坡（MW） & 153.78 & 29.29 & 0.40 \\
+电网购电/MWh & 4,134,366.12 & 31.60 & 数值零 \\
+新能源售电/MWh & 1,375,256.18 & 1,330,267.77 & 1,491,718.26 \\
+电网交互功率标准差/MW & 607.20 & 115.39 & 4.98 \\
+电网交互平均绝对爬坡/MW & 153.78 & 29.29 & 0.40 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
-E1 相比 E0 的储能增量经济价值为 39,397,463.30 CNY。由于 E0 和 E1 的售电收入均大于购电支出，净运行成本呈现负值，表示系统整体处于净售电收益状态。更重要的是，B0 到 E0 已发生数量级更大的成本与碳改善，这与“附件新能源总量极充足”的数据结构一致；因此 B0 到 E1 的整体改善不能全部归因于储能，BESS 的独立贡献必须以 E1--E0 识别。
+储能协同方案相对无储能优化方案进一步改善净运行成本 39,397,463.30 CNY，这才是储能的独立增量经济价值。附件原始基准到无储能方案已经出现数量级更大的成本和碳排改善，说明附件新能源总量非常充足，原始运行策略差距不能全部算作储能收益。
 
-\subsubsection{碳排放与峰值分析}
+碳排严格由电网购电量与碳强度计算。无储能方案仅 RegionF 购电 31.60 MWh，对应 8.8506 tCO$_2$；储能协同方案六区购电均降为数值零，因此碳排也为数值零。
 
-碳排放严格按电网购电量与碳强度的乘积计算。E1 中六区电网购电总量降至数值零，因此碳排放也降至数值零。E0 中仅 RegionF 存在少量购电（31.60 MWh），对应碳排放 8.8506 tCO$_2$。这一结果验证了前述判断：当前附件下 Carbon 主要由极少量购电触发，而不是一个需要与 Cost 长期对抗的独立主目标。
-
-区域峰值净购电功率定义为
-
+区域峰值净购电定义为
 \begin{equation}
-\mathrm{PeakImport}[r] = \max_t \max\bigl(\mathrm{NetGridImport}[r,t], 0\bigr).
+\mathrm{PeakImport}[r]=\max_t\max\bigl(\mathrm{NetGridImport}[r,t],0\bigr).
 \label{eq:q3-peak-import}
 \end{equation}
+无储能方案的最大区域峰值净购电发生在 RegionF，为 31.60 MW；储能协同方案六区均为数值零。系统汇总净交换可能因不同区域购售电抵消，因此不能替代区域峰值净购电指标。
 
-E0 中最大区域峰值净购电发生在 RegionF，为 31.60 MW；E1 中六区峰值净购电均为数值零。若将六区 NetGridImport 先相加后取峰值，D/E 等区域的售电会抵消 F 的购电，因此聚合净交换峰值不能替代各区域独立 PeakImport。
+\subsubsection{电网交互波动}
 
-\subsubsection{电网交互波动分析}
-
-\textbf{设施负荷波动固定不变。}由于 Q3 的设施负荷由附件基准固定，其系统标准差在 B0/E0/E1 中均为 563.90 MW，优化前后变化率严格为 0。储能改变的是数据中心与外部电网的交互功率，而非计算负荷自身。
-
-系统聚合净电网交互功率的标准差由 E0 的 115.39 MW 降至 E1 的 4.98 MW，下降约 95.68\%；平均绝对爬坡由 29.29 MW 降至 0.40 MW，下降约 98.62\%。结果表明，BESS 协同调度显著平滑了电网交互功率，但在论文表述中应明确区别为“电网交互功率波动”，不得替换为“设施负荷波动降低”。
+设施负荷由附件固定，其系统标准差在三种方案下均为 563.90 MW，优化前后变化严格为 0。储能改变的是外部电网交互功率：从无储能方案到储能协同方案，系统净电网交互功率标准差由 115.39 MW 降至 4.98 MW，下降约 95.68\%；平均绝对爬坡由 29.29 MW 降至 0.40 MW，下降约 98.62\%。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{../modules/40_q3/figures/q3_netgrid_daily.png}
-\caption{E0与E1方案系统净电网交互功率日统计对比}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/40_q3/figures/q3_netgrid_daily.png}
+\caption{无储能与储能协同方案的系统净电网交互功率日统计}
 \label{fig:q3-netgrid-daily}
-\medskip
-\small 正值表示净购电，负值表示净售电。图中比较的是外部电网交互波动，不能理解为设施计算负荷波动变化。
 \end{figure}
+\FloatBarrier
 
 \subsubsection{分区储能角色验证}
 
-\paragraph{A/B/C类区域：持续盈余且不可售电下的零储能动作}
-
-RegionA、B、C 在 E1 方案中，Stage 2 选择了零储能动作（吞吐量为 0 MWh），电网购电量和售电量均为 0。这与 $H\ge0$ 且 SellLimit$=0$ 的结构预测完全一致：无需储能参与即可实现零购电，储能也没有售电时移价值。Stage 1 的纯成本面可能包含不同储能动作的成本等价解，Stage 2 则稳定选择零吞吐量代表解。
-
-\paragraph{D/E类区域：售电时移}
-
-RegionD 和 E 的储能主要用于新能源跨时段价值转移。储能系统在售电价格较低的时段利用新能源充电，在售电价格较高的时段放电承担部分设施负荷，从而释放同期新能源用于外送售电并获得更高收益。两区域储能增量价值分别为 9,743,701.13 CNY 和 13,696,192.16 CNY。
-
-\paragraph{F类区域：售电时移与短缺覆盖}
-
-RegionF 的储能增量价值为 15,957,570.01 CNY，是六区中最高的。除通过放电承担设施负荷、释放同期新能源售电实现价值时移外，F 区域还在唯一的新能源短缺小时通过放电替代高价电网购电；该短缺小时进一步增加了 F 区储能的购电替代价值，但其总体增量价值还同时受储能容量、效率及购售电价格结构等因素影响。
+A/B/C 在储能协同方案中选择零储能动作，购电和售电均为 0，与“持续盈余且不可售电”的数据结构一致。D/E 的储能主要进行新能源价值时移：低售电价值时段以新能源充电，高售电价值时段通过储能放电承担设施负荷，从而释放同期新能源外送；两区储能增量价值分别为 9,743,701.13 CNY 和 13,696,192.16 CNY。RegionF 除售电价值时移外，还在唯一短缺小时以储能放电替代购电，储能增量价值为 15,957,570.01 CNY。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{../modules/40_q3/figures/q3_soc_daily_def.png}
-\caption{D/E/F区储能荷电状态日统计}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/40_q3/figures/q3_soc_daily_def.png}
+\caption{D/E/F 区域储能荷电状态日统计}
 \label{fig:q3-soc-daily}
-\medskip
-\small 每区独立面板，分别标出储能容量、最小荷电状态和初始荷电状态参考线。日内范围展示每天充放电幅度，日终值展示跨日状态转移和终端约束满足情况。
 \end{figure}
+\FloatBarrier
 
 \begin{table}[!htbp]
 \centering
-\caption{各区域E1方案储能运行指标}
+\caption{储能协同方案的区域储能运行指标}
 \label{tab:q3-regional-storage}
 \begin{tabular}{lcccc}
 \toprule
 \rowcolor{CumcmLightBlue}
-区域 & 储能增量价值（CNY） & 吞吐量（MWh） & 充电量（MWh） & 放电量（MWh） \\
+区域 & 储能增量价值/CNY & 吞吐量/MWh & 充电量/MWh & 放电量/MWh \\
 \midrule
 A & 0.00 & 0.00 & 0.00 & 0.00 \\
 B & 0.00 & 0.00 & 0.00 & 0.00 \\
@@ -339,63 +266,31 @@ C & 0.00 & 0.00 & 0.00 & 0.00 \\
 D & 9,743,701.13 & 81,550.42 & 43,512.12 & 38,038.30 \\
 E & 13,696,192.16 & 125,593.16 & 67,011.61 & 58,581.55 \\
 F & 15,957,570.01 & 139,058.35 & 74,196.11 & 64,862.24 \\
-\hline
+\midrule
 系统合计 & 39,397,463.30 & 346,201.93 & 184,719.85 & 161,482.09 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureMechanismWidth]{../modules/40_q3/figures/q3_f_mechanism.png}
-\caption{F区唯一短缺小时运行机制}
+\includegraphics[width=\FigureMechanismWidth]{\ProjectRoot/modules/40_q3/figures/q3_f_mechanism.png}
+\caption{RegionF 唯一新能源短缺小时的储能响应机制}
 \label{fig:q3-f-mechanism}
-\medskip
-\small 上层为可用新能源与设施负荷，中层为储能充放电，下层为购售电功率。竖直虚线标记唯一新能源短缺小时（2400 h）。
 \end{figure}
-
-\subsubsection{同时充放电消除}
-
-Stage 1 纯成本 LP 存在多重最优，求解器可能返回包含无经济意义同时充放电的成本等价代表解，因此其同时充放电时段数和总吞吐量不作为稳定物理结果。经过 Stage 2 最小吞吐量优化后，在成本变化不超过 $1 \times 10^{-4}$ CNY 的条件下，六区同时充放电区域小时数稳定降为 0，系统总吞吐量为 346,201.93 MWh，主成本仅发生求解容差量级变化。A/B/C 区域的微小成本和购电量属于 Stage 2 容差造成的数值零，正式展示统一记为 0。
-
 \FloatBarrier
+
+第二层最小吞吐量优化后，在成本变化不超过 $10^{-4}$ CNY 的条件下，六区同时充放电区域—小时数稳定为 0，系统总储能吞吐量为 346,201.93 MWh。A/B/C 的微小数值购电与成本属于求解容差量级，正式展示统一记为 0。
 
 \subsection{模型检验}
 
 \subsubsection{约束满足性审计}
 
-对各区域的所有约束进行逐时残差检验，结果如表\ref{tab:q3-constraint-audit}所示。
+新能源平衡、负荷平衡与 SOC 递推的逐时最大残差均小于 $2\times10^{-13}$；终端 SOC、最小/最大 SOC、充放电功率、购电和售电边界均满足。第二层求解后同时充放电小时数为 0，说明字典序目标有效消除了纯成本最优面上的退化循环。
 
-\begin{table}[!htbp]
-\centering
-\caption{问题三模型约束审计结果}
-\label{tab:q3-constraint-audit}
-\begin{tabular}{lcccccc}
-\toprule
-\rowcolor{CumcmLightBlue}
-审计项 & A & B & C & D & E & F \\
-\midrule
-新能源平衡残差（MW） & 0.0 & 0.0 & 0.0 & $<10^{-13}$ & $<10^{-12}$ & $<10^{-12}$ \\
-负荷平衡残差（MW） & $<10^{-14}$ & $<10^{-13}$ & $<10^{-14}$ & 0.0 & $<10^{-13}$ & $<10^{-13}$ \\
-SOC递推残差（MWh） & 0.0 & 0.0 & 0.0 & $<10^{-13}$ & $<10^{-13}$ & $<10^{-13}$ \\
-终端SOC缺口（MWh） & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
-MinSOC裕度（MWh） & 122.5 & 112.0 & 105.0 & 0.0 & 0.0 & 0.0 \\
-MaxSOC裕度（MWh） & 192.5 & 176.0 & 165.0 & 272.0 & 0.0 & 0.0 \\
-充电功率裕度（MW） & 100.0 & 90.0 & 85.0 & 0.0 & 0.0 & 0.0 \\
-放电功率裕度（MW） & 100.0 & 90.0 & 85.0 & 132.9 & 59.6 & 0.0 \\
-电网购电上限裕度（MW） & 550.0 & 520.0 & 510.0 & 510.0 & 370.0 & 340.0 \\
-售电上限裕度（MW） & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
-Stage 2 SCD小时数 & 0 & 0 & 0 & 0 & 0 & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsubsection{求解一致性与机制验证}
 
-六区域所有约束的逐时残差均小于 $2 \times 10^{-13}$，SOC 初末约束、充放电功率边界、购售电上限全部满足。Stage 2 后同时充放电小时数为 0，表明两阶段字典序方法有效消除了退化解。
+完整 LP 与前期 reduced-model 探针在逐区储能增量价值上的差异小于 $10^{-4}$ CNY。更重要的是，求解前由 $H[r,t]$ 与 SellLimit 推出的 A/B/C、D/E、F 三类区域，分别对应正式结果中的零储能动作、售电价值时移、短缺覆盖三种行为，说明区域机制来自数据结构而不是事后命名。
 
-\subsubsection{求解一致性验证}
-
-完整 LP 求解结果与已提交的 reduced-model 探针在逐区 BESS 价值上的一致性达到 $1 \times 10^{-4}$ CNY 以内。更重要的是，$H[r,t]$ 与 SellLimit 在求解前导出的 A/B/C、D/E、F 三类区域角色，与正式 LP 输出的零动作、售电时移、短缺覆盖三种行为完全一致，说明区域机制不是事后根据结果命名，而是由附件数据在建模前即可预测并被统一 LP 验证。
-
-\subsubsection{结果适用性说明}
-
-本问结果基于附件给定的具体数据，包括新能源出力曲线、负荷曲线、电价和储能参数，不对全局外推或一般等价定理做出声明。所得结论仅对当前数据有效，但“先识别能源盈余与售电边界，再用统一 LP 验证机制”的建模框架可推广到其他固定负荷下的 BESS 经济调度问题。
+本问结论依赖附件给定的新能源、负荷、电价和储能参数，不作一般性外推；但“先识别新能源盈余与售电边界，再用统一能源流模型验证区域机制”的建模路径可用于同类固定负荷储能调度问题。
