@@ -14,23 +14,7 @@
 
 \begin{figure}[!htbp]
 \centering
-\resizebox{\FigureFlowWidth}{!}{%
-\begin{tikzpicture}[
-  node distance=1.45cm and 1.35cm,
-  box/.style={draw,rounded corners=2pt,minimum width=3.1cm,minimum height=1.0cm,align=center,fill=CumcmLightBlue},
-  line/.style={-{Latex[length=2.5mm]},thick}
-]
-\node[box] (data) {任务与能源数据\\柔性 + 能源错配};
-\node[box,right=of data] (probe) {数据探针\\|R_i|、slack、GPU-hour\\弃电/购电并存};
-\node[box,right=of probe] (model) {模型建立\\增量能量平衡\\碳感知时空调度};
-\node[box,right=of model] (solve) {SFETA 求解\\重复完整扫描\\+ 收敛门禁};
-\node[box,right=of solve] (result) {结果分析\\Cost/Carbon 双端点\\多起点稳健性};
-\draw[line] (data)--(probe);
-\draw[line] (probe)--(model);
-\draw[line] (model)--(solve);
-\draw[line] (solve)--(result);
-\end{tikzpicture}%
-}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/q2_flow.png}
 \caption{问题二建模求解总体流程。}
 \label{fig:q2-flow}
 \end{figure}
@@ -97,6 +81,15 @@ T_i = \begin{cases}
 在 0--2399\,h 共 14400 个 region-hour 中，$\mathrm{Curtailment}_0>0$ 出现于 14400 个，$\mathrm{GridToLoad}_0>0$ 出现于 13230 个，且二者同时出现的 region-hour 也是 13230 个，即占 91.9\%。全系统累计弃电量约为 $7.748\times10^6$ MWh，而基准 AI 设施侧能量约为 $0.951\times10^6$ MWh，前者约为后者的 8.15 倍。
 
 这组数据说明 Q2 的核心矛盾并非“没有新能源”，而是\textbf{新能源被弃的时空位置与 AI 负荷所在时空位置不一致}。因此，计算任务的迁移和延迟能够把原由电网供给的 AI 负荷转移到存在弃电的区域/时段，进而同时降低成本、碳排放并提高新能源利用率。该事实也是后续“先吸收弃电、弃电耗尽后才改变购电”的增量能源规则的直接数据依据。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-2 基准能源时空错配及低碳属性.png}
+\caption{基准能源时空错配及弃电的低碳属性。(a) 弃电与供负荷购电并存统计：14\,400 个 region-hour 中 13\,230 个（91.9\%）同时存在 $\mathrm{Curtailment}>0$ 和 $\mathrm{GridToLoad}>0$；累计弃电量约为基准 AI 设施侧能量的 8.15 倍。(b) 六区域弃电与碳强度、可用新能源的 Pearson 相关系数。弃电与碳强度均为显著负相关（$-0.690$ 至 $-0.849$），与可用新能源均为强正相关（$0.925$ 至 $0.995$）。该图说明 Q2 的调度价值来源是算力负荷与绿色能源的时空错配，且优先吸收弃电具有数据驱动的低碳属性。}
+\label{fig:q2-energy-mismatch}
+\end{figure}
+
+\FloatBarrier
 
 \subsubsection{AvailableRenewable 与基准弃电}
 
@@ -401,6 +394,15 @@ RealTimeInference & 16,724 & 11,685 & $69.870\%$ & 0 & 0 & 0 \\
 注：上述逐类型统计来自 canonical Cost-primary 收敛排程；合计行的均值与 P95 按全部 50,000 个任务统计。RealTimeInference 全部保持 $s_i = a_i$，但允许在全部 SLA 合法区域之间迁移；canonical 端点中 11,685 个 RT 任务发生跨区域迁移，全部即时开工、零等待。
 
 平均网络时延 26.75 ms，95\% 分位 78 ms，最大 82 ms，全部满足 SLA 要求。高迁移率应理解为完整时空合法域被充分利用后的结果，而不能简单解释为任务“迁往新能源区”；六区原始 AvailableRenewable 并无空间差异，迁移方向由逐时弃电、PUE、价格、碳强度和资源容量共同决定。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\ProjectRoot/modules/30_q2/figures/q2 甘特图.png}
+\caption{代表性任务调度甘特图（9 个典型任务，时刻 2379--2406）。按实时推理（上）、批量推理（中）、AI 训练（下）三类排列。甘特条为执行区间（StartHour $\to$ FinishHour），空心三角标记到达时刻 ArrivalHour。RT 三条任务均到达即开工，同时包含原区执行和跨区迁移；Batch 展示短延迟、原区即时和终端收尾三种状态；AI 训练展示跨区高负载、终端高负载和跨区短延迟。该图仅用于直观解释调度结构，不代表全部 50\,000 个任务的排程特征。}
+\label{fig:q2-gantt}
+\end{figure}
+
+\FloatBarrier
 
 \begin{figure}[!htbp]
 \centering
