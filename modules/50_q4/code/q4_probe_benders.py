@@ -18,6 +18,8 @@ from scipy.optimize import linprog, milp, LinearConstraint, Bounds
 from scipy.sparse import lil_matrix, csr_matrix, hstack, vstack
 from tqdm.auto import tqdm
 
+from q4_qos_refinement import StageSpec, solve_stage_lp, solve_stage_mip
+
 DEFAULT_ATTACHMENT_DIR=Path(r"D:\qq文件\2026年武汉理工大学数学建模训练题目7-9\C题附件")
 DEFAULT_OUTPUT_DIR=Path(__file__).resolve().parents[1]/"results"/"local_probe"
 if len(sys.argv)>3:
@@ -263,12 +265,72 @@ def benders(rc,carbon_budget=None,multicut=False,max_iter=30):
             lam=em["lambda_"].reshape(-1); const=float(em["cost"]+lam@(bg_flat-Lm.reshape(-1))); coef=np.asarray(lam@Aload).ravel(); cuts.append((-1,const,coef))
     return best,bestx,hist,converged
 
+def explicit_cut(x):
+    load=load_from_x(x); e=energy_lp(load)
+    if not e["success"]: raise RuntimeError(e["message"])
+    lam=e["lambda_"].reshape(-1)
+    const=float(e["cost"]+lam@(bg_flat-load.reshape(-1)))
+    coef=np.asarray(lam@Aload).ravel()
+    return {"const":const,"coef":coef},e
+
+def explicit_stage(spec,active,cuts,max_iter=60):
+    active=list(active); active_set=set(active); resource_all=vstack([Agpu,Aai,Afac]).tocsr(); resource_rhs=np.concatenate([rhs_gpu,rhs_ai,rhs_fac])
+    candidate_task=np.asarray([c["task_idx"] for c in cands],dtype=int); history=[]; total_added=0
+    for iteration in range(1,max_iter+1):
+        ids=np.asarray(active,dtype=int); assign=Aassign[:,ids]; resource=resource_all[:,ids]
+        cut_active=csr_matrix(np.vstack([cut["coef"][ids] for cut in cuts]))
+        objective=np.zeros(len(ids)) if spec.objective=="cost" else (WAIT[ids] if spec.objective=="wait" else LAT[ids])
+        lp=solve_stage_lp(assign,resource,cut_active,resource_rhs,np.asarray([cut["const"] for cut in cuts]),objective,WAIT[ids],spec)
+        full=np.zeros(NC); full[ids]=lp["x"]; cut,e=explicit_cut(full); violation=float(e["cost"]-lp["theta"])
+        record={"iteration":iteration,"active_columns":len(active),"cuts":len(cuts),"lp_objective":lp["objective"],"true_cost":e["cost"],"theta":lp["theta"],"benders_violation":violation}
+        if violation>1e-5:
+            cuts.append(cut);record["event"]="added_benders_cut";history.append(record);continue
+        direct=np.zeros(NC) if spec.objective=="cost" else (WAIT.copy() if spec.objective=="wait" else LAT.copy())
+        reduced=direct-np.asarray(resource_all.T@lp["resource_dual"]).ravel()-lp["assignment_dual"][candidate_task]
+        for dual,one_cut in zip(lp["cut_dual"],cuts): reduced-=dual*one_cut["coef"]
+        if lp["wait_cap_dual"] is not None: reduced-=lp["wait_cap_dual"]*WAIT
+        reduced[np.asarray(active,dtype=int)]=np.inf
+        min_rc=float(np.min(reduced));new=[]
+        for task in range(NT):
+            missing=[j for j in task_cands[task] if j not in active_set and reduced[j]<-1e-7]
+            missing.sort(key=lambda j:reduced[j]);new.extend(missing[:2])
+        if new:
+            for j in new:
+                if j not in active_set:active_set.add(j);active.append(j)
+            total_added+=len(new);record.update({"event":"added_columns","new_columns":len(new),"min_reduced_cost":min_rc});history.append(record);continue
+        if min_rc < -1e-7: raise RuntimeError(spec.name+" 仍有负约化成本但没有加入列")
+        mip=solve_stage_mip(assign,resource,cut_active,resource_rhs,np.asarray([cut["const"] for cut in cuts]),objective,WAIT[ids],spec,120.0,1e-9)
+        if not mip.success: raise RuntimeError(spec.name+" MIP失败："+mip.message)
+        integer=np.zeros(NC);integer[ids]=np.rint(mip.x[:len(ids)]); integer_cut,integer_energy=explicit_cut(integer)
+        integer_violation=float(integer_energy["cost"]-mip.x[-1]);cap_violation=0.0 if spec.cost_cap is None else integer_energy["cost"]-spec.cost_cap
+        if integer_violation>1e-5 or cap_violation>1e-5:
+            cuts.append(integer_cut);record.update({"event":"integer_added_benders_cut","integer_violation":integer_violation});history.append(record);continue
+        record.update({"event":"stage_completed","new_columns":0,"min_reduced_cost":min_rc,"integer_objective":float(direct@integer),"integer_cost":integer_energy["cost"]});history.append(record)
+        return integer,active,cuts,{"iterations":iteration,"added_columns":total_added,"active_columns":len(active),"cuts":len(cuts),"min_reduced_cost":min_rc,"lp_bound":lp["objective"],"integer_objective":float(direct@integer),"true_cost":integer_energy["cost"],"history":history}
+    raise RuntimeError(spec.name+" 达到最大迭代轮数")
+
+def validate_lexicographic_cg(exact_cost):
+    initial=np.flatnonzero(X0>0.5).tolist(); first,_=explicit_cut(X0);cuts=[first]
+    x_cost,active,cuts,cost_info=explicit_stage(StageSpec("Cost阶段","cost",None),initial,cuts)
+    cost_star=float(energy_lp(load_from_x(x_cost))["cost"])
+    x_wait,active,cuts,wait_info=explicit_stage(StageSpec("Wait阶段","wait",cost_star+1e-5),active,cuts)
+    wait_star=float(WAIT@x_wait)
+    x_latency,active,cuts,latency_info=explicit_stage(StageSpec("Latency阶段","latency",cost_star+1e-5,wait_star+1e-7),active,cuts)
+    metrics=sched_metrics(x_latency)
+    expected={"migrated":5,"total_wait":6.0,"mean_wait":0.15,"max_wait":2.0,"lat_sum":437.0,"lat_mean":10.925}
+    checks={"cost_matches_exact":abs(cost_star-exact_cost)<=1e-4}
+    checks.update({name:abs(float(metrics[name])-float(value))<=1e-7 for name,value in expected.items()})
+    return {"status":"PASS" if all(checks.values()) else "FAIL","complete_legal_candidates":NC,"initial_columns":len(initial),"final_active_columns":len(active),"exact_cost":float(exact_cost),"cg_cost":cost_star,"metrics":metrics,"expected":expected,"checks":checks,"stages":{"cost":cost_info,"wait":wait_info,"latency":latency_info},"global_integer_optimum_proved":"40-task explicit oracle only"}
+
 # Probe 3A: exact and region multi-cut.
 t=time.time(); rex=solve_joint(renew); exact_t=time.time()-t
 if not rex.success: raise RuntimeError(rex.message)
 xex=np.rint(rex.x[:NC]).astype(int); Cstar=float(rex.fun)
 t=time.time(); bcost,bx,bhist,bconverged=benders(renew,multicut=True); bend_t=time.time()-t
 rw=solve_joint(renew,objx=WAIT,cost_cap=Cstar+1e-5); rlat=solve_joint(renew,objx=LAT,cost_cap=Cstar+1e-5,wait_cap=float(rw.fun)+1e-7); xlex=np.rint(rlat.x[:NC]).astype(int)
+lex_validation=validate_lexicographic_cg(Cstar)
+(OUT/"q4_lexicographic_40task_validation.json").write_text(json.dumps(lex_validation,ensure_ascii=False,indent=2),encoding="utf-8")
+if lex_validation["status"]!="PASS": raise RuntimeError("40-task 完整域字典序 CG 验收失败")
 
 # Probe 3B: data-derived carbon activation threshold, then diagnostic gamma=1.4.
 Llex=load_from_x(xlex); rmean=renew.mean(axis=1,keepdims=True); lo,hi=1.0,2.0
@@ -285,6 +347,6 @@ for frac in [1.0,0.75,0.5,0.25,0.0]:
 df=pd.DataFrame(rows); basec=float(df.iloc[0].exact_cost); basee=float(df.iloc[0].exact_carbon); df["cost_penalty_vs_costopt"]=df.exact_cost-basec; df["carbon_reduction_vs_costopt"]=basee-df.exact_carbon; df["avg_abatement_CNY_per_tCO2"]=df.cost_penalty_vs_costopt/df.carbon_reduction_vs_costopt.replace(0,np.nan)
 
 pd.DataFrame(bhist).to_csv(OUT/"probe3_cost_benders_history.csv",index=False); df.to_csv(OUT/"probe3_carbon_budget_results.csv",index=False); SEL[["TaskID","TaskType","ArrivalHour","GPU_Demand","EstimatedDuration_min","SourceRegion","GPUHour"]].to_csv(OUT/"probe_selected_tasks.csv",index=False)
-summary=dict(tasks=NT,candidates=NC,exact_cost=Cstar,exact_time_s=exact_t,benders_cost=bcost,benders_converged=bconverged,benders_iters=len(bhist),benders_time_s=bend_t,exact_lex_metrics=sched_metrics(xlex),gamma_critical_for_positive_carbon=gcrit,gamma_stress=gamma,stress_cost_opt_carbon=C0)
+summary=dict(tasks=NT,candidates=NC,exact_cost=Cstar,exact_time_s=exact_t,benders_cost=bcost,benders_converged=bconverged,benders_iters=len(bhist),benders_time_s=bend_t,exact_lex_metrics=sched_metrics(xlex),lexicographic_cg_validation=lex_validation,gamma_critical_for_positive_carbon=gcrit,gamma_stress=gamma,stress_cost_opt_carbon=C0)
 (OUT/"probe3_summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False,indent=2)); print(df.to_string(index=False))

@@ -1,0 +1,57 @@
+{
+  "gate": "INGEST",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "attachments": [
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\附件1.docx",
+      "exists": true,
+      "size": 35709,
+      "sha256": "e3e15318a42bd51cce1976f6ab5c46fddf796bf99f97b5a592cccf104bb7b10a",
+      "suffix": ".docx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\workload_trace.xlsx",
+      "exists": true,
+      "size": 3496931,
+      "sha256": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba",
+      "suffix": ".xlsx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\storage_information.xlsx",
+      "exists": true,
+      "size": 11766,
+      "sha256": "ff5384eb6e955079766b22432e630dfdec9f347f11cd334d950716b21692b3e4",
+      "suffix": ".xlsx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\region_time_data.xlsx",
+      "exists": true,
+      "size": 2845390,
+      "sha256": "0386a1f6ae825fc4e9797528545090863817b73154050f3ba7a1068e456d55ba",
+      "suffix": ".xlsx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\power_mapping.xlsx",
+      "exists": true,
+      "size": 10547,
+      "sha256": "a5bea2b708cc4e5586e59bfd832b8dde7b629d212fcd8c3a0f132c03163ae39e",
+      "suffix": ".xlsx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\network_latency.xlsx",
+      "exists": true,
+      "size": 13544,
+      "sha256": "f7e16fc33d8c188b0889e358497e0d96451e04c77ce765a667a50488f02ac157",
+      "suffix": ".xlsx"
+    },
+    {
+      "path": "D:\\qq文件\\2026年武汉理工大学数学建模训练题目7-9\\C题附件\\GPU_information.xlsx",
+      "exists": true,
+      "size": 12226,
+      "sha256": "68f978ff242da0bab54259283f647c7552693acf6db5e2212ff4e10f6a5d5d2f",
+      "suffix": ".xlsx"
+    }
+  ]
+}

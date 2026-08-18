@@ -1,6 +1,6 @@
 {
   "模型版本": "region_multicut_v1",
-  "状态": "FINISHED_DRAFT",
+  "状态": "DRAFT / NEEDS_REVIEW",
   "算法": "Cost-Benders/CG -> Wait-region-multi-cut/CG -> Latency-region-multi-cut/CG",
   "完整候选域": "Wait和Latency阶段均重新扫描全部合法区域与开工时刻",
   "任务数": 50000,

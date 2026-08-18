@@ -307,11 +307,20 @@ def energy_lp(load: np.ndarray, data: Data, renew_override: np.ndarray | None = 
                 - data.sell_price[r, h] * result.x[ix(r, h, "s")]
             )
     grid_import = np.empty((R, H_ENERGY)); grid_export = np.empty((R, H_ENERGY)); soc = np.empty((R, H_ENERGY))
+    renewable_residual = np.empty((R, H_ENERGY)); facility_residual = np.empty((R, H_ENERGY)); soc_residual = np.empty((R, H_ENERGY))
+    charge_power = np.empty((R, H_ENERGY)); discharge_power = np.empty((R, H_ENERGY))
     for r in range(R):
+        ce, de = float(data.storage.iloc[r].ChargeEfficiency), float(data.storage.iloc[r].DischargeEfficiency)
         for h in range(H_ENERGY):
             grid_import[r,h] = result.x[ix(r,h,"gL")] + result.x[ix(r,h,"qG")]
             grid_export[r,h] = result.x[ix(r,h,"s")]
             soc[r,h] = result.x[ix(r,h,"E")]
+            renewable_residual[r, h] = result.x[ix(r,h,"u")] + result.x[ix(r,h,"qR")] + result.x[ix(r,h,"s")] + result.x[ix(r,h,"w")] - renew[r, h]
+            facility_residual[r, h] = result.x[ix(r,h,"u")] + result.x[ix(r,h,"d")] + result.x[ix(r,h,"gL")] - load[r, h]
+            previous = float(data.storage.iloc[r].InitialSOC_MWh) if h == 0 else result.x[ix(r,h-1,"E")]
+            soc_residual[r, h] = result.x[ix(r,h,"E")] - previous - ce * (result.x[ix(r,h,"qR")] + result.x[ix(r,h,"qG")]) + result.x[ix(r,h,"d")] / de
+            charge_power[r, h] = result.x[ix(r,h,"qR")] + result.x[ix(r,h,"qG")]
+            discharge_power[r, h] = result.x[ix(r,h,"d")]
     import_cap = data.storage["MaxGridImport_MW"].to_numpy(float)[:,None]
     export_cap = data.storage["MaxGridExport_MW"].to_numpy(float)[:,None]
     sell_cap = data.storage["SellLimit_MW"].to_numpy(float)[:,None]
@@ -325,6 +334,11 @@ def energy_lp(load: np.ndarray, data: Data, renew_override: np.ndarray | None = 
         "最大SOC下界越界_MWh": float(max(0.0, np.max(min_soc - soc))),
         "最大SOC上界越界_MWh": float(max(0.0, np.max(soc - max_soc))),
         "终端SOC缺口_MWh": float(max(0.0, np.max(initial_soc - soc[:,-1]))),
+        "可再生分配平衡最大残差_MW": float(np.max(np.abs(renewable_residual))),
+        "设施负荷平衡最大残差_MW": float(np.max(np.abs(facility_residual))),
+        "SOC递推最大残差_MWh": float(np.max(np.abs(soc_residual))),
+        "充电功率上限越界_MW": float(max(0.0, np.max(charge_power - data.storage["MaxChargePower_MW"].to_numpy(float)[:, None]))),
+        "放电功率上限越界_MW": float(max(0.0, np.max(discharge_power - data.storage["MaxDischargePower_MW"].to_numpy(float)[:, None]))),
     }
     return {
         "success": True,
@@ -336,24 +350,71 @@ def energy_lp(load: np.ndarray, data: Data, renew_override: np.ndarray | None = 
     }
 
 
-def cut_matrix(pool: ColumnPool, data: Data, cuts: list[Cut]) -> csr_matrix:
-    ti, rr, ss = pool.arrays(); n = len(ti)
-    if not cuts:
-        return csr_matrix((0, n))
+class CutMatrixCache:
+    """Benders 割矩阵的追加缓存；只在列或割新增时计算增量。"""
+    def __init__(self) -> None:
+        self.mat = csr_matrix((0, 0))
+        self.n_cols = 0
+        self.n_cuts = 0
+
+
+def _cut_block(pool: ColumnPool, data: Data, cuts: list[Cut],
+               col_start: int = 0, cut_start: int = 0) -> csr_matrix:
+    ti, rr, ss = pool.arrays()
+    ti, rr, ss = ti[col_start:], rr[col_start:], ss[col_start:]
+    selected = cuts[cut_start:]
+    n = len(ti)
+    if not selected or n == 0:
+        return csr_matrix((len(selected), n))
+    # 同一任务时长共享一次卷积，避免“每条 cut × 每列”重复调用 dot。
+    dkey = np.rint(data.duration * 60.0).astype(np.int32)
     rows: list[np.ndarray] = []; cols: list[np.ndarray] = []; vals: list[np.ndarray] = []
-    for q, cut in enumerate(cuts):
+    for q, cut in enumerate(selected):
         value = np.zeros(n, dtype=float)
-        # 每列只占最多 7 个小时；对每个 active column 做短向量积，比扫描
-        # 所有 region-hour support 再做布尔筛选更省时，也只写入非零 payload。
-        for j in range(n):
-            task, r, s = int(ti[j]), int(rr[j]), int(ss[j])
-            prof = overlap_profile(data.duration[task])
-            value[j] = data.pue[r] * data.gpu[task] * data.alpha[task] * np.dot(cut.lam[r, s:s+len(prof)], prof)
+        cut_regions = range(R) if cut.region < 0 else (int(cut.region),)
+        for r in cut_regions:
+            mask = np.flatnonzero(rr == r)
+            if len(mask) == 0: continue
+            lam = np.asarray(cut.lam[r], dtype=float)
+            local_key = dkey[ti[mask]]
+            for key in np.unique(local_key):
+                local = mask[local_key == key]
+                if len(local) == 0:
+                    continue
+                prof = overlap_profile(key / 60.0)
+                conv = np.convolve(lam, prof[::-1], mode="valid")
+                task = ti[local]
+                value[local] = data.pue[r] * data.gpu[task] * data.alpha[task] * conv[ss[local]]
         nz = np.flatnonzero(np.abs(value) > 1e-10)
-        if len(nz): rows.append(np.full(len(nz), q, dtype=np.int32)); cols.append(nz.astype(np.int32)); vals.append(value[nz])
+        if len(nz):
+            rows.append(np.full(len(nz), q, dtype=np.int32))
+            cols.append(nz.astype(np.int32)); vals.append(value[nz])
     if not rows:
-        return csr_matrix((len(cuts), n))
-    return coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(len(cuts), n)).tocsr()
+        return csr_matrix((len(selected), n))
+    return coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                      shape=(len(selected), n)).tocsr()
+
+
+def cut_matrix(pool: ColumnPool, data: Data, cuts: list[Cut],
+               cache: CutMatrixCache | None = None) -> csr_matrix:
+    ti, _, _ = pool.arrays(); n = len(ti)
+    if cache is None:
+        return _cut_block(pool, data, cuts)
+    if cache.n_cols == n and cache.n_cuts == len(cuts):
+        return cache.mat
+    old_n, old_q = cache.n_cols, cache.n_cuts
+    if old_n == 0 or old_q == 0:
+        cache.mat = _cut_block(pool, data, cuts)
+    elif n == old_n:
+        cache.mat = vstack([cache.mat, _cut_block(pool, data, cuts, 0, old_q)], format="csr")
+    elif len(cuts) == old_q:
+        cache.mat = hstack([cache.mat, _cut_block(pool, data, cuts, old_n, 0)], format="csr")
+    else:
+        top = hstack([cache.mat, _cut_block(pool, data, cuts[:old_q], old_n, 0)], format="csr")
+        bottom = _cut_block(pool, data, cuts, 0, old_q)
+        cache.mat = vstack([top, bottom], format="csr")
+    cache.n_cols, cache.n_cuts = n, len(cuts)
+    return cache.mat
 
 
 def solve_rmp(pool: ColumnPool, data: Data, gpu_row: np.ndarray, it_row: np.ndarray, rhs: np.ndarray, cuts: list[Cut]) -> tuple[dict, csr_matrix, csr_matrix, csr_matrix]:

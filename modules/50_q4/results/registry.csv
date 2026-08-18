@@ -1,1 +1,2 @@
 result_id,status,review_state,value,unit,source_file,used_in_paper,notes
+q4-lexicographic-40-validation,FROZEN,CHECKED,PASS,status,results/lexicographic_40task_validation/q4_lexicographic_40task_validation.json,no,"3139列显式oracle对照；CG从40列增至157列，复现成本、5次迁移、6 h等待和437 ms时延；不代表50k结果已冻结"

@@ -78,3 +78,25 @@ Cost 阶段成功后运行 `q4_qos_refinement.py`。PyCharm 脚本参数填写�
     --resume
 
 恢复只从最后完整保存的轮次继续。`restricted_mip_completed` 仍不等于全局整数最优证明，最终结果保持 `DRAFT / NEEDS_REVIEW`。
+
+当前版本默认 `max-stage-iter=0`、`max-hours=0`、`integer-time-limit-s=0`，即不再按轮数、总时长或单次 MIP 时长提前结束。Latency 真正闭合后会自动启动 final-pool 再认证，已有再认证断点时自动恢复。对第 180 轮旧断点，PyCharm 只保留一个参数：
+
+    --resume
+
+如果旧断点没有保存 Wait 阶段真实可行排程，程序会先在当前扩展列池自动重建一次，生成 `q4_latency_feasible_incumbent.json/csv`，再继续 Latency。每次 Latency 整数候选还会写入 `q4_latency_integer_certificate.csv`，其中包含真实可行上界、MIP 下界、Gap、成本上界违反和 RegionE/RegionF 违反。只有出现 `stage_completed` 才正常结束；活动列、RSS 等安全门槛仍然保留。
+
+## 7. final-pool 字典序再认证
+
+只有 `qos_refinement_multicut/checkpoint.json` 的状态已是 `FINISHED_DRAFT`，才能运行 `q4_final_recertification.py`。正常情况下 `q4_qos_refinement.py` 会自动接续该脚本；本节命令只用于单独调试或手动恢复再认证。它不会覆盖 QoS 运行目录，而是把当时的扩展列池作为 warm start，写入新的 `qos_final_recertification` 目录。
+
+PyCharm 脚本参数填写：
+
+    --input-dir ..\results\qos_refinement_multicut --output-dir ..\results\qos_final_recertification
+
+工作目录仍设为 `modules/50_q4/code`。该程序按 R1 Cost、R2 Wait、R3 Latency 顺序运行；第一轮建立新的三个 best-known integer anchor，第二轮再次完整 sweep。只有一整轮中三个 anchor 都未变化，才会写出 `FINISHED_DRAFT`。
+
+每轮进度条显示：`vmax` 为最大区域 Benders 违反，`vr` 为主导区域，`lp` 为当前 LP 目标，`ec` 为真实能源成本，`cols` 为活动列数，`cuts` 为 Benders cut 数，`new` 为新增列数，`rc` 为最小缺失列约化成本，`rss` 为进程内存。判定闭合需要同时看到 `vmax <= 0.001`，完整域定价后的 `rc >= -1e-7`，并随后完成 restricted MIP 和真实 Energy LP 复核。
+
+再认证同样默认不限阶段轮数、总时长、单次 MIP 时长和 sweep 数。若程序被手动停止，保持输出目录不变，只需使用 `--resume`；不需要再递增任何轮数参数。
+
+最终轻量结果为 `q4_qos_summary.json`、`q4_字典序最终排程.csv`、`q4_recertification_stage_metrics.csv` 和各 `sweep_*_summary.json`。其中的口径是 final-pool recertified representative solution，`全局整数最优已证明` 始终为 `false`。

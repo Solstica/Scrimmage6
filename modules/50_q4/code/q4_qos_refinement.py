@@ -14,25 +14,31 @@ import argparse
 import csv
 import json
 import math
+import subprocess
+import sys
+import threading
 import time
 from dataclasses import dataclass
+from itertools import count
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import psutil
 from scipy.optimize import Bounds, LinearConstraint, linprog, milp
-from scipy.sparse import csr_matrix, hstack, vstack
+from scipy.sparse import coo_matrix, csr_matrix, hstack, vstack
 from tqdm.auto import tqdm
 
 from q4_full_solver import (
     DEFAULT_ATTACH,
     DEFAULT_OUT,
+    H_ENERGY,
     H_TASK,
     R,
     REGIONS,
     ColumnPool,
     Cut,
+    CutMatrixCache,
     assignment_matrix,
     cut_matrix,
     energy_lp,
@@ -49,6 +55,13 @@ from q4_full_solver import (
 
 MODEL_VERSION = "region_multicut_v1"
 DEFAULT_RESULT = Path(__file__).resolve().parents[1] / "results" / "qos_refinement_multicut"
+LATENCY_INCUMBENT_JSON = "q4_latency_feasible_incumbent.json"
+LATENCY_INCUMBENT_CSV = "q4_latency_feasible_incumbent.csv"
+LATENCY_CERTIFICATE_CSV = "q4_latency_integer_certificate.csv"
+WAIT_RECOVERY_JSON = "q4_wait_incumbent_recovery.json"
+# 该值来自已验证的旧版 restricted-integer Wait 端点；仅用于恢复丢失的 incumbent，
+# 最终仍由 final-pool Cost -> Wait -> Latency 再认证重新计算。
+RECOVERY_WAIT_ANCHOR_H = 32.0
 METRIC_FIELDS = (
     "阶段", "轮次", "事件", "活动列数", "Benders切数", "LP目标值",
     "theta_CNY", "真实能源成本_CNY", "Benders违反_CNY", "最大区域违反_CNY",
@@ -60,6 +73,16 @@ METRIC_FIELDS = (
     "新增列数",
     "最小缺失列约化成本", "根节点闭合", "MIP状态", "MIP目标值",
     "当前RSS_GiB", "累计分钟",
+)
+EXTENDED_METRIC_FIELDS = METRIC_FIELDS + (
+    "主导违反区域", "LP界", "MIP Gap", "阶段运行秒", "峰值RSS_GiB",
+    "可行Latency上界_ms", "Latency下界_ms", "Latency相对Gap", "成本上界违反_CNY",
+)
+LATENCY_CERTIFICATE_FIELDS = (
+    "轮次", "活动列数", "Benders切数", "LP最小缺失列约化成本",
+    "LP最大区域违反_CNY", "restricted_MIP_Latency_ms", "真实能源成本_CNY",
+    "成本上界违反_CNY", "RegionE违反_CNY", "RegionF违反_CNY",
+    "可行Latency上界_ms", "Latency下界_ms", "Latency相对Gap", "事件",
 )
 
 
@@ -81,10 +104,115 @@ class StageOutcome:
     iterations: int
     added_columns: int
     min_reduced_cost: float
+    mip_objective: float
+    final_max_region_violation: float
+    benders_cuts: int
+    runtime_s: float
+    peak_rss_gib: float
 
 
 class StageStopped(RuntimeError):
     pass
+
+
+def fmt_time(seconds: float) -> str:
+    total = max(0, int(seconds))
+    hours, remain = divmod(total, 3600)
+    minutes, secs = divmod(remain, 60)
+    if hours:
+        return f"{hours:d}小时{minutes:02d}分{secs:02d}秒"
+    return f"{minutes:d}分{secs:02d}秒"
+
+
+def use_bar(args) -> bool:
+    mode = getattr(args, "progress_mode", "auto")
+    if mode == "bar":
+        return True
+    if mode == "plain":
+        return False
+    return bool(sys.stderr.isatty())
+
+
+def stage_ui(spec: StageSpec, start_iter: int, args) -> None:
+    print("\n" + "=" * 76, flush=True)
+    print(f"[阶段开始] {spec.name} | 下一轮={start_iter + 1} | 目标={spec.objective}", flush=True)
+    print(
+        "[完成条件] 1/5 LP与Benders一致；2/5 完整合法域无负约化成本；"
+        "3/5 整数MIP完成；4/5 真实Energy复核；5/5 Cost/Wait硬上界。",
+        flush=True,
+    )
+    print(
+        "[当前结论] 上述五项全部显示“通过”，只代表本阶段完成；"
+        "正式可结束还需 final recertification 至少两个完整 sweep 锚点稳定并通过硬约束审计。",
+        flush=True,
+    )
+    if getattr(args, "max_stage_iter", 0) == 0:
+        print("[运行上限] 本阶段不限轮数，将持续到真实闭合或安全门槛触发。", flush=True)
+    else:
+        print(f"[运行上限] 本阶段累计最多 {args.max_stage_iter} 轮。", flush=True)
+
+
+def round_ui(row: dict, args) -> None:
+    iteration = int(row["轮次"])
+    event = str(row["事件"])
+    vmax = float(row["最大区域违反_CNY"])
+    region = str(row["主导违反区域"])
+    if event == "added_region_benders_cuts":
+        print(
+            f"[第{iteration}轮][1/5 LP与Benders] 未通过 | 最大区域违反={vmax:.6g} CNY "
+            f"大于容差={args.benders_tol_cny:.6g}，主导区域={region}，cuts={row['Benders切数']}；继续迭代。",
+            flush=True,
+        )
+        return
+    min_rc = float(row["最小缺失列约化成本"])
+    if event == "added_columns":
+        print(
+            f"[第{iteration}轮][1/5 LP与Benders] 通过 | 最大区域违反={vmax:.6g} CNY；"
+            f"[2/5 完整域定价] 未通过 | 最小约化成本={min_rc:.6g}，"
+            f"新增列={row['新增列数']}，活动列={row['活动列数']}；继续迭代。",
+            flush=True,
+        )
+        return
+    print(
+        f"[第{iteration}轮][1/5 LP与Benders] 通过 | 最大区域违反={vmax:.6g} CNY；"
+        f"[2/5 完整域定价] 通过 | 最小约化成本={min_rc:.6g}，"
+        f"阈值不得低于={-args.price_tol:.6g}。",
+        flush=True,
+    )
+
+
+def mip_wait(label: str, solve, process: psutil.Process, interval: float):
+    if interval <= 0:
+        return solve()
+    stop = threading.Event()
+    started = time.time()
+    cpu0 = sum(process.cpu_times()[:2])
+
+    def report() -> None:
+        while not stop.wait(interval):
+            elapsed = time.time() - started
+            cpu_used = max(0.0, sum(process.cpu_times()[:2]) - cpu0)
+            rss = process.memory_info().rss / 1024 ** 3
+            print(
+                f"[MIP心跳] {label} | 已运行={fmt_time(elapsed)} | "
+                f"新增CPU时间={fmt_time(cpu_used)} | RSS={rss:.2f} GiB | "
+                "HiGHS仍在分支定界；出现本行表示主程序未失联，但不代表已经收敛。",
+                flush=True,
+            )
+
+    worker = threading.Thread(target=report, name="q4-mip-heartbeat", daemon=True)
+    worker.start()
+    try:
+        return solve()
+    finally:
+        stop.set()
+        worker.join(timeout=1.0)
+
+
+def use_ext(spec: StageSpec) -> bool:
+    if spec.cost_cap is None:
+        return False
+    return spec.objective in ("wait", "latency") or spec.wait_cap is not None
 
 
 def read_latency(attach: Path) -> np.ndarray:
@@ -166,6 +294,9 @@ def solve_stage_mip(assign: csr_matrix, resource: csr_matrix, cuts: csr_matrix,
                     wait: np.ndarray, cut_regions: np.ndarray, spec: StageSpec, time_limit: float, gap: float):
     aub, bub, aeq, beq, meta = assemble_stage_model(assign, resource, cuts, rhs, cut_const, objective, wait, cut_regions, spec)
     n = assign.shape[1]
+    options = {"mip_rel_gap": gap, "disp": True}
+    if time_limit > 0:
+        options["time_limit"] = time_limit
     return milp(
         c=meta["c"],
         integrality=np.r_[np.ones(n), np.zeros(R)],
@@ -174,8 +305,130 @@ def solve_stage_mip(assign: csr_matrix, resource: csr_matrix, cuts: csr_matrix,
             LinearConstraint(aub, -np.inf * np.ones(len(bub)), bub),
             LinearConstraint(aeq, beq, beq),
         ],
-        options={"time_limit": time_limit, "mip_rel_gap": gap},
+        options=options,
     )
+
+
+def solve_extensive_mip(pool: ColumnPool, data, assign: csr_matrix, resource: csr_matrix,
+                        rhs: np.ndarray, objective: np.ndarray, wait: np.ndarray,
+                        spec: StageSpec, time_limit: float, gap: float) -> dict:
+    """在活动列池上把真实 Renewable/BESS/Grid recourse 直接并入整数模型。"""
+    n = len(pool); nv = 8; ne = R * H_ENERGY * nv; nt = n + ne
+    pos = {"u": 0, "qR": 1, "qG": 2, "d": 3, "gL": 4, "s": 5, "w": 6, "E": 7}
+    def ix(r: int, h: int, name: str) -> int:
+        return n + (r * H_ENERGY + h) * nv + pos[name]
+
+    ti, rr, ss = pool.arrays()
+    fixed = fixed_facility_load(data)
+    erows: list[int] = []; ecols: list[int] = []; evals: list[float] = []
+    ebe: list[float] = []; row = 0
+    for r in range(R):
+        st = data.storage.iloc[r]
+        ce, de = float(st.ChargeEfficiency), float(st.DischargeEfficiency)
+        rbase = row
+
+        for h in range(H_ENERGY):
+            for name in ("u", "qR", "s", "w"):
+                erows.append(row)
+                ecols.append(ix(r, h, name))
+                evals.append(1.0)
+            ebe.append(float(data.renew[r, h]))
+            row += 1
+
+            for name in ("u", "d", "gL"):
+                erows.append(row)
+                ecols.append(ix(r, h, name))
+                evals.append(1.0)
+            ebe.append(float(fixed[r, h]))
+            row += 1
+
+            erows.append(row)
+            ecols.append(ix(r, h, "E"))
+            evals.append(1.0)
+            if h:
+                erows.append(row)
+                ecols.append(ix(r, h - 1, "E"))
+                evals.append(-1.0)
+                ebe.append(0.0)
+            else:
+                ebe.append(float(st.InitialSOC_MWh))
+            erows.append(row)
+            ecols.append(ix(r, h, "qR"))
+            evals.append(-ce)
+            erows.append(row)
+            ecols.append(ix(r, h, "qG"))
+            evals.append(-ce)
+            erows.append(row)
+            ecols.append(ix(r, h, "d"))
+            evals.append(1.0 / de)
+            row += 1
+
+        for j in np.flatnonzero(rr == r):
+            prof = overlap_profile(data.duration[int(ti[j])])
+            scale = data.pue[r] * data.gpu[int(ti[j])] * data.alpha[int(ti[j])]
+            for k, weight in enumerate(prof):
+                hh = int(ss[j]) + k
+                if hh < H_TASK and hh < H_ENERGY:
+                    erows.append(rbase + 3 * hh + 1)
+                    ecols.append(int(j))
+                    evals.append(-float(scale * weight))
+    ee = coo_matrix((np.asarray(evals), (np.asarray(erows), np.asarray(ecols))), shape=(row, nt)).tocsr()
+    az = csr_matrix((assign.shape[0], ne))
+    aeq = vstack([hstack([assign, az], format="csr"), ee], format="csr")
+    beq = np.r_[np.ones(assign.shape[0]), np.asarray(ebe, dtype=float)]
+
+    urows: list[int] = []; ucols: list[int] = []; uvals: list[float] = []; ubv: list[float] = []
+    row = 0
+    for r in range(R):
+        st = data.storage.iloc[r]
+        charge = float(st.MaxChargePower_MW); imp = float(st.MaxGridImport_MW)
+        for h in range(H_ENERGY):
+            urows.extend([row, row]); ucols.extend([ix(r, h, "qR"), ix(r, h, "qG")]); uvals.extend([1.0, 1.0]); ubv.append(charge); row += 1
+            urows.extend([row, row]); ucols.extend([ix(r, h, "gL"), ix(r, h, "qG")]); uvals.extend([1.0, 1.0]); ubv.append(imp); row += 1
+    cost_row = row
+    for r in range(R):
+        for h in range(H_ENERGY):
+            price = float(data.price[r, h]); sell = float(data.sell_price[r, h])
+            urows.extend([row, row, row]); ucols.extend([ix(r, h, "gL"), ix(r, h, "qG"), ix(r, h, "s")]); uvals.extend([price, price, -sell])
+    ubv.append(float(spec.cost_cap)); row += 1
+    if spec.wait_cap is not None:
+        wait_row = row
+        for j, value in enumerate(wait):
+            if abs(float(value)) > 1e-12:
+                urows.append(row); ucols.append(j); uvals.append(float(value))
+        ubv.append(float(spec.wait_cap)); row += 1
+    aub = coo_matrix((np.asarray(uvals), (np.asarray(urows), np.asarray(ucols))), shape=(row, nt)).tocsr()
+    bub = np.r_[np.asarray(rhs, dtype=float), np.asarray(ubv, dtype=float)]
+    ar = hstack([resource, csr_matrix((resource.shape[0], ne))], format="csr")
+    aub = vstack([ar, aub], format="csr")
+
+    c = np.zeros(nt, dtype=float)
+    if spec.objective == "cost":
+        for r in range(R):
+            for h in range(H_ENERGY):
+                c[ix(r, h, "gL")] = data.price[r, h]
+                c[ix(r, h, "qG")] = data.price[r, h]
+                c[ix(r, h, "s")] = -data.sell_price[r, h]
+    else:
+        c[:n] = objective
+    lb = np.zeros(nt, dtype=float); up = np.full(nt, np.inf, dtype=float); up[:n] = 1.0
+    for r in range(R):
+        st = data.storage.iloc[r]
+        for h in range(H_ENERGY):
+            up[ix(r, h, "d")] = float(st.MaxDischargePower_MW)
+            up[ix(r, h, "s")] = min(float(st.SellLimit_MW), float(st.MaxGridExport_MW))
+            lb[ix(r, h, "E")] = float(st.MinSOC_MWh)
+            up[ix(r, h, "E")] = float(st.StorageCapacity_MWh)
+        lb[ix(r, H_ENERGY - 1, "E")] = max(lb[ix(r, H_ENERGY - 1, "E")], float(st.InitialSOC_MWh))
+    options = {"mip_rel_gap": gap, "disp": True}
+    if time_limit > 0: options["time_limit"] = time_limit
+    res = milp(c=c, integrality=np.r_[np.ones(n), np.zeros(ne)], bounds=Bounds(lb, up),
+               constraints=[LinearConstraint(aub, -np.inf * np.ones(len(bub)), bub), LinearConstraint(aeq, beq, beq)],
+               options=options)
+    return {"success": bool(res.success), "message": str(res.message), "x": res.x,
+            "fun": math.nan if res.fun is None else float(res.fun),
+            "mip_gap": getattr(res, "mip_gap", None),
+            "mip_dual_bound": getattr(res, "mip_dual_bound", None), "cost_row": cost_row}
 
 
 def active_starts(pool: ColumnPool) -> dict[tuple[int, int], set[int]]:
@@ -203,7 +456,8 @@ def best_missing(scores: np.ndarray, start0: int, used: set[int]) -> tuple[float
 def price_full_domain(pool: ColumnPool, data, gpu_row: np.ndarray, it_row: np.ndarray,
                       resource_dual: np.ndarray, cut_dual: np.ndarray, cuts: list[Cut],
                       assignment_dual: np.ndarray, spec: StageSpec, latency_raw: np.ndarray,
-                      wait_cap_dual: float | None, tol: float, columns_per_task: int) -> tuple[list[tuple[int, int, int, float]], float, int]:
+                      wait_cap_dual: float | None, tol: float, columns_per_task: int,
+                      show_bar: bool | None = None) -> tuple[list[tuple[int, int, int, float]], float, int]:
     cut_signal = np.zeros((R, H_TASK), dtype=float)
     for dual, cut in zip(cut_dual, cuts):
         cut_signal += -dual * cut.lam[:, :H_TASK]
@@ -230,7 +484,12 @@ def price_full_domain(pool: ColumnPool, data, gpu_row: np.ndarray, it_row: np.nd
     additions: list[tuple[int, int, int, float]] = []
     minimum = math.inf
     negative_regions = 0
-    iterator = tqdm(range(len(data.task)), desc=spec.name + " 完整域精确定价", unit="任务", leave=False)
+    if show_bar is None:
+        show_bar = bool(sys.stderr.isatty())
+    iterator = tqdm(
+        range(len(data.task)), desc=spec.name + " 完整域精确定价",
+        unit="任务", leave=False, disable=not show_bar,
+    )
     for task in iterator:
         start0 = int(data.arrival[task])
         end = start0 if task_types[task] == "RealTimeInference" else legal_last_start(data, task)
@@ -273,20 +532,23 @@ def add_region_cuts(cuts: list[Cut], data, load: np.ndarray, energy: dict,
 
 def append_metric(path: Path, row: dict) -> None:
     exists = path.is_file()
+    fields = EXTENDED_METRIC_FIELDS
     if exists:
         with path.open("r", encoding="utf-8-sig", newline="") as check:
             header = check.readline().strip().split(",")
-        if header != list(METRIC_FIELDS):
+        if header == list(METRIC_FIELDS):
+            fields = METRIC_FIELDS
+        elif header != list(EXTENDED_METRIC_FIELDS):
             raise StageStopped("指标文件字段属于旧版 aggregate Benders，请使用新的 output-dir")
     with path.open("a", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=METRIC_FIELDS)
+        writer = csv.DictWriter(handle, fieldnames=fields)
         if not exists:
             writer.writeheader()
-        writer.writerow({name: row.get(name, "") for name in METRIC_FIELDS})
+        writer.writerow({name: row.get(name, "") for name in fields})
 
 
 def save_state(out: Path, pool: ColumnPool, cuts: list[Cut], stage: str, stage_iter: int,
-               cost_cap: float, wait_star: float | None, initial_columns: int) -> None:
+               cost_cap: float | None, wait_star: float | None, initial_columns: int) -> None:
     task, region, start = pool.arrays()
     target = out / "lexicographic_state.npz"
     temporary = out / "lexicographic_state.tmp.npz"
@@ -301,7 +563,7 @@ def save_state(out: Path, pool: ColumnPool, cuts: list[Cut], stage: str, stage_i
         cut_region=np.asarray([cut.region for cut in cuts], dtype=np.int8),
         stage=np.asarray(stage),
         stage_iter=np.int32(stage_iter),
-        cost_cap=np.float64(cost_cap),
+        cost_cap=np.float64(np.nan if cost_cap is None else cost_cap),
         wait_star=np.float64(np.nan if wait_star is None else wait_star),
         initial_columns=np.int32(initial_columns),
     )
@@ -326,7 +588,97 @@ def load_state(out: Path) -> tuple[ColumnPool, list[Cut], str, int, float, float
 
 
 def write_checkpoint(out: Path, payload: dict) -> None:
-    (out / "checkpoint.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    target = out / "checkpoint.json"
+    temporary = out / "checkpoint.tmp.json"
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(target)
+
+
+def load_latency_incumbent(out: Path) -> dict | None:
+    path = out / LATENCY_INCUMBENT_JSON
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_latency_incumbent(out: Path, pool: ColumnPool, data, x: np.ndarray,
+                           latency_raw: np.ndarray, energy: dict, source: str,
+                           force: bool = False) -> dict:
+    task, region, start = pool.arrays()
+    chosen = np.flatnonzero(x > 0.5)
+    chosen_task = task[chosen]
+    chosen_region = region[chosen]
+    chosen_start = start[chosen]
+    wait = chosen_start - data.arrival[chosen_task]
+    latency = latency_raw[data.source[chosen_task], chosen_region]
+    if len(chosen) != len(data.task) or len(np.unique(chosen_task)) != len(data.task):
+        raise StageStopped("可行 Latency incumbent 没有完整覆盖任务")
+    metadata = {
+        "来源": source,
+        "总等待_h": float(np.sum(wait)),
+        "总时延_ms": float(np.sum(latency)),
+        "真实能源成本_CNY": float(energy["cost"]),
+        "任务数": int(len(chosen)),
+        "全局整数最优已证明": False,
+    }
+    current = load_latency_incumbent(out)
+    if not force and current is not None and float(current["总时延_ms"]) <= metadata["总时延_ms"] + 1e-9:
+        return current
+    schedule = pd.DataFrame({
+        "TaskID": data.task.iloc[chosen_task]["TaskID"].to_numpy(),
+        "目标区域": [REGIONS[int(r)] for r in chosen_region],
+        "开工小时": chosen_start,
+        "等待_h": wait.astype(float),
+        "时延_ms": latency.astype(float),
+    }).sort_values("TaskID")
+    schedule.to_csv(out / LATENCY_INCUMBENT_CSV, index=False, encoding="utf-8-sig")
+    (out / LATENCY_INCUMBENT_JSON).write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    return metadata
+
+
+def append_latency_certificate(out: Path, row: dict) -> None:
+    path = out / LATENCY_CERTIFICATE_CSV
+    exists = path.is_file()
+    with path.open("a", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.DictWriter(handle, fieldnames=LATENCY_CERTIFICATE_FIELDS)
+        if not exists:
+            writer.writeheader()
+        writer.writerow({name: row.get(name, "") for name in LATENCY_CERTIFICATE_FIELDS})
+
+
+def restricted_mip_lower_bound(mip) -> float:
+    if isinstance(mip, dict):
+        value = mip.get("mip_dual_bound")
+        fallback = mip.get("fun")
+    else:
+        value = getattr(mip, "mip_dual_bound", None)
+        fallback = getattr(mip, "fun", None)
+    if value is None or not np.isfinite(value):
+        return float(fallback)
+    return float(value)
+
+
+def run_final_recertification(attach: Path, qos_out: Path) -> None:
+    script = Path(__file__).with_name("q4_final_recertification.py")
+    final_out = qos_out.parent / "qos_final_recertification"
+    summary_path = final_out / "q4_qos_summary.json"
+    if summary_path.is_file():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if summary.get("状态") == "FINISHED_DRAFT":
+            print("final-pool 字典序再认证已完成，跳过重复运行")
+            return
+    command = [
+        sys.executable, str(script),
+        "--attachment-dir", str(attach),
+        "--input-dir", str(qos_out),
+        "--output-dir", str(final_out),
+    ]
+    if (final_out / "recertification_control.json").is_file():
+        command.append("--resume")
+    print("QoS 阶段真实闭合，自动进入 final-pool Cost -> Wait -> Latency 再认证")
+    result = subprocess.run(command, check=False)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
 
 
 def load_cost_anchor(input_dir: Path, data, cost_tolerance: float, required_benders_tol: float) -> tuple[ColumnPool, list[Cut], float, float, dict[int, tuple[int, int]]]:
@@ -358,30 +710,47 @@ def load_cost_anchor(input_dir: Path, data, cost_tolerance: float, required_bend
 
 
 def check_limits(args, process: psutil.Process, started: float, pool: ColumnPool) -> None:
-    if (time.time() - started) / 3600 > args.max_hours:
+    if args.max_hours > 0 and (time.time() - started) / 3600 > args.max_hours:
         raise StageStopped("达到总运行时间门槛")
-    if len(pool) >= args.max_active_columns:
+    if args.max_active_columns > 0 and len(pool) >= args.max_active_columns:
         raise StageStopped("达到活动列数门槛")
-    if process.memory_info().rss / 1024 ** 3 > args.max_rss_gib:
+    if args.max_rss_gib > 0 and process.memory_info().rss / 1024 ** 3 > args.max_rss_gib:
         raise StageStopped("达到 RSS 内存门槛")
 
 
 def run_stage(spec: StageSpec, pool: ColumnPool, cuts: list[Cut], data, gpu_row: np.ndarray,
               it_row: np.ndarray, rhs: np.ndarray, latency_raw: np.ndarray, args,
               out: Path, started: float, initial_columns: int,
-              wait_star_state: float | None, start_iter: int = 0) -> StageOutcome:
+              wait_star_state: float | None, start_iter: int = 0,
+              metrics_name: str = "q4_lexicographic_stage_metrics.csv") -> StageOutcome:
     process = psutil.Process()
-    metrics_path = out / "q4_lexicographic_stage_metrics.csv"
+    metrics_path = out / metrics_name
     total_added = 0
     last_min_rc = math.nan
-    bar = tqdm(range(start_iter + 1, args.max_stage_iter + 1), desc=spec.name + " Benders+CG", unit="轮")
+    stage_started = time.time()
+    cm_cache = CutMatrixCache()
+    state_stage = "recovery" if spec.objective == "cost" and spec.wait_cap is not None else spec.objective
+    peak_rss_gib = process.memory_info().rss / 1024 ** 3
+    latency_incumbent = load_latency_incumbent(out) if spec.objective == "latency" else None
+    if latency_incumbent is not None:
+        violates_cost = spec.cost_cap is not None and float(latency_incumbent["真实能源成本_CNY"]) > spec.cost_cap + args.cost_feas_tol_cny
+        violates_wait = spec.wait_cap is not None and float(latency_incumbent["总等待_h"]) > spec.wait_cap + args.wait_tolerance
+        if violates_cost or violates_wait:
+            latency_incumbent = None
+    stage_ui(spec, start_iter, args)
+    iterations = count(start_iter + 1) if args.max_stage_iter == 0 else range(start_iter + 1, args.max_stage_iter + 1)
+    bar = tqdm(
+        iterations, desc=spec.name + " Benders+CG", unit="轮", total=None,
+        disable=not use_bar(args),
+    )
     for iteration in bar:
         check_limits(args, process, started, pool)
+        peak_rss_gib = max(peak_rss_gib, process.memory_info().rss / 1024 ** 3)
         wait, latency = pool_values(pool, data, latency_raw)
         objective = np.zeros(len(pool)) if spec.objective == "cost" else (wait if spec.objective == "wait" else latency)
         assign = assignment_matrix(pool, len(data.task))
         resource = resource_matrix(pool, data, gpu_row, it_row, len(rhs))
-        cm = cut_matrix(pool, data, cuts)
+        cm = cut_matrix(pool, data, cuts, cm_cache)
         const = np.asarray([cut.const for cut in cuts], dtype=float)
         cut_regions = np.asarray([cut.region for cut in cuts], dtype=np.int8)
         if np.any(cut_regions < 0):
@@ -407,7 +776,7 @@ def run_stage(spec: StageSpec, pool: ColumnPool, cuts: list[Cut], data, gpu_row:
             additions, min_rc, _ = price_full_domain(
                 pool, data, gpu_row, it_row, lp["resource_dual"], lp["cut_dual"], cuts,
                 lp["assignment_dual"], spec, latency_raw, lp["wait_cap_dual"],
-                args.price_tol, args.columns_per_task,
+                args.price_tol, args.columns_per_task, use_bar(args),
             )
             added = sum(pool.add(task, region, start) for task, region, start, _ in additions)
             total_added += added
@@ -419,6 +788,7 @@ def run_stage(spec: StageSpec, pool: ColumnPool, cuts: list[Cut], data, gpu_row:
                 root_closed = True
             else:
                 raise StageStopped(spec.name + " 定价发现负约化成本，但没有成功加入缺失列")
+        dominant = int(np.argmax(region_violation))
         row = {
             "阶段": spec.name, "轮次": iteration, "事件": event, "活动列数": len(pool),
             "Benders切数": len(cuts), "LP目标值": lp["objective"], "theta_CNY": lp["theta_total"],
@@ -429,54 +799,158 @@ def run_stage(spec: StageSpec, pool: ColumnPool, cuts: list[Cut], data, gpu_row:
             **{f"区域违反_{REGIONS[r][-1]}_CNY": float(region_violation[r]) for r in range(R)},
             "新增列数": added, "最小缺失列约化成本": min_rc, "根节点闭合": root_closed,
             "当前RSS_GiB": process.memory_info().rss / 1024 ** 3, "累计分钟": (time.time() - started) / 60,
+            "主导违反区域": REGIONS[dominant], "LP界": float(lp["objective"]),
+            "阶段运行秒": float(time.time() - stage_started),
+            "峰值RSS_GiB": peak_rss_gib,
+            "可行Latency上界_ms": "" if latency_incumbent is None else float(latency_incumbent["总时延_ms"]),
         }
         append_metric(metrics_path, row)
-        save_state(out, pool, cuts, spec.objective, iteration, float(spec.cost_cap), wait_star_state, initial_columns)
+        save_state(out, pool, cuts, state_stage, iteration, spec.cost_cap, wait_star_state, initial_columns)
         write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "RUNNING", "当前阶段": spec.name, "轮次": iteration, "事件": event, "活动列数": len(pool), "Benders切数": len(cuts), "最新": row})
-        bar.set_postfix(cols=len(pool), cuts=len(cuts), new=added, rc=f"{min_rc:.3g}" if np.isfinite(min_rc) else "-", rss=f"{row['当前RSS_GiB']:.2f}G")
+        bar.set_postfix(vmax=f"{row['最大区域违反_CNY']:.2f}", vr=REGIONS[dominant][-1], lp=f"{lp['objective']:.0f}", ec=f"{energy['cost']:.0f}", cols=len(pool), cuts=len(cuts), new=added, rc=f"{min_rc:.3g}" if np.isfinite(min_rc) else "-", rss=f"{row['当前RSS_GiB']:.2f}G")
+        round_ui(row, args)
         if not root_closed:
             continue
         wait, latency = pool_values(pool, data, latency_raw)
         objective = np.zeros(len(pool)) if spec.objective == "cost" else (wait if spec.objective == "wait" else latency)
         assign = assignment_matrix(pool, len(data.task))
         resource = resource_matrix(pool, data, gpu_row, it_row, len(rhs))
-        cm = cut_matrix(pool, data, cuts)
+        cm = cut_matrix(pool, data, cuts, cm_cache)
         const = np.asarray([cut.const for cut in cuts], dtype=float)
         cut_regions = np.asarray([cut.region for cut in cuts], dtype=np.int8)
-        mip = solve_stage_mip(assign, resource, cm, rhs, const, objective, wait, cut_regions, spec, args.integer_time_limit_s, args.mip_rel_gap)
-        if not mip.success or mip.x is None:
-            row.update({"事件": "restricted_mip_incomplete", "MIP状态": mip.message})
+        write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "MIP_SOLVING", "当前阶段": spec.name, "轮次": iteration, "事件": "root_lp_closed_start_restricted_mip", "活动列数": len(pool), "Benders切数": len(cuts), "最新": row})
+        use_extensive = use_ext(spec)
+        mip_kind = "能源一体化 MIP" if use_extensive else "restricted MIP"
+        print(
+            f"[第{iteration}轮][3/5 整数MIP] 开始 {mip_kind} | "
+            f"心跳间隔={args.heartbeat_seconds:g}秒。此步骤可能长时间没有新的最优解。",
+            flush=True,
+        )
+        if use_extensive:
+            mip = mip_wait(
+                spec.name + " 能源一体化MIP",
+                lambda: solve_extensive_mip(
+                    pool, data, assign, resource, rhs, objective, wait, spec,
+                    args.integer_time_limit_s, args.mip_rel_gap,
+                ),
+                process, args.heartbeat_seconds,
+            )
+            mok, mmsg, mx, mfun, mgap = mip["success"], mip["message"], mip["x"], mip["fun"], mip["mip_gap"]
+        else:
+            mip = mip_wait(
+                spec.name + " restricted MIP",
+                lambda: solve_stage_mip(
+                    assign, resource, cm, rhs, const, objective, wait, cut_regions,
+                    spec, args.integer_time_limit_s, args.mip_rel_gap,
+                ),
+                process, args.heartbeat_seconds,
+            )
+            mok, mmsg, mx, mfun = mip.success, mip.message, mip.x, float(mip.fun) if mip.fun is not None else math.nan
+            mgap = None if not hasattr(mip, "mip_gap") or mip.mip_gap is None else float(mip.mip_gap)
+        if not mok or mx is None:
+            row.update({"事件": "restricted_mip_incomplete", "MIP状态": mmsg})
             append_metric(metrics_path, row)
-            raise StageStopped(spec.name + " restricted MIP 未完成：" + mip.message)
-        x = np.rint(mip.x[:len(pool)])
+            raise StageStopped(spec.name + " restricted MIP 未完成：" + mmsg)
+        print(
+            f"[第{iteration}轮][3/5 整数MIP] 通过 | 目标值={mfun:.10g} | "
+            f"MIP gap={'未知' if mgap is None else f'{mgap:.3g}'}。",
+            flush=True,
+        )
+        x = np.rint(mx[:len(pool)])
+        print(f"[第{iteration}轮][4/5 真实Energy复核] 正在计算整数排程的真实能源成本。", flush=True)
         integer_energy = energy_lp(facility_load(pool, data, x), data)
         if not integer_energy["success"]:
             raise StageStopped(spec.name + " 整数候选能源子问题不可行：" + integer_energy["message"])
-        integer_region_violation = integer_energy["region_cost"] - mip.x[-R:]
-        integer_violation = float(integer_energy["cost"] - np.sum(mip.x[-R:]))
+        integer_region_violation = np.zeros(R, dtype=float) if use_extensive else integer_energy["region_cost"] - mx[-R:]
+        integer_violation = 0.0 if use_extensive else float(integer_energy["cost"] - np.sum(mx[-R:]))
         cap_violation = 0.0 if spec.cost_cap is None else float(integer_energy["cost"] - spec.cost_cap)
+        if use_extensive and cap_violation > args.cost_feas_tol_cny:
+            raise StageStopped(spec.name + " 能源一体化 MIP 返回的整数解违反 Cost cap")
+        candidate_latency = float(latency @ x)
+        latency_lb = restricted_mip_lower_bound(mip) if spec.objective == "latency" else math.nan
+        latency_ub = math.nan if latency_incumbent is None else float(latency_incumbent["总时延_ms"])
+        latency_gap = math.nan if not np.isfinite(latency_ub) else max(0.0, latency_ub - latency_lb) / max(1.0, abs(latency_ub))
         integer_violated_regions = np.flatnonzero(integer_region_violation > args.benders_tol_cny)
         if cap_violation > args.cost_feas_tol_cny and len(integer_violated_regions) == 0:
             integer_violated_regions = np.arange(R, dtype=np.int8)
-        if len(integer_violated_regions):
+        if len(integer_violated_regions) and not use_extensive:
             add_region_cuts(cuts, data, facility_load(pool, data, x), integer_energy, integer_violated_regions)
-            row.update({"事件": "integer_added_region_benders_cuts", "MIP状态": "需要继续", "MIP目标值": float(mip.fun), "真实能源成本_CNY": integer_energy["cost"], "Benders违反_CNY": integer_violation, "最大区域违反_CNY": float(np.max(integer_region_violation)), "根节点闭合": False})
-            row.update({f"theta_{REGIONS[r][-1]}_CNY": float(mip.x[-R + r]) for r in range(R)})
+            print(
+                f"[第{iteration}轮][4/5 真实Energy复核] 未通过 | "
+                f"触发{len(integer_violated_regions)}个区域 cut，"
+                f"最大违反={float(np.max(integer_region_violation)):.6g} CNY；返回LP继续。",
+                flush=True,
+            )
+            row.update({"事件": "integer_added_region_benders_cuts", "MIP状态": "需要继续", "MIP目标值": mfun, "真实能源成本_CNY": integer_energy["cost"], "Benders违反_CNY": integer_violation, "最大区域违反_CNY": float(np.max(integer_region_violation)), "根节点闭合": False, "Benders切数": len(cuts), "可行Latency上界_ms": "" if not np.isfinite(latency_ub) else latency_ub, "Latency下界_ms": "" if not np.isfinite(latency_lb) else latency_lb, "Latency相对Gap": "" if not np.isfinite(latency_gap) else latency_gap, "成本上界违反_CNY": max(0.0, cap_violation)})
+            row.update({f"theta_{REGIONS[r][-1]}_CNY": float(mx[-R + r]) for r in range(R)})
             row.update({f"真实能源成本_{REGIONS[r][-1]}_CNY": float(integer_energy["region_cost"][r]) for r in range(R)})
             row.update({f"区域违反_{REGIONS[r][-1]}_CNY": float(integer_region_violation[r]) for r in range(R)})
+            row.update({"主导违反区域": REGIONS[int(np.argmax(integer_region_violation))], "MIP Gap": mgap, "MIP目标值": mfun, "峰值RSS_GiB": peak_rss_gib})
             append_metric(metrics_path, row)
-            save_state(out, pool, cuts, spec.objective, iteration, float(spec.cost_cap), wait_star_state, initial_columns)
+            if spec.objective == "latency":
+                append_latency_certificate(out, {
+                    "轮次": iteration, "活动列数": len(pool), "Benders切数": len(cuts),
+                    "LP最小缺失列约化成本": min_rc,
+                    "LP最大区域违反_CNY": float(np.max(region_violation)),
+                    "restricted_MIP_Latency_ms": candidate_latency,
+                    "真实能源成本_CNY": float(integer_energy["cost"]),
+                    "成本上界违反_CNY": max(0.0, cap_violation),
+                    "RegionE违反_CNY": float(integer_region_violation[4]),
+                    "RegionF违反_CNY": float(integer_region_violation[5]),
+                    "可行Latency上界_ms": "" if not np.isfinite(latency_ub) else latency_ub,
+                    "Latency下界_ms": latency_lb,
+                    "Latency相对Gap": "" if not np.isfinite(latency_gap) else latency_gap,
+                    "事件": "integer_added_region_benders_cuts",
+                })
+            save_state(out, pool, cuts, state_stage, iteration, spec.cost_cap, wait_star_state, initial_columns)
+            write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "RUNNING", "当前阶段": spec.name, "轮次": iteration, "事件": row["事件"], "活动列数": len(pool), "Benders切数": len(cuts), "最新": row})
             continue
-        integer_objective = float(objective @ x)
+        integer_objective = float(integer_energy["cost"] if spec.objective == "cost" else objective @ x)
         if spec.wait_cap is not None and float(wait @ x) > spec.wait_cap + 1e-6:
             raise StageStopped(spec.name + " 整数候选违反等待上界")
-        mip_gap = None if not hasattr(mip, "mip_gap") or mip.mip_gap is None else float(mip.mip_gap)
-        row.update({"事件": "stage_completed", "MIP状态": "restricted_mip_completed", "MIP目标值": integer_objective, "真实能源成本_CNY": integer_energy["cost"], "Benders违反_CNY": integer_violation, "最大区域违反_CNY": float(np.max(integer_region_violation)), "根节点闭合": True})
+        print(
+            f"[第{iteration}轮][4/5 真实Energy复核] 通过 | "
+            f"真实能源成本={float(integer_energy['cost']):.6f} CNY | "
+            f"最大区域一致性违反={float(np.max(integer_region_violation)):.6g} CNY。",
+            flush=True,
+        )
+        wait_v = float(wait @ x)
+        cost_s = "无Cost上界" if spec.cost_cap is None else f"Cost={integer_energy['cost']:.6f} <= {spec.cost_cap:.6f} CNY"
+        wait_s = "无Wait上界" if spec.wait_cap is None else f"Wait={wait_v:.6f} <= {spec.wait_cap:.6f} h"
+        print(f"[第{iteration}轮][5/5 阶段硬约束] 通过 | {cost_s} | {wait_s}。", flush=True)
+        mip_gap = mgap
+        mip_objective = mfun
+        if spec.objective in ("wait", "latency") or spec.wait_cap is not None:
+            latency_incumbent = save_latency_incumbent(out, pool, data, x, latency_raw, integer_energy, spec.name, force=spec.objective == "wait")
+            latency_ub = float(latency_incumbent["总时延_ms"])
+            latency_gap = max(0.0, latency_ub - latency_lb) / max(1.0, abs(latency_ub)) if np.isfinite(latency_lb) else math.nan
+        print(
+            f"[阶段完成] {spec.name} 五项门禁全部通过 | 阶段目标={integer_objective:.10g} | "
+            "注意：这不是整道Q4的最终结束信号。",
+            flush=True,
+        )
+        row.update({"事件": "stage_completed", "MIP状态": "restricted_mip_completed", "MIP目标值": mip_objective, "真实能源成本_CNY": integer_energy["cost"], "Benders违反_CNY": integer_violation, "最大区域违反_CNY": float(np.max(integer_region_violation)), "根节点闭合": True, "LP界": float(lp["objective"]), "MIP Gap": mip_gap, "主导违反区域": REGIONS[int(np.argmax(integer_region_violation))], "峰值RSS_GiB": peak_rss_gib, "Benders切数": len(cuts), "可行Latency上界_ms": "" if not np.isfinite(latency_ub) else latency_ub, "Latency下界_ms": "" if not np.isfinite(latency_lb) else latency_lb, "Latency相对Gap": "" if not np.isfinite(latency_gap) else latency_gap, "成本上界违反_CNY": max(0.0, cap_violation)})
         append_metric(metrics_path, row)
+        if spec.objective == "latency":
+            append_latency_certificate(out, {
+                "轮次": iteration, "活动列数": len(pool), "Benders切数": len(cuts),
+                "LP最小缺失列约化成本": min_rc,
+                "LP最大区域违反_CNY": float(np.max(region_violation)),
+                "restricted_MIP_Latency_ms": candidate_latency,
+                "真实能源成本_CNY": float(integer_energy["cost"]),
+                "成本上界违反_CNY": max(0.0, cap_violation),
+                "RegionE违反_CNY": float(integer_region_violation[4]),
+                "RegionF违反_CNY": float(integer_region_violation[5]),
+                "可行Latency上界_ms": latency_ub, "Latency下界_ms": latency_lb,
+                "Latency相对Gap": latency_gap, "事件": "stage_completed",
+            })
         return StageOutcome(x=x, energy=integer_energy, objective=integer_objective,
                             lp_bound=float(lp["objective"]), mip_gap=mip_gap,
                             iterations=iteration, added_columns=total_added,
-                            min_reduced_cost=float(last_min_rc))
+                            min_reduced_cost=float(last_min_rc), mip_objective=mip_objective,
+                            final_max_region_violation=float(np.max(integer_region_violation)),
+                            benders_cuts=len(cuts), runtime_s=float(time.time() - stage_started),
+                            peak_rss_gib=peak_rss_gib)
     raise StageStopped(spec.name + " 达到最大迭代轮数")
 
 
@@ -504,11 +978,13 @@ def audit_solution(pool: ColumnPool, data, x: np.ndarray, gpu_row: np.ndarray,
     resource = resource_matrix(pool, data, gpu_row, it_row, len(rhs))
     resource_value = np.asarray(resource @ x).ravel()
     assignment = np.asarray(assignment_matrix(pool, len(data.task)) @ x).ravel()
+    realtime = data.task.iloc[chosen_task]["TaskType"].astype(str).to_numpy() == "RealTimeInference"
     audit = {
         "任务覆盖违规数": int(np.count_nonzero(np.abs(assignment - 1.0) > 1e-7)),
         "GPU或IT容量违规行数": int(np.count_nonzero(resource_value - rhs > 1e-7)),
         "最大容量越界": float(max(0.0, np.max(resource_value - rhs))),
         "到达时间违规数": int(np.count_nonzero(chosen_start < data.arrival[chosen_task])),
+        "RT即到即开违规数": int(np.count_nonzero(chosen_start[realtime] != data.arrival[chosen_task][realtime])),
         "SLA区域违规数": int(sum(not data.legal[int(t), int(r)] for t, r in zip(chosen_task, chosen_region))),
         "LatestFinish违规数": int(np.count_nonzero(finish - data.latest[chosen_task] > 1e-7)),
         "完成晚于2406违规数": int(np.count_nonzero(finish - 2406.0 > 1e-7)),
@@ -528,29 +1004,62 @@ def main() -> None:
     parser.add_argument("--cost-feas-tol-cny", type=float, default=1e-3)
     parser.add_argument("--price-tol", type=float, default=1e-7)
     parser.add_argument("--columns-per-task", type=int, default=2)
-    parser.add_argument("--max-stage-iter", type=int, default=60)
-    parser.add_argument("--integer-time-limit-s", type=float, default=10800.0)
+    parser.add_argument("--max-stage-iter", type=int, default=0, help="0 表示持续到阶段真实闭合")
+    parser.add_argument("--integer-time-limit-s", type=float, default=0.0, help="0 表示单次 MIP 不设时限")
     parser.add_argument("--mip-rel-gap", type=float, default=1e-7)
-    parser.add_argument("--max-hours", type=float, default=8.5)
+    parser.add_argument("--max-hours", type=float, default=0.0, help="0 表示不设总时长门槛")
     parser.add_argument("--max-active-columns", type=int, default=1_000_000)
     parser.add_argument("--max-rss-gib", type=float, default=10.0)
     parser.add_argument("--min-free-gib", type=float, default=2.0)
+    parser.add_argument(
+        "--progress-mode", choices=("auto", "bar", "plain"), default="auto",
+        help="auto在PyCharm输出窗使用清晰逐行反馈，在真实终端使用动态进度条",
+    )
+    parser.add_argument(
+        "--heartbeat-seconds", type=float, default=30.0,
+        help="MIP长时间求解时的心跳间隔；0表示关闭心跳",
+    )
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--no-final-recertification", action="store_true", help="仅调试时关闭自动最终再认证")
     args = parser.parse_args()
     if args.columns_per_task < 1:
         raise SystemExit("columns-per-task 必须至少为 1")
+    if args.max_stage_iter < 0 or args.max_hours < 0 or args.integer_time_limit_s < 0:
+        raise SystemExit("max-stage-iter、max-hours 和 integer-time-limit-s 不能为负；0 表示不限")
+    if args.heartbeat_seconds < 0:
+        raise SystemExit("heartbeat-seconds 不能为负；0 表示关闭心跳")
     vm = psutil.virtual_memory(); free_gib = vm.available / 1024 ** 3
     if free_gib < args.min_free_gib:
         raise SystemExit(f"停止：当前可用内存 {free_gib:.2f} GiB，小于门槛 {args.min_free_gib:.2f} GiB")
     attach = args.attachment_dir.resolve(); input_dir = args.input_dir.resolve(); out = args.output_dir.resolve()
     out.mkdir(parents=True, exist_ok=True)
     started = time.time(); data = read_data(attach); latency_raw = read_latency(attach)
+    print(
+        "[Q4求解说明] 当前脚本负责生成和扩展QoS列池。即使Wait/Latency阶段完成，"
+        "也必须继续通过final recertification的Cost->Wait->Latency至少两个稳定sweep，才显示正式可结束。",
+        flush=True,
+    )
     gpu_row, it_row, rhs, _ = make_presolve_rows(data)
     cost_placement: dict[int, tuple[int, int]] = {}
     if args.resume:
         pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns = load_state(out)
         cost_anchor = cost_cap - args.cost_tolerance
         print(f"恢复阶段={stage}，第 {stage_iter} 轮后，活动列={len(pool)}，cuts={len(cuts)}")
+        recovery_marker = out / WAIT_RECOVERY_JSON
+        if stage in ("wait", "cost") and recovery_marker.is_file():
+            marker = json.loads(recovery_marker.read_text(encoding="utf-8"))
+            if marker.get("状态") == "RUNNING" and marker.get("Latency恢复轮次") is not None:
+                wait_star = RECOVERY_WAIT_ANCHOR_H
+                stage_iter = 0
+                stage = "recovery"
+                save_state(out, pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns)
+                write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "RECOVERING_WAIT_INCUMBENT", "当前阶段": "Wait=32可行端点恢复", "活动列数": len(pool), "Benders切数": len(cuts), "等待锚点_h": wait_star})
+        if stage == "latency" and load_latency_incumbent(out) is None and wait_star is not None:
+            print("旧断点未保存 Wait 真实可行排程；先在当前扩展列池自动重建 Latency 可行上界")
+            (out / WAIT_RECOVERY_JSON).write_text(json.dumps({"状态": "RUNNING", "Latency恢复轮次": stage_iter}, ensure_ascii=False, indent=2), encoding="utf-8")
+            stage, stage_iter = "recovery", 0
+            save_state(out, pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns)
+            write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "RECOVERING_WAIT_INCUMBENT", "当前阶段": "Wait=32可行端点恢复", "活动列数": len(pool), "Benders切数": len(cuts), "等待锚点_h": wait_star})
     else:
         pool, cuts, cost_cap, cost_anchor, cost_placement = load_cost_anchor(input_dir, data, args.cost_tolerance, args.benders_tol_cny)
         stage, stage_iter, wait_star, initial_columns = "wait", 0, None, len(pool)
@@ -560,11 +1069,30 @@ def main() -> None:
         save_state(out, pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns)
     try:
         wait_outcome = None
+        if stage == "recovery":
+            recovery_spec = StageSpec("Wait=32可行端点恢复", "cost", cost_cap, wait_star + args.wait_tolerance)
+            wait_outcome = run_stage(recovery_spec, pool, cuts, data, gpu_row, it_row, rhs, latency_raw, args, out, started, initial_columns, wait_star, 0)
+            recovery_path = out / WAIT_RECOVERY_JSON
+            recovery = json.loads(recovery_path.read_text(encoding="utf-8")) if recovery_path.is_file() else {}
+            recovery.update({"状态": "COMPLETED", "恢复方式": "Cost目标+Wait锚点约束", "重建Wait锚点_h": wait_star, "可行Latency上界_ms": load_latency_incumbent(out)["总时延_ms"]})
+            recovery_path.write_text(json.dumps(recovery, ensure_ascii=False, indent=2), encoding="utf-8")
+            stage = "latency"
+            stage_iter = int(recovery.get("Latency恢复轮次", 0))
+            save_state(out, pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns)
+            write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "WAIT_COMPLETED", "等待最优值_h": wait_star, "活动列数": len(pool), "Benders切数": len(cuts)})
         if stage == "wait":
             wait_spec = StageSpec("Wait阶段", "wait", cost_cap)
             wait_outcome = run_stage(wait_spec, pool, cuts, data, gpu_row, it_row, rhs, latency_raw, args, out, started, initial_columns, None, stage_iter)
             wait_star = wait_outcome.objective
-            stage, stage_iter = "latency", 0
+            recovery_path = out / WAIT_RECOVERY_JSON
+            if recovery_path.is_file():
+                recovery = json.loads(recovery_path.read_text(encoding="utf-8"))
+                stage_iter = int(recovery.get("Latency恢复轮次", 0))
+                recovery.update({"状态": "COMPLETED", "重建Wait锚点_h": wait_star, "可行Latency上界_ms": load_latency_incumbent(out)["总时延_ms"]})
+                recovery_path.write_text(json.dumps(recovery, ensure_ascii=False, indent=2), encoding="utf-8")
+            else:
+                stage_iter = 0
+            stage = "latency"
             save_state(out, pool, cuts, stage, stage_iter, cost_cap, wait_star, initial_columns)
             write_checkpoint(out, {"模型版本": MODEL_VERSION, "状态": "WAIT_COMPLETED", "等待最优值_h": wait_star, "活动列数": len(pool), "Benders切数": len(cuts)})
         if wait_star is None:
@@ -619,6 +1147,8 @@ def main() -> None:
     write_checkpoint(out, {**summary, "状态": "FINISHED_DRAFT"})
     save_state(out, pool, cuts, "finished", latency_outcome.iterations, cost_cap, wait_star, initial_columns)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
+    if not args.no_final_recertification:
+        run_final_recertification(attach, out)
 
 
 if __name__ == "__main__":

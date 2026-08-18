@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "question": "问题四算法修正验收",
+  "problem_type": "B",
+  "subtypes": ["multi_objective"],
+  "objective": "验证联合任务、能源与储能调度的成本、等待、时延字典序求解器在完整合法域上保持模型一致性",
+  "final_model": "Cost主层后依次施加成本上界和等待上界的三阶段字典序联合调度模型",
+  "model_definition": "任务区域与整数开工时刻为离散变量，能源储能调度为连续recourse；约束包括任务指派、GPU、IT、SLA、截止时间、能源平衡、储能和电网边界",
+  "algorithm": "Cost、Wait、Latency三阶段均执行Benders分解和完整域精确列生成；无负约化成本列且真实recourse闭合后求受限整数解",
+  "result_ids": ["q4-lexicographic-40-validation"],
+  "checks": {
+    "complete_model": {
+      "status": "PASS",
+      "evidence": "../code/Q4_LEXICOGRAPHIC_FULL_DOMAIN_REPRICING_REQUIREMENTS_20260817.md",
+      "metric": "三阶段均定义目标、上层上界、完整域定价和真实能源复核"
+    },
+    "feasibility": {
+      "status": "PASS",
+      "evidence": "../results/lexicographic_40task_validation/q4_lexicographic_40task_validation.json",
+      "metric": "40个任务完整覆盖，最终真实成本满足成本上界，等待为6 h且时延为437 ms"
+    },
+    "baseline_or_bound": {
+      "status": "PASS",
+      "evidence": "../results/lexicographic_40task_validation/q4_lexicographic_40task_validation.json",
+      "metric": "CG成本与3139列显式精确MILP的差小于1e-4 CNY"
+    },
+    "complexity": {
+      "status": "PASS",
+      "evidence": "../results/lexicographic_40task_validation/q4_lexicographic_40task_validation.json",
+      "metric": "完整域3139列，初始40列，三阶段闭合后活动列157列"
+    },
+    "sensitivity": {
+      "status": "PASS",
+      "evidence": "../results/lexicographic_40task_validation/probe3_carbon_budget_results.csv",
+      "metric": "在gamma=1.4压力情景下比较100%、75%、50%、25%和0%五级碳预算"
+    },
+    "pareto_or_weight_change": {
+      "status": "PASS",
+      "evidence": "../results/lexicographic_40task_validation/probe3_carbon_budget_results.csv",
+      "metric": "采用五级epsilon碳预算展示成本从-5018111.40到-5013150.08 CNY的约束变化，不使用人工权重"
+    }
+  }
+}

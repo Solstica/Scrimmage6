@@ -1,0 +1,12 @@
+{
+  "模型版本": "region_multicut_v1",
+  "状态": "FINISHED_DRAFT",
+  "当前sweep": 2,
+  "当前阶段": "finished",
+  "活动列数": 137158,
+  "Benders切数": 1173,
+  "Cost锚点_CNY": -459340688.8007043,
+  "Wait锚点_h": 0.0,
+  "Latency锚点_ms": 250860.0,
+  "全局整数最优已证明": false
+}
