@@ -38,8 +38,9 @@ Benders 与列生成只是求解该联合模型的工具，而不是联合建模
 \node[box] (data) {数据结构诊断\\任务柔性/区域异质性\\算--储争用新能源};
 \node[box,right=of data] (joint) {联合模型\\$x\to AI\ IT\to Facility$\\$\to$ Energy Recourse};
 \node[box,right=of joint] (solve) {Benders + Exact CG\\隐式完整合法域\\Region multi-cut};
-\node[box,right=of solve] (lex) {字典序精化\\Cost $\to$ Wait $\to$ Latency\\Carbon 场景轴};
-\node[box,right=of lex] (result) {验证与输出\\40-task exact\\50k 可扩展求解};
+\node[box,right=of solve] (lex) {字典序精化\\Cost $\to$ Wait $\to$ Latency\\Final-pool 再认证};
+\node[box,right=of lex] (result) {验证与输出\\40-task exact\\50k canonical + 场景};
+\draw[line] (data)--(probe);
 \draw[line] (data)--(joint);
 \draw[line] (joint)--(solve);
 \draw[line] (solve)--(lex);
@@ -214,7 +215,7 @@ Cost 主层交替执行：Restricted Master $\rightarrow$ 真实 Energy LP $\rig
 
 \begin{table}[!htbp]
 \centering
-\caption{Benders+CG Root 扩展性结果（当前 full-run 真源）}
+\caption{Benders+CG Root 扩展性结果（Cost 初始闭合阶段）}
 \label{tab:q4-scaling}
 \begin{tabular}{ccccccc}
 \toprule
@@ -238,7 +239,8 @@ Cost 主层交替执行：Restricted Master $\rightarrow$ 真实 Energy LP $\rig
   \item 在 Cost cap 下最小化 Total Wait，并重新执行完整域 Wait pricing 与真实 Energy LP 复核；
   \item 在 Cost cap 与 Wait cap 下最小化 Total Latency，并重新执行完整域 Latency pricing 与真实 Energy LP 复核。
 \end{enumerate}
-对于 50k 问题，后序阶段新增列还可能反向改善前序 restricted-integer anchor，因此最终结果还需在最终扩展列池上执行 Cost$\rightarrow$Wait$\rightarrow$Latency 再认证。正式论文只在该闭环完成后冻结 50k 字典序端点；在此之前不使用 $C^*,W^*$ 等符号暗示全局整数最优。
+
+由于后序阶段新增列可能反向改善前序 restricted-integer anchor，最终扩展列池上再执行完整的 Cost$\rightarrow$Wait$\rightarrow$Latency sweep，直到相邻两轮三个 anchor 均不再变化。最终 50k 求解进行了两轮完整再认证：第一轮 Latency pricing 新增 19 列，第二轮三个阶段均未再产生新列；两轮 Cost、Wait、Latency anchor 完全一致。因此，本文冻结的是\textbf{final-pool recertified best-known integer representative solution}，而非未经证明的全局整数最优。
 
 \subsection{结果与分析}
 
@@ -265,6 +267,41 @@ Benders 迭代 & --- & 2 \\
 \FloatBarrier
 
 在同一 40-task 完整合法域上继续做字典序精化：Cost-only 的某些等价代表解可出现 38/40 迁移、总等待 172 h；而在 Cost 最优面内依次最小化 Wait、Latency 后，可得到迁移 5 个任务、总等待 6 h、平均等待 0.15 h、最大等待 2 h、总网络时延 437 ms、平均时延 10.925 ms 的 exact 字典序代表解。该结果说明“Cost 最优值接近”不能替代服务质量精化，也验证了 Wait/Latency 必须重新做 full-domain pricing。
+
+\subsubsection{50k final-pool 字典序再认证结果}
+
+50,000 个任务的最终扩展列池包含 137,158 个活动列、1,173 条 region Benders cuts。两轮完整 Cost$\rightarrow$Wait$\rightarrow$Latency 再认证得到完全一致的三个 anchor：
+
+\begin{table}[!htbp]
+\centering
+\caption{50k final-pool 字典序再认证结果}
+\label{tab:q4-final-recert}
+\begin{tabular}{lccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+指标 & Sweep 1 & Sweep 2 & 最终代表值 \\
+\midrule
+真实能源成本/CNY & $-459{,}340{,}688.8007$ & $-459{,}340{,}688.8007$ & $-459{,}340{,}688.8007$ \\
+Total Wait/h & 0 & 0 & 0 \\
+Total Latency/ms & 250,860 & 250,860 & 250,860 \\
+Active columns & 137,158 & 137,158 & 137,158 \\
+Benders cuts & 1,160 & 1,173 & 1,173 \\
+最小缺失列约化成本 & 0 & 0 & 0 \\
+最大区域 Benders violation/CNY & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+最终任务级排程覆盖全部 50,000 个 TaskID 且无重复，所有任务等待均为 0；仅有 61 个任务发生跨区执行，迁移率为 0.122\%，其中 AITraining 52 个、BatchInference 8 个、RealTimeInference 1 个。总网络时延为 250,860 ms，平均时延为 5.0172 ms，P95 为 5 ms，最大时延为 58 ms；最晚任务于 2405.6 h 完成，未越过 2406 边界。能源、SOC、购售电、任务覆盖、GPU/IT、SLA、LatestFinish 与终端 SOC 的独立硬约束审计全部通过，最大物理残差约为 $1.14\times10^{-13}$。
+
+\subsubsection{计算柔性与储能柔性的替代关系}
+
+Q2 在冻结能源动作时，Cost-primary 排程通过大规模 workload 时空重构吸收能源错配：迁移率约 74.896\%，平均等待约 20.475 h，最大等待达到 2016 h。Q4 将 BESS/Grid 与 workload 同时放回真实联合 recourse 后，却在相同字典序 Cost anchor 上恢复到 Total Wait=0，仅需 0.122\% 的任务迁移。
+
+这一结果说明，本附件数据下两类柔性并非简单相加：\textbf{储能时间柔性吸收了绝大部分原本由 workload 时间平移和跨区迁移承担的调节需求，计算柔性只需保留极少量空间修正即可维持最优成本面内的服务质量。} 因而 Q2 的高迁移率不是 Q4 的必然属性，而是“能源动作被冻结”这一单侧优化条件下 workload flexibility 的影子价格表现。该机制也从最终结果层面验证了 Q2 与 Q3 不能顺序拼接后直接视为联合最优。
+
+Q3 E1 与 Q4 当前绝对成本的表面差额约为 $1.23\times10^5$ CNY，但由于 Q2/Q3/Q4 对 Hour 2406 terminal settlement 与跨问 accounting 仍需最终统一，本文暂不将该差额冻结为联合优化的正式增量收益。
 
 \subsubsection{数据结构压缩验证}
 
@@ -316,18 +353,25 @@ Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密
 
 \subsubsection{50k 可扩展性与最优性边界}
 
-Root 阶段 50k 任务的实际峰值内存约 0.254 GiB，总求解时间约 2.06 min。Exact column generation 将 $2.33\times10^8$ 个潜在 placements 压缩为约 51,247 个 active columns，说明完整域可以通过隐式定价求解。但这一结果只提供 full-domain root LP certificate 与 restricted-column integer incumbent；50k 全局整数最优尚未证明。后续 Wait/Latency 的 full-domain LP 已在持续闭合，而整数 Benders 可行化和最终列池三阶段再认证完成前，50k 最终字典序排程继续保持 DRAFT，不进入正式结论。
+Cost 初始 root 阶段 50k 任务的实际峰值内存约 0.254 GiB，总求解时间约 2.06 min；后续完整字典序再认证将活动列扩展至 137,158，并最终形成 1,173 条 region cuts。两轮 final-pool sweep 中所有阶段的完整域定价均无负 reduced-cost 缺失列，最大区域 Benders violation 为 0，且 restricted-column MIP gap 为 0。
+
+需要强调，`restricted MIP gap=0` 只证明\textbf{当前最终活动列池上的整数问题}已经解到最优，不等于完整域全局整数最优证书。Latency 阶段的完整域 LP 下界为 250,469.9546 ms，而最终整数代表解为 250,860 ms，二者绝对差约 390.0454 ms，相对差约
+\begin{equation}
+\frac{250860-250469.9546}{250860}\approx 0.1555\%.
+\label{eq:q4-lat-gap}
+\end{equation}
+因此本文的正式口径是：\textbf{完整合法域 LP pricing 与 region Benders 已闭合，并在最终扩展列池上获得真实能源可行、两轮再认证稳定的 best-known 字典序整数代表解；不声称 50k 全局整数最优。}
 
 \subsubsection{六指标的角色说明}
 
-题面要求报告 Cost、Carbon、Latency、QoS、RenewableUtilization、regional PeakNetImport 六项指标。根据当前数据探针与 exact benchmark，它们在模型中的角色为：
+题面要求报告 Cost、Carbon、Latency、QoS、RenewableUtilization、regional PeakNetImport 六项指标。根据当前 canonical 结果与数据探针，它们在模型中的角色为：
 
 \begin{itemize}
-  \item \textbf{Cost}：主优化层；Benders/CG 可证明完整合法域 root LP 闭合，并提供可行整数上界，但 50k 全局整数最优需单独认证；
+  \item \textbf{Cost}：第一字典序优化层；
   \item \textbf{Carbon}：在数据或场景真正激活冲突时通过 epsilon-constraint 纳入，不预设 Cost/Carbon 权重；
-  \item \textbf{QoS/Wait}：Cost 面上的第二层字典序精化，对完整合法域重新定价；
-  \item \textbf{Latency}：Wait 后的第三层字典序精化，同样对完整合法域重新定价；
-  \item \textbf{RenewableUtilization}、\textbf{regional PeakNetImport}：必须报告，但是否需要成为独立优化轴由最终 full-system 可变范围和冲突探针决定，而不是因为题面列出了六项指标就重复计权。
+  \item \textbf{QoS/Wait}：Cost 面上的第二层字典序精化，50k canonical 已达到 Total Wait=0；
+  \item \textbf{Latency}：Wait 后的第三层字典序精化，50k canonical 总时延 250,860 ms；
+  \item \textbf{RenewableUtilization}、\textbf{regional PeakNetImport}：作为题面要求的正式报告指标，在 canonical 与后续场景中统一核算；是否成为独立优化轴仍由冲突探针决定，而不是因为题面列出六项就重复计权。
 \end{itemize}
 
-因此，本问不使用六指标等权综合目标、AHP、熵权或人为 minimax 权重。最终正式场景还需在相同联合模型下分别完成碳约束、电价机制和新能源波动比较，且每个场景必须重新允许 workload 与 BESS/Grid 联合优化。
+因此，本问不使用六指标等权综合目标、AHP、熵权或人为 minimax 权重。当前 canonical 联合优化主问题已经完成，但 Q4 整问尚需在相同 joint model 下完成三类正式场景：\textbf{Carbon constraints、electricity-price mechanisms、renewable fluctuation scenarios}。每个场景均必须重新允许 workload placement 与 BESS/Grid 联合优化并重新执行 exact pricing；历史 $\gamma=1.4$ 仅作为诊断探针，不替代正式场景。
