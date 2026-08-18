@@ -53,11 +53,11 @@ V=\sqrt{\frac{\chi^2/n}{\min(R-1,K-1)}}.
 \pi_{rk}=P(R=r,K=k).
 \end{equation}
 
-另一方面，在给定 TaskType 后，SourceRegion 对 GPU_Demand 与 EstimatedDuration 的附加解释较弱；GPU 与 Duration 的线性相关也接近 0，但本文不据此假定严格独立，而是保留 TaskType 内部的联合经验资源标记。图\ref{fig:q1-composition}同时展示 Region$\times$TaskType 结构及任务数/GPU-hour 错位。
+另一方面，在给定 TaskType 后，SourceRegion 对 \texttt{GPU\_Demand} 与 EstimatedDuration 的附加解释较弱；GPU 与 Duration 的线性相关也接近 0，但本文不据此假定严格独立，而是保留 TaskType 内部的联合经验资源标记。图\ref{fig:q1-composition}同时展示 Region$\times$TaskType 结构及任务数/GPU-hour 错位。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/主图1：区域任务类型热图与GPU小时占比.png}
+\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_task_structure.png}
 \caption{区域--任务类型结构及任务数与 GPU-hour 占比差异}
 \label{fig:q1-composition}
 \end{figure}
