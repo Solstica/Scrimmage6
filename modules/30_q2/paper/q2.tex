@@ -65,26 +65,17 @@ T_i = \begin{cases}
 
 \subsubsection{三类任务的柔性差异}
 
-三类任务的时空柔性存在显著差异，图\ref{fig:q2-flexibility} 展示了各任务类型在空间可行区域数 $|R_i|$、时间余量 slack 和 GPU-hour 三个维度的分布。其中 slack 定义为
+三类任务的时空柔性存在显著差异，图\ref{fig:q2-flexibility} 展示了各任务类型在空间可行区域数 $|R_i|$、真正可调时间自由度和 GPU-hour 三个维度的分布。其中 slack 定义为
 \begin{equation}
-\text{Slack}_i = \min(d_i, 2406) - a_i - p_i.
+\text{Slack}_i = \min(d_i, 2406) - a_i - p_i,
 \label{eq:q2-slack}
 \end{equation}
+而真正可调时间自由度对 RT 严格为 0（$s_i = a_i$ 是硬约束），仅对 Batch 和 Training 有意义。
 
 \begin{figure}[!htbp]
 \centering
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\caption{空间可行区域数 $|R_i|$ 分布}
-\label{fig:q2-flex-region}
-\end{subfigure}
-\hspace{0.02\textwidth}
-\begin{subfigure}[t]{\FigureSingleWidth}
-\centering
-\caption{GPU-hour 分布}
-\label{fig:q2-flex-gpu}
-\end{subfigure}
-\caption{三类任务的时空柔性与资源重量对比。左：空间可行区域数分布；右：GPU-hour 分布。}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-1 任务柔性三面板.png}
+\caption{三类任务的时空柔性与资源重量对比。(a) 空间合法区域数分布；(b) 真正可调时间自由度，RT 因 $s_i = a_i$ 强制即时开工故自由度为 0；(c) GPU-hour 中位数分布。数据表明：空间越受限、时间越刚性、资源重量越大的任务越应优先调度。}
 \label{fig:q2-flexibility}
 \end{figure}
 
@@ -133,6 +124,15 @@ T_i = \begin{cases}
   \item Cost 与 Carbon 在数据上总体同向但并非完全一致，故使用双端点验证，不构造主观 Cost--Carbon 权重。
 \end{enumerate}
 因此，SFETA 的核心不是额外堆叠目标，而是利用附件中已存在的“柔性差异 + 能源错配”结构，在完整合法域上重排计算负荷。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-3 分段能源边际响应.png}
+\caption{设施负荷增量与能源响应的分段关系。横轴为设施负荷增量 $\Delta L$，纵轴分别展示弃电功率变化 $\Delta\text{Curtailment}$（橙色）和电网购电功率变化 $\Delta\text{GridPurchase}$（蓝色）。分段机制为：I 区 $0 \le \Delta L \le \text{Curtailment}_0$，新增负荷全部由原有弃电吸收，$\Delta G = 0$；II 区 $\Delta L > \text{Curtailment}_0$，弃电耗尽后触发新增购电；III 区 $\Delta L < 0$ 且 $G_0 + \Delta G > 0$，负荷下降先减少原有供负荷购电；IV 区 $G_0 + \Delta G = 0$，购电降为零后继续降负荷会增加弃电。该分段机制是增量能量平衡模型的核心。}
+\label{fig:q2-marginal-response}
+\end{figure}
+
+\FloatBarrier
 
 \subsubsection{基准状态增量能量平衡}
 
@@ -367,6 +367,15 @@ Cost-primary 从 reference-start 出发完成 3 遍完整扫描，主目标单�
 \end{equation}
 收敛后 last-pass fallback = 0，全部硬约束 PASS。
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-2 收敛与初始化敏感性.png}
+\caption{SFETA 重复完整扫描收敛轨迹与初始化敏感性。(a) Cost-primary 端点：reference-start（深蓝实线）与 previous-start（橙色虚线）的逐轮成本变化。reference-start 第 3 遍达到约 $1.555\times10^9$ CNY 并满足收敛容差；previous-start 第 4 遍仍收敛到更高成本，揭示初始化路径依赖。(b) Carbon-primary 端点（绿色）与 Cost-primary 端点（深蓝）的碳排收敛轨迹。两条轨迹总体同向，但 Carbon-primary 收敛到更低碳排，验证了 Cost/Carbon 双端点对照的必要性。}
+\label{fig:q2-convergence}
+\end{figure}
+
+\FloatBarrier
+
 \subsubsection{调度行为分析}
 
 50000 个任务全部成功调度。表\ref{tab:q2-wait} 按任务类型给出迁移与等待分布。
@@ -393,6 +402,15 @@ RealTimeInference & 16,724 & 11,685 & $69.870\%$ & 0 & 0 & 0 \\
 
 平均网络时延 26.75 ms，95\% 分位 78 ms，最大 82 ms，全部满足 SLA 要求。高迁移率应理解为完整时空合法域被充分利用后的结果，而不能简单解释为任务“迁往新能源区”；六区原始 AvailableRenewable 并无空间差异，迁移方向由逐时弃电、PUE、价格、碳强度和资源容量共同决定。
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-4 区域迁移热图.png}
+\caption{来源区域到执行区域的迁移任务数热图。单元格数值为对应迁移的任务数；纵轴为来源区域，横轴为执行区域。对角线单元格表示任务保持来源区域不迁移，非对角线单元格表示跨区域迁移。主对角线仍占一定比例，不强制均匀化迁移；真实迁移方向由实际约束和能源信号共同决定，不预先指定某区域为绿色承接中心。}
+\label{fig:q2-migration-heatmap}
+\end{figure}
+
+\FloatBarrier
+
 \subsubsection{Carbon-primary 对照端点}
 
 为检验 Cost/Carbon 目标结构，本文同步运行 Carbon-primary 端点（reference-start，3-pass 收敛）。表\ref{tab:q2-cmp} 给出 Cost-primary 与 Carbon-primary 的端点对比。
@@ -415,6 +433,15 @@ RealTimeInference & 16,724 & 11,685 & $69.870\%$ & 0 & 0 & 0 \\
 \end{table}
 
 Carbon-primary 相比 Cost-primary 额外多花 2,782,052.40 CNY，仅占 Cost-primary 总成本 $0.18\%$；Cost-primary 相比 Carbon-primary 额外多排 11,242.75 tCO\textsubscript{2}，仅占 Carbon-primary 碳排 $0.62\%$。两者高度同向但并不完全退化，这与“弃电高时段通常低碳、进入新增购电区后 Cost/Carbon 空间排序仍较一致”的数据关系相符。因此正文采用 Cost-primary 代表方案 + Carbon-primary 端点对照的组织方式，不构造人工 Cost/Carbon 加权和。
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-5 Cost–Carbon 端点关系.png}
+\caption{Cost--Carbon 端点关系散点图。横轴为运行成本（CNY），纵轴为碳排放（tCO\textsubscript{2}），包含附件基准（灰色叉号）、Cost-primary reference-start（深蓝圆点）、Carbon-primary reference-start（绿色菱形）和 Cost-primary previous-start（橙色方点）四个端点。两个 canonical 端点（Cost-primary 和 Carbon-primary）高度同向但不完全重合，且均显著优于基准；previous-start 端点同时偏向更高成本和更高碳排，体现路径依赖。Carbon-primary 相比 Cost-primary 的成本代价约 $0.18\%$，Cost-primary 相比 Carbon-primary 的碳代价约 $0.62\%$。仅展示四个代表点，不称 Pareto frontier。}
+\label{fig:q2-cost-carbon-endpoints}
+\end{figure}
+
+\FloatBarrier
 
 \subsubsection{多起点路径依赖与稳健性}
 
