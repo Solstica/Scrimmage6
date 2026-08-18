@@ -1,6 +1,37 @@
 % Paper-shell switches. Edit only on feature/paper-shell.
-% Directory switch requested by the team:
 \newif\ifshowtoc
 \showtoctrue
 % To hide the table of contents for a local preview, change only the previous line to:
 % \showtocfalse
+
+% ---------- final figure-width conventions inherited from Scrimmage5 ----------
+\renewcommand{\FigureSingleWidth}{0.60\textwidth}
+\renewcommand{\FigureDoubleWidth}{1.00\textwidth}
+\renewcommand{\FigureFlowWidth}{1.00\textwidth}
+\renewcommand{\FigureMechanismWidth}{0.80\textwidth}
+
+% ---------- compact competition-paper tables ----------
+% These hooks intentionally override the generic spacing in preamble.tex.
+\AtBeginEnvironment{tabular}{\renewcommand{\arraystretch}{1.15}}
+\AtBeginEnvironment{tabularx}{\renewcommand{\arraystretch}{1.10}}
+
+% ---------- final TOC style ----------
+% Hierarchy is expressed by weight and indent rather than by shrinking all entries.
+\renewcommand{\cftdot}{$\cdot$}
+\renewcommand{\cftsecdotsep}{1.5}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{0.8em}
+% Keep Chinese bold in the Song-style family rather than switching to Heiti.
+\renewcommand{\cfttoctitlefont}{\centering\zihao{4}\bfseries\songti}
+\renewcommand{\cftaftertoctitle}{\par}
+\setlength{\cftbeforesecskip}{7pt}
+\setlength{\cftbeforesubsecskip}{3pt}
+\setlength{\cftsecindent}{0em}
+\setlength{\cftsubsecindent}{1.6em}
+\setlength{\cftsubsecnumwidth}{2.8em}
+\renewcommand{\cftsecfont}{\bfseries\zihao{-4}\songti}
+\renewcommand{\cftsecpagefont}{\zihao{-4}\songti}
+\renewcommand{\cftsubsecfont}{\zihao{-4}\songti}
+\renewcommand{\cftsubsecpagefont}{\zihao{-4}\songti}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftsecdotsep}}
+\renewcommand{\cftsecaftersnumb}{\hskip .4em}
