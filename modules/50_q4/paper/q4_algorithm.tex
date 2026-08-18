@@ -1,3 +1,5 @@
+算力--能源联合优化已有将数据中心负荷与电力系统协同建模的研究，说明任务位置变化会改变能源系统最优响应\cite{guo_integrated_2025,niu_benders_2021}；边际成本也可用于刻画负荷调整对能源目标的局部影响\cite{ji_marginal_2021}。从数学结构上，本文的区域能源分解属于 Benders 分解思想\cite{benders_1962}，完整合法任务放置域则通过列生成的 Dantzig--Wolfe 分解思想隐式搜索\cite{dantzig_wolfe_1960}。这些方法只负责求解已建立的联合模型，不替代前文由附件数据得到的耦合机制判断。
+
 % 算法：区域多割 Benders + 完整域列生成 + 字典序再认证
 \begin{algorithm}[H]
 \setstretch{0.92}
