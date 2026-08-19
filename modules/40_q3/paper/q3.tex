@@ -20,7 +20,7 @@ L_{rt}=\mathrm{PUE}_r\bigl(L^{AI}_{rt}+L^{NonAI}_{rt}\bigr),\qquad t=0,\ldots,24
 \label{fig:q3-flow}
 \end{figure}
 
-\subsection{预备工作：新能源盈余与储能作用识别}
+\subsection{预备工作}
 
 附件 $6\times2407$ 条区域--小时数据的能源平衡误差约为 $10^{-4}$--$2\times10^{-4}$。同时，D/E/F 的 $SOC(2406)$ 低于初始值，E 区第 0 小时还有约 1 MWh 的单点差异，因此附件原始能源状态只作为对照，不直接视为满足终端储能约束的优化结果。
 
@@ -57,7 +57,7 @@ F & 1.782 & 1 & 允许售电 \\
 
 区域内电价与碳强度的相关系数约为 $-0.378$，碳强度与可用新能源的相关系数约为 $-0.663$。无储能优化后系统购电仅剩 F 区约 31.60 MWh，加入储能后降至 0，因此本问中碳排放随购电量同步变化，不再设置成本与碳排放的加权目标。
 
-\subsection{固定负荷多时段储能经济调度（BESS-ED）模型}
+\subsection{模型建立：储能经济调度（BESS-ED）}
 
 建立\textbf{固定负荷多时段储能经济调度（Multi-period BESS Economic Dispatch under Fixed Load，BESS-ED）模型}。数据中心储能调度以电费最小化为主要目标已有相关研究支持\cite{zhang_dc_bess_2025}。
 
@@ -104,7 +104,7 @@ BESS-ED 模型可写为
 \end{equation}
 售电只来自当期新能源，不允许储能放电或网购电直接售电。由于不存在跨区能量交换，六个区域可分别求解线性规划。
 
-\subsection{模型求解与对照方案}
+\subsection{模型求解：两层字典序与对照方案}
 
 设置三种方案用于分离储能贡献：
 
