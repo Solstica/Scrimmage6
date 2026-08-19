@@ -139,11 +139,11 @@ BESS-ED 两层字典序模型的目标函数展开为
 
 \subsubsection{电网交互波动}
 
-设施负荷标准差在三种方案下均为 563.90 MW，优化前后严格不变；系统净电网交互功率标准差则由无储能的 115.39 MW 降至 4.98 MW，下降 95.68\%，平均绝对爬坡由 29.29 MW 降至 0.40 MW，下降 98.62\%。
+设施负荷标准差在三种方案下均为 563.90 MW，优化前后严格不变；系统净电网交互功率标准差则由无储能的 115.39 MW 降至 4.98 MW，下降 95.68\%，平均绝对爬坡由 29.29 MW 降至 0.40 MW，下降 98.62\%。图\ref{fig:q3-netgrid-daily}进一步给出逐日统计，可见储能协同后净电网交互功率的日尺度波动显著收缩，说明储能主要通过重排购售电时序平抑电网交互，而并未改变固定设施负荷本身。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/40_q3/figures/q3_netgrid_daily.png}
+\includegraphics[width=0.7\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_netgrid_daily.png}
 \caption{无储能与储能协同方案的系统净电网交互功率日统计}
 \label{fig:q3-netgrid-daily}
 \end{figure}
@@ -151,11 +151,11 @@ BESS-ED 两层字典序模型的目标函数展开为
 
 \subsubsection{分区储能角色验证}
 
-A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高价值时段放电，增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。结果与求解前由 $H_{rt}$ 和 SellLimit 预判的 RCR 及价值时移机制一致。
+A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高价值时段放电，增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。图\ref{fig:q3-soc-daily}给出的 SOC 日统计显示，D/E/F 均存在明显的跨时充放过程，其中 F 还承担短缺时段补能，和求解前由 $H_{rt}$ 与 SellLimit 得到的角色判断一致。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_soc_daily_def.png}
+\includegraphics[width=0.7\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_soc_daily_def.png}
 \caption{D/E/F 区域储能荷电状态日统计}
 \label{fig:q3-soc-daily}
 \end{figure}
@@ -183,6 +183,8 @@ F & 15,957,570.01 & 139,058.35 & 74,196.11 & 64,862.24 \\
 \end{tabular}
 \end{table}
 \endgroup
+
+表\ref{tab:q3-regional-storage}进一步量化了分区差异：D/E/F 贡献全部 39,397,463.30 CNY 储能增量价值和 346,201.93 MWh 吞吐量，其中 F 的增量价值最高；A/B/C 的储能动作均为 0，与前述三类储能角色判别完全一致。
 
 \begin{figure}[H]
 \centering
