@@ -1,99 +1,30 @@
-将任务到达、区域、类型及资源属性按层级组织，可以在保留细粒度业务结构的同时保持系统层预测可聚合；对于计算工作负载，到达过程是否可采用 Poisson 近似仍应由具体时间尺度上的离散度和相关性诊断决定，而不能由文献直接预设\cite{zou_poissonity_2022}。此外，分层需求预测研究强调在细粒度信息与参数稳定性之间进行数据驱动聚合，并保持上下层预测的一致性\cite{cohen_dac_2022}。因此本文只借用这些成熟统计结构，具体的齐次到达率、联合业务标记和资源条件化层级均由本题训练段数据决定。
+已有工作负载研究说明，Poisson 近似应由具体时间尺度上的离散度与相关性诊断决定\cite{zou_poissonity_2022}；分层需求预测则强调在细粒度结构与参数稳定性之间进行数据驱动聚合\cite{cohen_dac_2022}。本文据此保留训练段识别出的联合业务标记和类型条件资源标记。
 
-% 算法 1: 结构化标记复合 Poisson 分层预测与区间估计
 \begin{algorithm}[H]
-\setstretch{0.92}
-\SetAlFnt{\normalsize}
+\SetAlgoLined
+\setstretch{0.82}
+\SetAlFnt{\small}
 \SetArgSty{textnormal}
 \SetKwInput{KwIn}{Input}
-\SetKwInput{KwInit}{Initialize}
 \SetKwInput{KwOut}{Output}
 \SetKwFor{For}{for}{do}{end for}
 \SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{KwRet}{return}
-\caption{结构化标记复合 Poisson 分层预测与区间估计}
-\label{alg:q1-prediction}
-\KwIn{训练段任务记录 $\mathcal D_{\text{train}}$（0--2351\,h，$T_{\text{train}}=2352$ 小时），待预测时段 $\mathcal{T}=\{2376,\dots,2399\}$，Monte Carlo 模拟次数 $M=10^4$，随机种子 $\text{seed}=20260816$}
-\KwInit{固定随机种子，加载训练段数据 $\mathcal D_{\text{train}}$}
-\BlankLine
-\emph{阶段一：参数估计}\;
-$\hat\lambda \leftarrow \frac{1}{T}\sum_{t=0}^{T-1} n_t$，其中 $T=2352$ 为训练小时数\;
-$\hat\pi_{rk} \leftarrow c_{rk} / \sum_{r,k} c_{rk}$，其中 $c_{rk}$ 为 $(R=r,K=k)$ 的任务计数\;
-\ForEach{$k \in \{\text{RT}, \text{BI}, \text{AT}\}$}{
-    构建联合经验分布 $\hat{F}_{GD}^{(k)}$ 从 $\mathcal D_{\text{train}}$ 中 $k$ 类任务的 $(G,D)$ 样本（不使用核密度估计）\;
-    计算 $\mathbb{E}[G \mid K=k]$ 和 $\mathbb{E}[G^2 \mid K=k]$\;
+\caption{结构化短期预测与本地优先基础调度}
+\label{alg:q1-unified}
+\KwIn{训练段 $\mathcal D_{0:2351}$，预测窗 $2376{:}2399$，实际任务集 $\mathcal J$，GPU/IT/Facility 容量、功率映射与网络 SLA，$M=10^4$}
+\textbf{预测阶段：}\;
+估计 $\hat\lambda=N_{\rm train}/2352$、$\hat\pi_{rk}=n_{rk}/N_{\rm train}$，并按任务类型构造联合经验分布 $\widehat F_{GD}^{(k)}$\;
+计算 $\hat Y_{rkt}=\hat\lambda\hat\pi_{rk}\mathbb E(G\mid K=k)$，向 Region、TaskType 与 System 层聚合\;
+\For{$m\leftarrow1$ \KwTo $M$}{按 $N_t\sim\mathrm{Poisson}(\hat\lambda)$、$(R,K)\sim\hat\pi$、$(G,D)\mid K\sim\widehat F_{GD}^{(k)}$ 模拟 24 h GPU 需求\;}
+取 5\%/95\% 分位数形成 90\% 预测区间，并计算 MAE、WAPE、RMSE、PICP\;
+\textbf{调度阶段：}\;
+以 carry-in 初始化逐时 GPU/IT/Facility 占用；按到达时刻处理 2376--2399 h 实际任务\;
+\ForEach{任务 $j$}{
+  构造满足任务级 SLA、LatestFinish 与 finish$\le2406$ 的合法区域--时刻集合；RT 仅允许 $s=a_j$\;
+  按“来源区域优先 $\to$ 最早可行开工 $\to$ 低网络时延”枚举候选，并检查 GPU/IT/Facility 三层容量\;
+  选择首个可行候选并更新其整个执行区间的资源占用；若无可行候选则返回 FAIL\;
 }
-\BlankLine
-\emph{阶段二：解析均值预测}\;
-\ForEach{$t \in \mathcal{T}$}{
-    \ForEach{$(r,k) \in \{1,\dots,6\} \times \{\text{RT},\text{BI},\text{AT}\}$}{
-        计算 $\hat{Y}_{rkt} \leftarrow \hat\lambda \cdot \hat\pi_{rk} \cdot \mathbb{E}[G \mid K=k]$\;
-    }
-    向上聚合：$\hat{Y}_{rt} \leftarrow \sum_k \hat{Y}_{rkt}$，$\hat{Y}_{kt} \leftarrow \sum_r \hat{Y}_{rkt}$，$\hat{Y}_{t} \leftarrow \sum_{r,k} \hat{Y}_{rkt}$\;
-}
-\BlankLine
-\emph{阶段三：Monte Carlo 预测区间}\;
-\For{$m \leftarrow 1$ \KwTo $M$}{
-    \ForEach{$t \in \mathcal{T}$}{
-        $n \leftarrow \text{Poisson}(\hat\lambda)$ 的随机抽样\;
-        \For{$i \leftarrow 1$ \KwTo $n$}{
-            从 $\hat\pi_{rk}$ 抽取 $(r_i, k_i)$\;
-            从 $\hat{F}_{GD}^{(k_i)}$ 抽取 $(g_i, d_i)$\;
-            $Y_{r_i k_i t}^{(m)} \leftarrow Y_{r_i k_i t}^{(m)} + g_i$\;
-        }
-    }
-}
-\ForEach{$(r,k,t)$}{
-    取 $Y_{rkt}^{(1:M)}$ 的 5\% 和 95\% 分位数作为 90\% 预测区间边界\;
-}
-\KwRet{\text{四层预测均值 $\hat{Y}_{rkt},\hat{Y}_{rt},\hat{Y}_{kt},\hat{Y}_t$，四层 90\% 预测区间，MAE/WAPE/RMSE/PICP/MPIW}}
-\KwOut{Region$\times$TaskType 层预测结果及区间，向上聚合的 Region、TaskType、System 层预测}
-\end{algorithm}
-
-\vspace{2em}
-
-% 算法 2: 基础算力调度
-\begin{algorithm}[H]
-\setstretch{0.92}
-\SetAlFnt{\normalsize}
-\SetArgSty{textnormal}
-\SetKwInput{KwIn}{Input}
-\SetKwInput{KwInit}{Initialize}
-\SetKwInput{KwOut}{Output}
-\SetKwFor{For}{for}{do}{end for}
-\SetKwFor{ForEach}{for each}{do}{end for}
-\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{KwRet}{return}
-\caption{本地优先最小调整的基础算力调度}
-\label{alg:q1-scheduling}
-\KwIn{2376--2399\,h 实际到达任务集 $\mathcal J$，每个任务 $j$ 携带 $(r_j,k_j,g_j,p_j,\text{deadline}_j)$；各区域 GPU 容量 $C_r^{\text{GPU}}$、IT 容量 $C_r^{\text{IT}}$、Facility 容量 $C_r^{\text{Fac}}$，类型 $k$ 功率系数 $\alpha_k$；carry-in 初始占用 $I_{rt}$（$t=2376,\dots,2405$）}
-\KwInit{系统状态 $S_{rt} \leftarrow I_{rt}$，调度决策 $\mathcal D \leftarrow \varnothing$}
-\BlankLine
-\emph{阶段一：按任务类型优先级调度}（可行性 $F(r,j,s,t) \Leftrightarrow$ GPU/IT/Facility 三层容量同时满足 + SLA 延迟 + LatestFinish / $s+p \le 2406$）\;
-\ForEach{$t \in \{2376,\dots,2399\}$}{
-    \emph{1. 实时推理任务}（到达即开工，不可等待）\;
-    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{RT}$}{
-        候选区域 $\mathcal R_j \leftarrow \{r \mid \text{Latency}(r_j, r) \leq 20\text{ms}\}$\;
-        按 $(r=r_j)$ 优先，然后按延迟升序枚举 $\mathcal R_j$\;
-        找到首个 $r$ 使 $F(r,j,t,t)$ 成立（GPU: $S_{rt}^{\text{GPU}}+g_j\le C_r^{\text{GPU}}$；IT: $S_{rt}^{\text{IT}}+\alpha_{RT}g_j\le C_r^{\text{IT}}$；Facility: $S_{rt}^{\text{Fac}}+\text{PUE}_r\cdot\alpha_{RT}g_j\le C_r^{\text{Fac}}$）\;
-        记录 $(j, r, s_j=t)$，更新 $S_{r,[t, t+p_j)}$ 的三层状态\;
-    }
-    \emph{2. 批量推理任务}（允许等待）\;
-    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{BI}$}{
-        在 $r=r_j$ 的 $[t, \min(\text{deadline}_j, 2406)-p_j]$ 内寻找最早 $s$ 使 $F(r_j,j,s,\cdot)$ 成立\;
-        \If{找到可行 $s$}{记录 $(j, r_j, s)$，更新系统状态\;}
-        \Else{按延迟升序枚举其他 $\text{Latency} \leq 80\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
-    }
-    \emph{3. AI 训练任务}（允许等待）\;
-    \ForEach{$j \in \mathcal J_t$ 且 $k_j = \text{AT}$}{
-        在 $r=r_j$ 的完整合法时间域内寻找最早可行 $s$\;
-        \If{不可行}{按延迟升序枚举 $\text{Latency} \leq 150\text{ms}$ 区域，寻找最早可行 $(r,s)$\;}
-    }
-}
-\BlankLine
-\emph{阶段二：审计与输出}\;
-验证所有任务的 $\sum_t \omega(j,t) = p_j$，检查 GPU/IT/Facility 三层容量、延迟约束、$2406$ 边界\;
-\KwRet{调度决策 $\mathcal D$，区域 GPU 利用率 $U_{rt}$，迁移数/延迟数/最晚完成时间}
-\KwOut{甘特图数据、区域 GPU 利用率序列、三层容量与延迟约束审计报告}
+审计任务唯一执行、RT 即时开工、三层容量、SLA 与 2406 边界\;
+\KwOut{四层短期预测及区间；538 个实际任务的执行区域、开工/完成时刻、GPU 利用率与硬约束审计}
 \end{algorithm}
