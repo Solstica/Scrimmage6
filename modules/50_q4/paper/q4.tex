@@ -4,16 +4,16 @@
 
 前三问依次释放计算柔性和能源柔性：问题二允许任务迁移与延迟但固定能源动作，问题三固定计算负荷只优化储能；问题四要求\textbf{同时优化任务与能源--储能系统}。附件中 RT 的服务边界严格，而 AI Training 贡献约 80.14\% GPU-hour 和 87.12\% AI IT 能量；区域的网络、算力、PUE、储能和售电优势又彼此错位。更关键的是，迁入任务与储能充电会竞争同一新能源余量，因此问题二的固定能源边际并不等于储能重优化后的真实边际。
 
-据此建立“任务放置 $\to$ AI IT 负荷 $\to$ 设施负荷 $\to$ 能源再优化”的联合模型，并以区域多割 Benders 与完整域列生成处理约 $2.33\times10^8$ 个合法任务放置，最后按 Cost--Wait--Latency 字典序求解。工作负载转移与能源系统需要联合管理的思想与近期数据中心 integrated workload--energy management 研究一致\cite{guo_integrated_2025}。总体流程见图\ref{fig:q4-flow}。
+因此将任务放置直接映射为 AI IT 与设施负荷，并对每个候选负荷状态重新优化能源和储能。约 $2.33\times10^8$ 个合法任务放置由区域多割 Benders 与完整域列生成联合处理；服务质量则在成本最优面内依次压缩总等待和网络时延。工作负载转移与能源系统需要联合管理的思想与近期数据中心 integrated workload--energy management 研究一致\cite{guo_integrated_2025}。总体流程见图\ref{fig:q4-flow}。
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/50_q4/figures/q4_flow.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/50_q4/figures/q4_flow.png}
 \caption{问题四计算--能源联合优化总体流程}
 \label{fig:q4-flow}
 \end{figure}
 
-题面要求同时考察 Cost、Carbon、Latency、QoS、RenewableUtilization 与 regional PeakNetImport。本文不把六项指标等权压缩为单一分数：canonical 场景以 Cost 为第一经济目标，在其最优面内依次压缩总等待和网络时延；Carbon 在碳预算场景中作为 $\varepsilon$-constraint 激活，新能源利用率与区域峰值净购电则保持题面统一口径作为系统评价量。这样避免在指标已退化或高度同向时人为制造权重冲突。
+题面要求同时考察 Cost、Carbon、Latency、QoS、RenewableUtilization 与 regional PeakNetImport。本文不把六项指标等权压缩为单一分数：基准场景以 Cost 为第一经济目标，在其最优面内依次压缩总等待和网络时延；Carbon 在碳预算场景中作为 $\varepsilon$-constraint 激活，新能源利用率与区域峰值净购电则保持题面统一口径作为系统评价量。这样避免在指标已退化或高度同向时人为制造权重冲突。
 
 \subsection{预备工作：联合优化必要性与顺序失真}
 
@@ -34,7 +34,7 @@ H_{rt}(\mathbf x)=\mathrm{AvailableRenewable}_{rt}-L_{rt}^{Fac}(\mathbf x).
 
 \subsection{IWESS 计算--能源--储能联合调度模型}
 
-本文将上述联合模型记为 \textbf{Integrated Workload--Energy--Storage Scheduling（IWESS）}。该名称用于概括本题“任务时空决策 + BESS/电网连续 recourse”的数学对象，不把缩写本身作为创新声明。对任务 $i$ 按 SLA、Arrival、LatestFinish 与 2406 边界构造完整合法放置集 $\Omega_i$，仅对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。任务与小时的重叠量为
+本文将上述联合模型记为 \textbf{Integrated Workload--Energy--Storage Scheduling（IWESS）}。该名称用于概括任务时空决策与 BESS/电网连续再优化构成的联合数学对象，不把缩写本身作为创新声明。对任务 $i$ 按 SLA、Arrival、LatestFinish 与 2406 边界构造完整合法放置集 $\Omega_i$，仅对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。任务与小时的重叠量为
 \begin{equation}
 \omega_{ist}=\max\bigl(0,\min(t+1,s+p_i)-\max(t,s)\bigr),
 \end{equation}
@@ -53,7 +53,7 @@ D(\mathbf x)=\sum_{i,r,s}\ell_{o_i r}x_{irs}.\label{eq:q4-qos}
 
 \subsubsection{联合模型汇总}
 
-IWESS 的 canonical 字典序目标直接展开为
+IWESS 的基准字典序目标直接展开为
 \begin{equation}
 \operatorname*{lex\,min}_{\mathbf x,\mathbf y}\quad
 \left(
@@ -87,7 +87,7 @@ L^{Fac}_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \begin{equation}
 Q_r(L_r)=\min_{\mathbf y_r\in\mathcal Y_r(L_r)}\sum_t\left(c^{buy}_{rt}G^{buy}_{rt}-c^{sell}_{rt}s_{rt}\right),
 \end{equation}
-canonical 成本场景无全局碳预算，故 $Q(L)=\sum_rQ_r(L_r)$。设第 $k$ 个负荷点的负荷平衡对偶为 $\lambda_{rt}^k$，区域最优性割为
+基准成本场景无全局碳预算，故 $Q(L)=\sum_rQ_r(L_r)$。设第 $k$ 个负荷点的负荷平衡对偶为 $\lambda_{rt}^k$，区域最优性割为
 \begin{equation}
 \theta_r\ge Q_r(L_r^k)+\sum_t\lambda_{rt}^k\left(L_{rt}^{Fac}(\mathbf x)-L_{rt}^{Fac}(\mathbf x^k)\right).
 \label{eq:q4-benders-cut}
@@ -95,13 +95,13 @@ canonical 成本场景无全局碳预算，故 $Q(L)=\sum_rQ_r(L_r)$。设第 $k
 
 完整合法域约含 $2.33\times10^8$ 个放置，故只保留活动列并对完整隐式域做精确定价，不使用 Top-k 或人工等待窗。Benders decomposition 与 column generation 的组合是处理大规模离散调度与分解结构的成熟求解路线，近期 Omega 研究亦给出了二者联合用于大规模 allocation/scheduling 的实例\cite{wang_bcg_2026}。附件满足 $\mathrm{MaxFacility}=\mathrm{PUE}\times\mathrm{MaxIT}$ 且 $\mathrm{FacilityLoad}=\mathrm{PUE}\times\mathrm{ITLoad}$，因此实现中无损删除重复 Facility 行；Benders 割按非零对偶稀疏存储。40-task 显式校准含 3139 个合法放置，列生成仅用 44 个活动列即可得到相同根节点目标值。
 
-字典序三层均重新执行完整域定价和真实能源复核：Stage~1 最小化 Cost；Stage~2 在 $\mathrm{Cost}\le C^*+\varepsilon_C$ 内最小化 Total Wait；Stage~3 固定前两层锚点后最小化 Total Latency。若后序阶段产生新列，则在最终扩展列池上重新从 Cost 开始完整再认证。算法见算法\ref{alg:q4-benders-cg}。
+字典序求解分三层进行。第一层最小化 Cost；第二层在 $\mathrm{Cost}\le C^*+\varepsilon_C$ 内最小化总等待；第三层固定前两层锚点后最小化总网络时延。每一层均重新执行完整域定价和真实能源复核；若后序阶段产生新列，则在最终扩展列池上从第一层重新认证。算法见算法\ref{alg:q4-benders-cg}。
 
 \input{\ProjectRoot/modules/50_q4/paper/q4_algorithm.tex}
 
 \subsection{结果与分析}
 
-40-task 精确校准中，仅最小成本可出现 38/40 个任务迁移、总等待 172 h；加入 Wait/Latency 后得到迁移 5 个、总等待 6 h、最大等待 2 h、总时延 437 ms 的精确字典序方案，说明服务质量精化确有必要。
+40-task 精确校准中，仅最小成本可出现 38/40 个任务迁移、总等待 172 h；加入等待与时延目标后得到迁移 5 个、总等待 6 h、最大等待 2 h、总时延 437 ms 的精确字典序方案，说明服务质量精化确有必要。
 
 50k 最终扩展列池包含 137158 个活动列和 1173 条 Benders 割，两轮再认证结果完全一致。
 
