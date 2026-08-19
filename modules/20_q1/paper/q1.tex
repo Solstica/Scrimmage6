@@ -2,11 +2,11 @@
 
 \subsection{问题一的描述与分析}
 
-问题一承担短期需求预测与基线调度两项任务。训练段表明：小时到达计数近似等离散，关键时滞相关较弱；Region 与 TaskType 的组成相关明显，而给定 TaskType 后 SourceRegion 对 GPU 需求和持续时长的附加解释很弱；同时 AI Training 虽约占三分之一任务，却贡献约 80\% 的 GPU-hour。因此采用“\textbf{训练段诊断--联合业务标记--类型条件资源标记--短期概率预测--本地优先调度}”的统一路线，见图\ref{fig:q1-flow}。
+问题一承担短期需求预测与基线调度两项任务。训练段表明：小时到达计数近似等离散，关键时滞相关较弱；Region 与 TaskType 的组成相关明显，而给定 TaskType 后 SourceRegion 对 GPU 需求和持续时长的附加解释很弱；同时 AI Training 虽约占三分之一任务，却贡献约 80\% 的 GPU-hour。因此先在训练段检验到达过程与业务组成，据此构造联合业务标记和类型条件资源标记，完成未来 24 h 概率预测；随后对实际到达任务实施本地优先基础调度，整体流程见图\ref{fig:q1-flow}。
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/20_q1/figures/q1_flow.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/20_q1/figures/q1_flow.png}
 \caption{问题一建模求解总体流程}
 \label{fig:q1-flow}
 \end{figure}
@@ -36,6 +36,7 @@ Region 与 TaskType 的 Cramér's $V\approx0.434$，因此保留联合业务标�
 \caption{区域--任务类型结构及任务数与 GPU-hour 占比差异}
 \label{fig:q1-composition}
 \end{figure}
+\FloatBarrier
 
 \subsection{标记复合 Poisson（MCP）短期概率预测与基础调度模型}
 
@@ -110,6 +111,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \caption{2376--2399 h 系统层 GPU 需求概率预测}
 \label{fig:q1-fig08}
 \end{figure}
+\FloatBarrier
 
 \subsubsection{基础调度结果}
 
@@ -146,6 +148,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \caption{问题一基础算力调度结果}
 \label{fig:q1-schedule}
 \end{figure}
+\FloatBarrier
 
 \subsection{模型检验}
 
