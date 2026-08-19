@@ -133,6 +133,8 @@ REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电�
 
 全部 50000 个任务均获得合法排程。当前 Q2 经济核算覆盖 0--2405 h，因此绝对经济量仅用于本问内部比较；跨问并表时再统一第 2406 h 结算口径。
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{成本优先方案与附件参考状态对比（0--2405 h 口径）}
@@ -151,6 +153,7 @@ RT 迁移任务数 & 0 & 11,685 & 全部即时开工 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 Cost、Carbon 同时下降且新能源利用率提高，说明收益来自逐时弃电、PUE、电价、碳强度和容量共同决定的动态迁移，而非机械迁往某一区域。成本优先方案完成 3 遍完整扫描，末遍相对改善率 $5.77\times10^{-4}$，无回退任务；图\ref{fig:q2-convergence}给出收敛与初始化差异。
 
@@ -164,6 +167,8 @@ Cost、Carbon 同时下降且新能源利用率提高，说明收益来自逐时
 
 \subsubsection{任务迁移与服务质量}
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{成本优先方案的任务迁移与等待分布}
@@ -181,6 +186,7 @@ RealTimeInference & 16,724 & 11,685 & 69.870\% & 0 & 0 & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；Batch/Training 同时利用空间和时间柔性。全体任务平均网络时延 26.75 ms、P95 为 \textbf{76 ms}、最大 82 ms，均满足任务级 SLA。代表性甘特图与迁移矩阵见图\ref{fig:q2-placement-pair}。
 
@@ -207,6 +213,8 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 
 碳排优先方案相对成本优先方案仅增加约 0.18\% 成本，而成本优先方案相对碳排优先方案增加约 0.62\% 碳排，表明二者高度同向但存在可测边际冲突。
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{成本优先与碳排优先方案对照}
@@ -223,6 +231,8 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
+
 
 \begin{figure}[!htbp]
 \centering
