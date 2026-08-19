@@ -2,7 +2,7 @@
 
 \begin{algorithm}[H]
 \SetAlgoLined
-\setstretch{0.82}
+\setstretch{0.84}
 \SetAlFnt{\small}
 \SetArgSty{textnormal}
 \SetKwInput{KwIn}{Input}
@@ -10,21 +10,26 @@
 \SetKwFor{For}{for}{do}{end for}
 \SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\caption{结构化短期预测与本地优先基础调度}
+\caption{两阶段短期概率预测与本地优先基础调度}
 \label{alg:q1-unified}
-\KwIn{训练段 $\mathcal D_{0:2351}$，预测窗 $2376{:}2399$，实际任务集 $\mathcal J$，GPU/IT/Facility 容量、功率映射与网络 SLA，$M=10^4$}
-\textbf{预测阶段：}\;
-估计 $\hat\lambda=N_{\rm train}/2352$、$\hat\pi_{rk}=n_{rk}/N_{\rm train}$，并按任务类型构造联合经验分布 $\widehat F_{GD}^{(k)}$\;
-计算 $\hat Y_{rkt}=\hat\lambda\hat\pi_{rk}\mathbb E(G\mid K=k)$，向 Region、TaskType 与 System 层聚合\;
-\For{$m\leftarrow1$ \KwTo $M$}{按 $N_t\sim\mathrm{Poisson}(\hat\lambda)$、$(R,K)\sim\hat\pi$、$(G,D)\mid K\sim\widehat F_{GD}^{(k)}$ 模拟 24 h GPU 需求\;}
-取 5\%/95\% 分位数形成 90\% 预测区间，并计算 MAE、WAPE、RMSE、PICP\;
-\textbf{调度阶段：}\;
-以前序任务遗留占用初始化逐时 GPU/IT/Facility 状态，并按到达时刻处理 2376--2399 h 实际任务\;
+\KwIn{任务数据 $\mathcal D_{0:2399}$，实际任务集 $\mathcal J_{2376:2399}$，GPU/IT/Facility 容量、功率映射与网络 SLA，Monte Carlo 次数 $M=10^4$}
+
+\textbf{阶段一：结构识别与独立验证}\;
+划分训练段 $0{:}2351$、验证段 $2352{:}2375$ 和最终测试段 $2376{:}2399$；测试段不参与模型结构选择\;
+在训练段计算小时到达数 Fano 因子与 ACF，并检验 Region--TaskType 关联及 $(G,D)$ 条件结构，据此冻结 Poisson 到达、联合业务标记和类型条件资源标记\;
+估计 $\hat\lambda=N_{\rm train}/2352$、$\hat\pi_{rk}=n_{rk}/N_{\rm train}$ 及 $\widehat F_{GD}^{(k)}$\;
+\For{$m\leftarrow1$ \KwTo $M$}{按 $N_t\sim\mathrm{Poisson}(\hat\lambda)$、$(R,K)\sim\hat\pi$、$(G,D)\mid K\sim\widehat F_{GD}^{(k)}$ 模拟验证窗 24 h GPU 需求\;}
+由 5\%/95\% 分位数形成 90\% 区间，计算验证窗 MAE、WAPE、RMSE 与 PICP，仅据验证结果确认结构稳定性，不使用最终测试段调参\;
+
+\textbf{阶段二：参数重估、最终预测与基础调度}\;
+保持阶段一模型结构不变，用 $0{:}2375$ 重新估计 $\hat\lambda$、$\hat\pi_{rk}$ 与 $\widehat F_{GD}^{(k)}$\;
+计算 $\hat Y_{rkt}=\hat\lambda\hat\pi_{rk}\mathbb E(G\mid K=k)$，并进行 $M$ 次模拟得到 $2376{:}2399$ 的 Region、TaskType 与 System 层预测区间及最终测试指标\;
+以前序任务遗留占用初始化逐时 GPU/IT/Facility 状态，并按到达时刻处理 $2376{:}2399$ 的实际任务\;
 \ForEach{任务 $j$}{
   构造满足任务级 SLA、LatestFinish 与 finish$\le2406$ 的合法区域--时刻集合；RT 仅允许 $s=a_j$\;
-  优先选择来源区域，在同一区域内取最早可行开工时刻；仍有多个候选时优先选择网络时延较小者，并检查 GPU/IT/Facility 三层容量\;
-  选择首个可行候选并更新其整个执行区间的资源占用；若不存在可行候选则标记该排程不可行\;
+  先检查来源区域的最早可行开工时刻；若本地无可行位置，再在其余 SLA 合法区域中按最早开工和较低网络时延选择候选\;
+  对候选逐一检查 GPU、IT、Facility 三层容量，选择首个可行位置并更新整个执行区间的资源占用；若不存在可行候选则标记排程不可行\;
 }
-审计任务唯一执行、RT 即时开工、三层容量、SLA 与 2406 边界\;
-\KwOut{四层短期预测及区间；538 个实际任务的执行区域、开工/完成时刻、GPU 利用率与约束审计}
+审计任务唯一执行、RT 即时开工、三层容量、SLA、LatestFinish 与 2406 边界\;
+\KwOut{最终 24 h 概率预测与评价指标；538 个实际任务的执行区域、开工/完成时刻、GPU 利用率及约束审计}
 \end{algorithm}
