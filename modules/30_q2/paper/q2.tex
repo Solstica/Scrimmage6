@@ -2,11 +2,11 @@
 
 \subsection{问题二的描述与分析}
 
-问题二在任务原有约束不变的条件下，允许调整任务执行区域和开工时刻；储能及购售电动作保持附件给定状态，从而单独考察任务调度对能源利用的影响。
+问题二在任务原有约束不变的条件下，允许调整任务执行区域和开工时刻；储能及购售电动作保持附件给定状态，从而单独考察任务调度对能源利用的影响\cite{zhang_flex_dro_2024}。
 
-\noindent\textbf{（1）任务可调节性：}\hspace{0.5em}实时推理任务到达后立即执行，只能调整执行区域；批量推理和 AI 训练任务还可在最晚完成时间之前延后开工。AI 训练任务贡献约 80\% 的 GPU-hour，因此少量训练任务的位置变化即可显著改变区域负荷。
+\noindent\textbf{（1）任务可调节性：}\hspace{0.5em}实时推理任务到达后立即执行，只能调整执行区域；批量推理和 AI 训练任务还可在最晚完成时间之前延后开工\cite{wu_survey_2025}。AI 训练任务贡献约 80\% 的 GPU-hour，因此少量训练任务的位置变化即可显著改变区域负荷\cite{choudhury_mast_2024}。
 
-\noindent\textbf{（2）能源时空错配：}\hspace{0.5em}0--2399 h 共 14400 个区域--小时，其中 13230 个同时存在弃电和供负荷购电，占 91.9\%；累计弃电约为 $7.748\times10^6$ MWh，是基准 AI 设施能量的 8.15 倍。可见主要问题不是新能源总量不足，而是计算负荷与可用新能源、电价和碳强度在时间和区域上的不匹配。
+\noindent\textbf{（2）能源时空错配：}\hspace{0.5em}0--2399 h 共 14400 个区域--小时，其中 13230 个同时存在弃电和供负荷购电，占 91.9\%；累计弃电约为 $7.748\times10^6$ MWh，是基准 AI 设施能量的 8.15 倍。可见主要问题不是新能源总量不足，而是计算负荷与可用新能源、电价和碳强度在时间和区域上的不匹配\cite{wen_vpp_2024}。
 
 据此先构造任务合法时空域，再建立基线参照边际能源响应模型，并在完整合法域内进行任务分配。建模与求解流程见图\ref{fig:q2-flow}。
 
@@ -104,7 +104,7 @@ P^{AI}_{rt}(\mathbf x)=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs}.
 \mathrm{Carbon}(\mathbf x)&=\sum_{r,t}\mathrm{GridPurchase}_{rt}(\mathbf x)\,CI_{rt}\Delta t,\label{eq:q2-carbon}\\
 \eta_R(\mathbf x)&=\frac{\sum_{r,t}(\mathrm{UsedRenewable}_{rt}+\mathrm{RenewableCharge}^0_{rt}+\mathrm{GridSell}^0_{rt})\Delta t}{\sum_{r,t}\mathrm{AvailableRenewable}_{rt}\Delta t}.\label{eq:q2-eta-r}
 \end{align}
-运行成本作为主要优化目标，碳排放优先方案用于比较两类目标的边际差异。
+运行成本作为主要优化目标，碳排放优先方案用于比较两类目标的边际差异\cite{hanafy_carbonscaler_2023}。
 
 \subsubsection{模型汇总}
 
@@ -259,7 +259,7 @@ RealTimeInference & 16,724 & 11,685 & 69.870\% & 0 & 0 & 0 \\
 \end{table}
 \endgroup
 
-仅调整任务排程即可降低成本和碳排放并提高新能源利用率，但代价是较高的跨区迁移率和较长等待时间。该结果将在问题四中与任务--储能联合调度结果直接比较。
+仅调整任务排程即可降低成本和碳排放并提高新能源利用率，但代价是较高的跨区迁移率和较长等待时间\cite{sukprasert_limitations_2024}。该结果将在问题四中与任务--储能联合调度结果直接比较。
 
 \subsection{模型检验}
 
