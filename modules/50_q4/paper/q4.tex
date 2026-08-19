@@ -160,7 +160,7 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.80\textwidth]{\ProjectRoot/modules/50_q4/figures/图E：Q2 与 Q4 柔性替代双面板.png}
+\includegraphics[width=1.0\textwidth]{\ProjectRoot/modules/50_q4/figures/图E：Q2 与 Q4 柔性替代双面板.png}
 \caption{仅任务调度与算电联合调度的迁移及等待对比}
 \label{fig:q4-q2q4-compare}
 \end{figure}
@@ -171,6 +171,28 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \subsection{模型检验与六指标场景分析}
 
 最终两轮均无缺失负约化成本列，区域 Benders 违反为 0；时延层完整域 LP 下界为 250469.9546 ms，最终整数值 250860 ms，相对差约 0.1555\%。因此本文只表述为\textbf{完整域定价与区域 Benders 已闭合，并获得两轮再认证稳定的最优已知整数方案}，不声称完整域整数全局最优。
+
+为核对场景结果的物理可行性，对代表场景统一执行任务覆盖、容量、时序/SLA、能源及 SOC 审计。结果见表\ref{tab:q4-constraint-audit}。
+
+\begin{table}[H]
+\centering
+\caption{正式场景硬约束审计结果}
+\label{tab:q4-constraint-audit}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\rowcolor{CumcmLightBlue}
+场景 & 证据状态 & 最大硬约束违反 & 最大平衡残差/MW & 审计 \\
+\midrule
+基准 & 已认证 & 0 & $1.14\times10^{-13}$ & 通过 \\
+峰谷电价 & 已认证 & 0 & $1.14\times10^{-13}$ & 通过 \\
+新能源 $+20\%$ & 已认证 & 0 & $1.14\times10^{-13}$ & 通过 \\
+新能源 $-20\%$ & 有界候选 & 0 & $1.14\times10^{-13}$ & 通过 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表中硬约束违反量均为 0，$10^{-13}$ 量级的平衡残差属于浮点求解误差；其中新能源下降 20\% 行仅说明候选方案物理可行，不构成完整域整数最优证书。
 
 三类正式场景沿用同一 IWESS 模型，仅改变碳约束、电价机制或新能源供给。已认证结果统一比较六项题面指标，见表\ref{tab:q4-formal-certified}。
 
