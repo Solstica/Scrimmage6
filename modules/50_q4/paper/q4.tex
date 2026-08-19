@@ -123,6 +123,7 @@ Benders 迭代 & --- & 2 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 \FloatBarrier
 
 在同一 40-task 完整合法域上继续做字典序精化：Cost-only 的某些等价代表解可出现 38/40 迁移、总等待 172 h；而在 Cost 最优面内依次最小化 Wait、Latency 后，可得到迁移 5 个任务、总等待 6 h、平均等待 0.15 h、最大等待 2 h、总网络时延 437 ms、平均时延 10.925 ms 的 exact 字典序代表解。该结果说明“Cost 最优值接近”不能替代服务质量精化，也验证了 Wait/Latency 必须重新做 full-domain pricing。
@@ -131,6 +132,8 @@ Benders 迭代 & --- & 2 \\
 
 50,000 个任务的最终扩展列池包含 137,158 个活动列、1,173 条 region Benders cuts。两轮完整 Cost$\rightarrow$Wait$\rightarrow$Latency 再认证得到完全一致的三个 anchor：
 
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{50k final-pool 字典序再认证结果}
@@ -150,6 +153,7 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 \FloatBarrier
 
 最终排程覆盖全部 50000 个 TaskID，等待均为 0；仅 61 个任务跨区，迁移率 0.122\%，其中 Training 52、Batch 8、RT 1。总网络时延 250860 ms，平均 5.0172 ms，P95 为 5 ms，最大 58 ms，最晚完成 2405.6 h；任务、容量、SLA、截止时间、能源平衡、SOC 和购售电边界全部通过审计，最大物理残差约 $1.14\times10^{-13}$。
@@ -169,9 +173,11 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 
 三类场景均沿用同一 IWESS 数学模型，仅改变碳预算、电价序列或新能源供给。对于已经完成 Cost、Wait、Latency 再认证或与基准场景数学等价的方案，统一比较运行成本、碳排放、网络时延、服务质量、新能源利用率和区域峰值净购电；新能源下降 20\% 场景因 Cost 层尚未闭合，单独报告严格上下界和可行候选，避免把不同证据等级混为一谈。
 
-\noindent\textbf{（1）基准方案的六指标权衡}\par
+\noindent\textbf{（1）基准方案的六指标权衡}
 基准联合方案的净运行成本为 $-4.5934\times10^8$ CNY，碳排放为 0，总等待为 0，平均网络时延为 5.0172 ms，新能源利用率为 69.52\%，六区域正向峰值净购电均为 0。由此可见，在附件给定的新能源、储能和售电条件下，经济性、低碳性与服务质量并未形成明显冲突：模型首先通过新能源、储能和区域购售电协调吸收能源侧波动，仅需 0.122\% 的任务跨区即可同时维持零等待和较低网络时延。表\ref{tab:q4-formal-certified}进一步给出不同外生场景下的统一六指标比较。
 
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{Q4 已认证或与基准等价的正式场景六指标比较}
@@ -197,6 +203,7 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \bottomrule
 \end{tabular}}
 \end{table}
+\endgroup
 \FloatBarrier
 
 Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密度约 2.6--3.4\%。稀疏装配后 500-task 的 cut 存储从 9.17 MB 降至 0.38 MB（下降约 95.8\%）。这些压缩均来自附件数据中的 exact dominance 或实际 dual support，而不是牺牲可行域换取速度。
@@ -207,6 +214,8 @@ Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密
 
 在 $\gamma=1.4$ 新能源波动压力探针（临界放大因子 $\gamma_{\text{crit}}\approx1.303326$）下，沿 Cost--Carbon epsilon-constraint 路径得到表\ref{tab:q4-carbon}。碳预算从 100\% 降至 0\% 时，成本增加约 0.1\%（约 4961.32 CNY），局部平均减排成本约 92.48 CNY/tCO$_2$。该探针仅用于验证 Carbon 约束被激活时模型能够产生可解释权衡，\textbf{不构成题目正式新能源波动场景}。
 
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{新能源下降 20\% 场景的严格 Cost 区间与可行候选指标}
@@ -230,6 +239,7 @@ Cost 相对 Gap & 22.45\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 \FloatBarrier
 
 \subsubsection{50k 可扩展性与最优性边界}
