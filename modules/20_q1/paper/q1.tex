@@ -111,6 +111,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \caption{2376--2399 h 系统层 GPU 需求概率预测}
 \label{fig:q1-fig08}
 \end{figure}
+图\ref{fig:q1-fig08}给出了 MCP 模型对 2376--2399 h 系统层 GPU 需求的概率预测结果。图中黑色实线为实际 GPU 需求序列，灰色带状区域为 90\% 预测区间，深色中心线为预测中位数。整体来看，实际值在绝大多数小时均位于预测区间之内，仅 2377、2387 和 2390 三个小时超过上界，表明 MCP 模型能够有效刻画常规到达波动，但对于少数突发性高需求峰值的响应存在滞后和低估。这与表\ref{tab:q1-forecast-metrics}中 PICP 为 87.5\% 的统计结果一致，说明模型在保持简洁层级结构的同时，能够提供具有业务参考价值的概率区间，但在极端事件预测方面仍有改进空间。该预测结果为后续 2376--2399 h 的基础调度提供了对计算负荷不确定性边界的量化参考。
 \FloatBarrier
 
 \subsubsection{基础调度结果}
@@ -134,6 +135,8 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 
 图\ref{fig:q1-schedule}给出题目要求的甘特图和 GPU 利用率；2376--2399 h 为实际到达窗口，2400--2405 h 仅结清在途任务。
+
+
 
 \begin{figure}[!htbp]
 \centering
