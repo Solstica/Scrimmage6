@@ -1,24 +1,67 @@
 \section{符号说明}
 
-全文共用的主要符号建议集中列于表\ref{tab:notation-demo}；仅在单问内部使用的局部参数可在首次出现处定义，避免符号表过长。
+为便于阅读，将贯穿全文的核心符号列于表\ref{tab:notation}。各问题特有的局部符号在首次出现时另行定义。
 
-\begin{table}[H]
-    \centering
-    \caption{主要符号及单位示例}
-    \label{tab:notation-demo}
-    \begin{tabularx}{0.97\textwidth}{
-        >{\centering\arraybackslash}p{3.0cm}
-        >{\centering\arraybackslash}X
-        >{\centering\arraybackslash}p{2.5cm}}
-        \toprule
-        \rowcolor{CumcmLightBlue}
-        \textbf{符号} & \textbf{含义} & \textbf{单位} \\
-        \midrule
-        $x_i$ & 第$i$个观测对象或自变量 & 按题意填写 \\
-        $y_i$ & 第$i$个观测值或响应变量 & 按题意填写 \\
-        $\boldsymbol\theta$ & 待估参数向量 & --- \\
-        $J(\boldsymbol\theta)$ & 目标函数或损失函数 & --- \\
-        \bottomrule
-    \end{tabularx}
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
+
+\begin{table}[!htbp]
+\centering
+\caption{核心符号及其含义}
+\label{tab:notation}
+\begin{tabularx}{\textwidth}{c X}
+\toprule
+\rowcolor{CumcmLightBlue}
+符号 & 含义 \\
+\midrule
+$i$ & 任务索引，$i=1,2,\dots,50000$ \\
+$r$ & 区域索引，$r\in\{\text{A},\text{B},\text{C},\text{D},\text{E},\text{F}\}$ \\
+$t$ & 小时索引，$t=0,1,\dots,2406$ \\
+$k_i$ & 任务类型，$k_i\in\{\text{RT},\text{Batch},\text{Training}\}$ \\
+$a_i$ & 任务到达时刻（小时） \\
+$p_i$ & 任务持续时长（小时） \\
+$g_i$ & 任务GPU需求数（个） \\
+$d_i$ & 任务最晚完成时刻（小时） \\
+$L_i$ & 任务最大允许网络时延（ms） \\
+$o_i$ & 任务来源区域 \\
+$s_i$ & 任务开工时刻（小时） \\
+$x_{i,r,s}$ & 二元决策变量：任务$i$在区域$r$、时刻$s$开工取1，否则取0 \\
+$\Omega_i$ & 任务$i$的完整合法时空候选集 \\
+$R_i$ & 任务$i$的空间可行域（满足网络时延约束的区域集合） \\
+$T_i$ & 任务$i$的时间可行域（满足截止时间约束的开工时刻集合） \\
+$\text{Slack}_i$ & 任务$i$的时间余量，$\text{Slack}_i = \min(d_i, 2406) - a_i - p_i$ \\
+$P_{\text{AI}}[r,t]$ & 区域$r$在小时$t$的AI IT功率（MW） \\
+$L[r,t]$ & 区域$r$在小时$t$的设施总负荷（MW），$L=\text{PUE}\times(\text{AI\_IT}+\text{NonAI\_IT})$ \\
+$\text{PUE}[r]$ & 区域$r$的电源使用效率 \\
+$\text{AvailableGPU}[r]$ & 区域$r$的可用GPU容量（个） \\
+$\text{MaxITPower}[r]$ & 区域$r$的最大IT功率（MW） \\
+$\text{MaxFacilityPower}[r]$ & 区域$r$的最大设施功率（MW） \\
+$\text{GridPurchase}[r,t]$ & 区域$r$在小时$t$的电网购电功率（MW） \\
+$\text{GridSell}[r,t]$ & 区域$r$在小时$t$的新能源售电功率（MW） \\
+$\text{Curtailment}[r,t]$ & 区域$r$在小时$t$的新能源弃电功率（MW） \\
+$\text{AvailableRenewable}[r,t]$ & 区域$r$在小时$t$的可用新能源功率（MW） \\
+$\text{Price}[r,t]$ & 区域$r$在小时$t$的购电价格（CNY/MWh） \\
+$\text{SellPrice}[r,t]$ & 区域$r$在小时$t$的售电价格（CNY/MWh） \\
+$\text{CarbonIntensity}[r,t]$ & 区域$r$在小时$t$的电网碳强度（tCO$_2$/MWh） \\
+$E[r,t]$ & 区域$r$在小时$t$末的储能荷电状态（SOC，MWh） \\
+$\eta_c[r]$、$\eta_d[r]$ & 区域$r$的储能充电、放电效率 \\
+$\text{StorageCapacity}[r]$ & 区域$r$的储能容量（MWh） \\
+$\text{MaxChargePower}[r]$ & 区域$r$的最大充电功率（MW） \\
+$\text{MaxDischargePower}[r]$ & 区域$r$的最大放电功率（MW） \\
+$\text{MaxGridImport}[r]$ & 区域$r$的最大电网购电功率（MW） \\
+$\text{MaxGridExport}[r]$ & 区域$r$的最大电网售电功率（MW） \\
+$\text{SellLimit}[r]$ & 区域$r$的新能源售电限额（MW） \\
+$N_t$ & 第$t$小时新到达任务总数 \\
+$\lambda$ & 小时平均到达率（任务数/小时） \\
+$\pi_{rk}$ & 任务源区域$r$与任务类型$k$的联合业务概率 \\
+$\alpha_k$ & 任务类型$k$的单位GPU IT功率（MW/GPU） \\
+$\omega(i,s,t)$ & 任务$i$在小时$t$与执行区间$[s,s+p_i)$的重叠时长（小时） \\
+$\Delta L[r,t]$ & 区域$r$在小时$t$的设施负荷增量（MW） \\
+$\Delta G[r,t]$ & 区域$r$在小时$t$的电网购电增量（MW） \\
+$Q_r(L_r)$ & 区域$r$给定负荷曲线下的能源recourse最优值（CNY） \\
+$\theta_r$ & Benders分解中区域$r$的能源成本代理变量（CNY） \\
+\bottomrule
+\end{tabularx}
 \end{table}
-\FloatBarrier
+
+\endgroup 
