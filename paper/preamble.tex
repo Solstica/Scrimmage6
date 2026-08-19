@@ -53,8 +53,8 @@
 
 % ---------- title / abstract / keywords ----------
 \makeatletter
-% Keep the title, abstract heading and first paragraph visually compact, as in
-% award-paper abstracts; avoid center/trivlist's implicit vertical glue.
+% Keep the title and abstract heading compact, while leaving a clear visual gap
+% between the abstract heading and the first paragraph.
 \renewcommand{\maketitle}{%
   \par
   \begingroup
@@ -69,7 +69,7 @@
     \centering
     {\zihao{4}\songti\bfseries 摘要\par}%
   \endgroup
-  \vspace{0.22em}%
+  \vspace{0.50em}%
   \begin{list}{}{%
     \setlength{\listparindent}{2em}%
     \setlength{\itemindent}{2em}%
