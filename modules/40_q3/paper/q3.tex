@@ -16,7 +16,7 @@ L_{rt}=\mathrm{PUE}_r\bigl(L^{AI}_{rt}+L^{NonAI}_{rt}\bigr),\qquad t=0,\ldots,24
 \label{fig:q3-flow}
 \end{figure}
 
-\subsection{数据结构诊断与储能角色}
+\subsection{预备工作：新能源盈余与储能角色识别}
 
 附件 $6\times2407$ 个区域--小时的新能源分配、设施负荷、充电分解、净电网交互和碳排恒等式均可在 $10^{-4}$--$2\times10^{-4}$ 数值误差内复现，因此正式模型沿用附件能源流语义。需要注意的是，D/E/F 的 $SOC(2406)$ 低于 InitialSOC，RegionE 在 Hour~0 还有约 1 MWh 单点 SOC 不一致，故\textbf{附件原始能源状态只能作参考，不能直接作为满足终端约束的优化基准}。
 
@@ -46,13 +46,13 @@ F & 1.782 & 1 & 允许售电 \\
 \end{tabular}
 \end{table}
 
-由此直接得到三类储能角色：A/B/C 持续盈余且不可售电，成本最优代表解应为零储能动作；D/E 持续盈余且可售电，储能承担售电价值时移；F 除价值时移外，还可覆盖唯一新能源短缺小时。该分类来自求解前的数据结构，六区仍使用完全相同的数学模型。
+由此直接得到三类储能角色：A/B/C 持续盈余且不可售电，成本最优代表解应为零储能动作；D/E 持续盈余且可售电，储能承担售电价值时移；F 除价值时移外，还可覆盖唯一新能源短缺小时。该分类来自求解前的数据结构，六区仍使用完全相同的数学模型。其物理含义可概括为 \textbf{renewable curtailment recovery（RCR）与跨时价值释放}：储能优先回收原本无法利用的新能源，并在后续具有购电缺口或更高外送价值的时段释放。
 
 区域内部的 Price--Carbon 时间相关约为 $-0.378$，Carbon--Renewable 约为 $-0.663$；这与问题二混合六区域--小时后的 Price--Carbon 正相关并不冲突，二者统计口径不同。无储能优化后系统购电已仅剩 F 区约 31.60 MWh，加入储能后进一步降至数值零，因此 Carbon 在本问主要随购电量退化为结果指标，无需人为设置 Cost--Carbon 权重。
 
-\subsection{固定负荷能源--储能调度模型}
+\subsection{固定负荷多时段 BESS 经济调度模型}
 
-对区域 $r$、小时 $t$ 定义非负变量：新能源直接供负荷 $u_{rt}$、新能源充电 $qR_{rt}$、电网充电 $qG_{rt}$、储能放电 $d_{rt}$、电网供负荷 $gL_{rt}$、新能源售电 $s_{rt}$、弃电 $w_{rt}$ 与 SOC $E_{rt}$。派生量为
+固定负荷条件下，问题三属于典型的 \textbf{Multi-period BESS Economic Dispatch under Fixed Load}，本文简称 \textbf{BESS-ED}。数据中心储能最优调度以电费最小化为核心目标在近期研究中具有直接依据\cite{zhang_dc_bess_2025}。对区域 $r$、小时 $t$ 定义非负变量：新能源直接供负荷 $u_{rt}$、新能源充电 $qR_{rt}$、电网充电 $qG_{rt}$、储能放电 $d_{rt}$、电网供负荷 $gL_{rt}$、新能源售电 $s_{rt}$、弃电 $w_{rt}$ 与 SOC $E_{rt}$。派生量为
 \begin{equation}
 G^{buy}_{rt}=gL_{rt}+qG_{rt},\qquad
 P^{ch}_{rt}=qR_{rt}+qG_{rt},\qquad
@@ -63,11 +63,11 @@ P^{net}_{rt}=G^{buy}_{rt}-s_{rt}.
 \mathrm{Cost}(\mathbf y)&=\sum_{r,t}\bigl[c^{buy}_{rt}(gL_{rt}+qG_{rt})-c^{sell}_{rt}s_{rt}\bigr]\Delta t,\label{eq:q3-cost}\\
 \mathrm{Throughput}(\mathbf y)&=\sum_{r,t}(qR_{rt}+qG_{rt}+d_{rt})\Delta t.\label{eq:q3-throughput}
 \end{align}
-先最小化 Cost，再在成本最优面内最小化 Throughput，以消除纯成本 LP 的无意义充放电循环；实现中使用 $\mathrm{Cost}\le\mathrm{Cost}^*+10^{-4}$ CNY 作为第二层容差。
+先最小化 Cost，再在成本最优面内最小化 Throughput，以消除纯成本 LP 的无意义充放电循环；实现中使用 $\mathrm{Cost}\le\mathrm{Cost}^*+10^{-4}$ CNY 作为第二层容差。储能同时充放电（SCD）及其互补约束是成熟问题\cite{wang_exact_relax_2024}；本文第二层仅作为成本最优面内的物理 tie-break，不将其表述为一般 exact-relaxation 定理。
 
 \subsubsection{模型汇总}
 
-两层字典序模型的目标函数展开为
+BESS-ED 两层字典序模型的目标函数展开为
 \begin{equation}
 \operatorname*{lex\,min}_{\mathbf y}\quad
 \left(
@@ -95,9 +95,9 @@ P^{net}_{rt}=G^{buy}_{rt}-s_{rt}.
 \end{equation}
 售电只来自当期新能源，不允许储能放电或网购电直接售电。模型无跨区能量交换，因此严格分解为 6 个独立线性规划。
 
-\subsection{模型求解与三层对照}
+\subsection{模型求解与对照方案}
 
-为分离机制贡献，设置三种方案：\textbf{附件原始能源基准}仅作现实参考；\textbf{固定负荷无储能优化方案}令 $qR=qG=d=0$，衡量当期新能源重新分配价值；\textbf{固定负荷储能协同方案}使用完整模型。程序内部的 B0/E0/E1 仅用于文件映射，正文均采用上述物理名称。储能独立增量价值定义为“储能协同方案 $-$ 无储能优化方案”的指标变化。求解流程见算法\ref{alg:q3-two-stage}。
+为分离机制贡献，设置三种方案：\textbf{附件原始能源基准}仅作现实参考；\textbf{固定负荷无储能优化方案}令 $qR=qG=d=0$，衡量当期新能源重新分配价值；\textbf{固定负荷储能协同方案}使用完整 BESS-ED 模型。程序内部的 B0/E0/E1 仅用于文件映射，正文均采用上述物理名称。储能独立增量价值定义为“储能协同方案 $-$ 无储能优化方案”的指标变化。求解流程见算法\ref{alg:q3-two-stage}。
 
 \input{\ProjectRoot/modules/40_q3/paper/q3_algorithm.tex}
 
@@ -144,7 +144,7 @@ P^{net}_{rt}=G^{buy}_{rt}-s_{rt}.
 
 \subsubsection{分区储能角色验证}
 
-A/B/C 正式解均选择零储能动作；D/E 通过低售电价值时段充电、高价值时段放电释放同期新能源外送，储能增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 还在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。
+A/B/C 正式解均选择零储能动作；D/E 通过低售电价值时段充电、高价值时段放电释放同期新能源外送，储能增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 还在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。该结果与求解前由 $H_{rt}$ 和 SellLimit 得到的 RCR/价值时移机制预判一致。
 
 \begin{figure}[!htbp]
 \centering
