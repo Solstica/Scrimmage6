@@ -5,7 +5,8 @@ from __future__ import annotations
 
 Keeps the ownership audit from preview_merge.py, but only overlays files that can
 matter to the compiled paper. Heavy solver archives/results/code/editable figure
-sources are intentionally excluded from this temporary preview only.
+sources are intentionally excluded from this temporary preview only, except for
+the small set of source files explicitly printed in the PDF appendix.
 
 Unlike the formal integration gate, fast preview also strips trailing spaces/tabs
 from changed text files inside the temporary detached preview before committing.
@@ -22,6 +23,19 @@ _TEXT_SUFFIXES = {
     ".tex", ".sty", ".cls", ".md", ".py", ".sh", ".json", ".txt"
 }
 
+# These files are direct LaTeX inputs through \lstinputlisting in the PDF appendix.
+_APPENDIX_CODE_INPUTS = {
+    "modules/20_q1/code/q1_solver.py",
+    "modules/30_q2/code/q2_solver.py",
+    "modules/30_q2/code/q2_iterative_solver.py",
+    "modules/40_q3/code/q3_solver.py",
+    "modules/50_q4/code/q4_full_solver.py",
+    "modules/50_q4/code/q4_final_recertification.py",
+    "modules/50_q4/code/q4_formal_scenarios.py",
+    "modules/50_q4/code/q4_qcert.py",
+    "modules/50_q4/code/q4_schedule_metrics.py",
+}
+
 
 def preview_excluded(path: str | None) -> bool:
     if not path:
@@ -29,12 +43,16 @@ def preview_excluded(path: str | None) -> bool:
     p = path.replace("\\", "/")
     parts = p.split("/")
 
+    # Full source listings requested in the submitted PDF must survive fast overlay.
+    if p in _APPENDIX_CODE_INPUTS:
+        return False
+
     # Historical/full computational archives are not paper inputs.
     if any("COMPLETE_ARCHIVE_" in part for part in parts):
         return True
 
-    # Solver implementation and runtime artifacts are intentionally omitted from
-    # the paper-only preview. The live paper/ and figures/ snapshots remain.
+    # Other solver implementation and runtime artifacts are omitted from the
+    # paper-only preview. The appendix allow-list above is the only exception.
     if "/code/" in p or "/results/" in p or "/records/" in p:
         return True
 
