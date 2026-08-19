@@ -53,23 +53,32 @@
 
 % ---------- title / abstract / keywords ----------
 \makeatletter
+% Keep the title, abstract heading and first paragraph visually compact, as in
+% award-paper abstracts; avoid center/trivlist's implicit vertical glue.
 \renewcommand{\maketitle}{%
-  \begin{center}
-    {\zihao{3}\songti\bfseries\@title\par}
-  \end{center}
-  \vskip 1ex
+  \par
+  \begingroup
+    \centering
+    {\zihao{3}\songti\bfseries\@title\par}%
+  \endgroup
+  \vspace{0.32em}%
 }
 \renewenvironment{abstract}{%
-  \begin{center}
-    {\zihao{4}\songti\bfseries 摘要\par}
-  \end{center}
-  \vspace{-.35em}
+  \par
+  \begingroup
+    \centering
+    {\zihao{4}\songti\bfseries 摘要\par}%
+  \endgroup
+  \vspace{0.22em}%
   \begin{list}{}{%
     \setlength{\listparindent}{2em}%
     \setlength{\itemindent}{2em}%
     \setlength{\leftmargin}{0pt}%
     \setlength{\rightmargin}{0pt}%
-    \setlength{\parsep}{0pt}%
+    \setlength{\topsep}{0pt}%
+    \setlength{\partopsep}{0pt}%
+    \setlength{\itemsep}{0pt}%
+    \setlength{\parsep}{0.55em}%
   }\item\relax\zihao{-4}\songti
 }{\end{list}}
 \makeatother
