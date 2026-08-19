@@ -60,15 +60,7 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 \end{cases}
 \label{eq:q2-delta-g}
 \end{equation}
-其中 $C^0_{rt}$ 为基准弃电，且 $\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}$。因此新增负荷优先吸收参考状态中的弃电，弃电耗尽后才形成新增购电；负荷下降则优先削减供负荷购电。BMER 的分段结构见图\ref{fig:q2-marginal-response}。
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.44\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-3 分段能源边际响应.png}
-\caption{BMER 下设施负荷变化的分段边际能源响应}
-\label{fig:q2-marginal-response}
-\end{figure}
-\FloatBarrier
+其中 $C^0_{rt}$ 为基准弃电，且 $\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}$。因此新增负荷优先吸收参考状态中的弃电，弃电耗尽后才形成新增购电；负荷下降则优先削减供负荷购电。
 
 \subsection{完整合法域时空任务调度模型}
 
@@ -227,14 +219,6 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \end{tabular}
 \end{table}
 \endgroup
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.44\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-5 Cost–Carbon 端点关系.png}
-\caption{成本与碳排代表方案的端点关系}
-\label{fig:q2-cost-carbon-endpoints}
-\end{figure}
-\FloatBarrier
 
 计算柔性由此获得显著经济、低碳和新能源利用收益，但同时带来大规模迁移与长等待；这组收益与服务代价结果作为问题四联合释放储能柔性时的单侧基准。
 
