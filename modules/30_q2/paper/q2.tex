@@ -15,20 +15,27 @@
 
 \subsection{预备工作：任务柔性与能源错配}
 
-设任务 $i$ 的到达时刻、来源区域、类型、GPU 需求、持续时长、最晚完成时刻和时延上限分别为 $a_i,o_i,k_i,g_i,p_i,d_i,L_i$。其空间、时间与完整合法域为
-\begin{align}
-R_i&=\{r\mid \mathrm{NetworkLatency}[o_i,r]\le L_i\},\label{eq:q2-spatial-domain}\\
-T_i&=\begin{cases}
+设任务 $i$ 的到达时刻、来源区域、类型、GPU 需求、持续时长、最晚完成时刻和时延上限分别为 $a_i,o_i,k_i,g_i,p_i,d_i,L_i$。其空间、时间与完整合法域分别为
+\begin{equation}
+R_i=\{r\mid \mathrm{NetworkLatency}[o_i,r]\le L_i\}.
+\label{eq:q2-spatial-domain}
+\end{equation}
+\begin{equation}
+T_i=\begin{cases}
 \{a_i\},&k_i=\mathrm{RT},\\
 \{s\mid a_i\le s,\ s+p_i\le\min(d_i,2406)\},&k_i\in\{\mathrm{Batch},\mathrm{Training}\},
-\end{cases}\label{eq:q2-temporal-domain}\\
-C_i&=R_i\times T_i.\label{eq:q2-complete-domain}
-\end{align}
+\end{cases}
+\label{eq:q2-temporal-domain}
+\end{equation}
+\begin{equation}
+C_i=R_i\times T_i.
+\label{eq:q2-complete-domain}
+\end{equation}
 因此 RT 的时间决策柔性严格为 0。Batch 与 Training 的时间余量中位数约为 1207 h 和 1184 h；Training 单任务 GPU-hour 中位数约 194.35，并承担约 87\% 的 AI IT 能耗。图\ref{fig:q2-flexibility}说明调度应优先保护空间受限、时间紧迫任务，再利用高 GPU-hour 任务的长时柔性。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/30_q2/figures/Q2-1 任务柔性三面板.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-1 任务柔性三面板.png}
 \caption{三类任务的空间柔性、时间柔性与 GPU-hour 对比}
 \label{fig:q2-flexibility}
 \end{figure}
@@ -60,15 +67,7 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 \end{cases}
 \label{eq:q2-delta-g}
 \end{equation}
-其中 $C^0_{rt}$ 为基准弃电，且 $\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}$。因此新增负荷优先吸收参考状态中的弃电，弃电耗尽后才形成新增购电；负荷下降则优先削减供负荷购电。BMER 的分段结构见图\ref{fig:q2-marginal-response}。
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.44\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-3 分段能源边际响应.png}
-\caption{BMER 下设施负荷变化的分段边际能源响应}
-\label{fig:q2-marginal-response}
-\end{figure}
-\FloatBarrier
+其中 $C^0_{rt}$ 为基准弃电，且 $\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}$。因此新增负荷优先吸收参考状态中的弃电，弃电耗尽后才形成新增购电；负荷下降则优先削减供负荷购电。
 
 \subsection{完整合法域时空任务调度模型}
 
@@ -227,14 +226,6 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \end{tabular}
 \end{table}
 \endgroup
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.44\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-5 Cost–Carbon 端点关系.png}
-\caption{成本与碳排代表方案的端点关系}
-\label{fig:q2-cost-carbon-endpoints}
-\end{figure}
-\FloatBarrier
 
 计算柔性由此获得显著经济、低碳和新能源利用收益，但同时带来大规模迁移与长等待；这组收益与服务代价结果作为问题四联合释放储能柔性时的单侧基准。
 
