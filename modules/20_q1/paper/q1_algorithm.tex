@@ -1,42 +1,40 @@
-已有工作负载研究说明，Poisson 近似应由具体时间尺度上的离散度与相关性诊断决定\cite{zou_poissonity_2022}；分层需求预测则强调在细粒度结构与参数稳定性之间进行数据驱动聚合\cite{cohen_dac_2022}。本文据此保留训练段识别出的联合业务标记和类型条件资源标记。
+已有工作负载研究表明，Poisson 近似应由具体时间尺度上的离散度与相关性诊断决定\cite{zou_poissonity_2022}；细粒度需求预测还需兼顾任务结构与参数稳定性\cite{cohen_dac_2022}。因此保留训练段识别出的区域--类型联合标记和任务类型条件资源分布。
 
 \begin{algorithm}[H]
 \SetAlgoLined
 \setstretch{0.82}
 \SetAlFnt{\small}
 \SetArgSty{textnormal}
-\SetKwInput{KwIn}{Input}
-\SetKwInput{KwInit}{Initialize}
-\SetKwInput{KwOut}{Output}
-\SetKwFor{For}{for}{do}{end for}
-\SetKwFor{ForEach}{for each}{do}{end for}
-\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
+\SetKwInput{KwIn}{输入}
+\SetKwInput{KwInit}{初始化}
+\SetKwInput{KwOut}{输出}
+\SetKwFor{For}{循环}{执行}{结束循环}
+\SetKwFor{ForEach}{对每个}{执行}{结束}
+\SetKwIF{If}{ElseIf}{Else}{若}{则}{否则若}{否则}{结束判断}
 \SetKwFunction{Diag}{结构诊断}
 \SetKwFunction{Fit}{拟合MCP}
 \SetKwFunction{MC}{蒙特卡洛预测}
 \SetKwFunction{Place}{本地优先放置}
 \caption{两阶段短期概率预测与基础调度}
 \label{alg:q1-unified}
-\KwIn{$\mathcal D_{0:2399}$，$\mathcal J_{2376:2399}$，容量与 SLA，$M=5000$}
-\KwInit{初始化 2376 h 前未完成任务形成的 GPU/IT/Facility 占用}
-\KwOut{24 h 概率预测、实际任务排程与约束审计}
+\KwIn{$\mathcal D_{0:2399}$，$\mathcal J_{2376:2399}$，容量与网络时延上限，$M=5000$}
+\KwInit{初始化 2376 h 前未完成任务形成的 GPU、IT 与设施功率占用}
+\KwOut{24 h 概率预测、实际任务排程与约束检验结果}
 
 \tcp*[l]{阶段 I：结构识别与独立验证}
 $(\mathcal D_{tr},\mathcal D_{val},\mathcal D_{te})\leftarrow(0{:}2351,2352{:}2375,2376{:}2399)$\;
-$\mathcal M\leftarrow\Diag(\mathcal D_{tr})$ \tcp*[r]{Fano/ACF、区域--类型关联、$(G,D)\mid K$}
+$\mathcal M\leftarrow\Diag(\mathcal D_{tr})$ \tcp*[r]{Fano 因子、自相关、区域--类型关联、$(G,D)\mid K$}
 $\theta_1=(\hat\lambda,\hat\pi_{rk},\widehat F_{GD}^{(k)})\leftarrow\Fit(\mathcal M,\mathcal D_{tr})$\;
 $\mathcal I_{val}\leftarrow\MC(\theta_1,M)$，计算 MAE、WAPE、RMSE 与 PICP\;
-验证通过后冻结 $\mathcal M$，测试段不参与模型选择\;
+验证通过后固定模型结构，测试段不参与模型选择\;
 
 \tcp*[l]{阶段 II：参数重估、最终预测与基础调度}
 $\theta_2\leftarrow\Fit(\mathcal M,\mathcal D_{0:2375})$，$\mathcal I_{te}\leftarrow\MC(\theta_2,M)$\;
 \ForEach{按到达顺序的 $j\in\mathcal J_{2376:2399}$}{
-  构造合法域 $C_j=\{(r,s):\mathrm{SLA},\mathrm{LatestFinish},s+p_j\le2406\}$；RT 固定 $s=a_j$\;
-  $(r_j^*,s_j^*)\leftarrow\Place(C_j)$，同时满足 GPU/IT/Facility 容量\;
+  构造合法域 $C_j=\{(r,s):\ell_{o_jr}\le L_j,\ s\ge a_j,\ s+p_j\le\min(d_j,2406)\}$；实时推理任务固定 $s=a_j$\;
+  $(r_j^*,s_j^*)\leftarrow\Place(C_j)$，同时满足 GPU、IT 与设施功率约束\;
   \If{$(r_j^*,s_j^*)=\varnothing$}{返回不可行排程\;}
   更新区间 $[s_j^*,s_j^*+p_j)$ 的资源占用\;
 }
-审计唯一执行、RT 即时开工、容量、SLA、LatestFinish 与 2406 边界\;
+检查唯一执行、实时推理即时开工、容量、网络时延、最晚完成时间与 2406 h 终止边界\;
 \end{algorithm}
-
-地理分布式数据中心的任务调度已有利用任务时延容忍度、区域能源状态和负载弹性进行跨区域分配的研究。REPTA 区分时延敏感与时延容忍任务，CarbonScaler 则从云负载弹性角度刻画碳效率调节价值\cite{yang_repta_2026,hanafy_carbonscaler_2023}。本文只保留“利用任务柔性响应能源状态”的思想；由于附件六区域逐时可用新能源相同，候选评价改由完整合法域和动态弃电/购电边际决定。
