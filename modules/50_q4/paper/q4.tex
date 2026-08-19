@@ -2,9 +2,9 @@
 
 \subsection{问题四的描述与分析}
 
-问题二只调整任务的目标区域与开工时间而保持附件能源动作不变，问题三则固定计算负荷只优化储能；问题四要求\textbf{同时优化任务排程与能源--储能系统}。附件中 RT 的服务边界严格，而 AI Training 贡献约 80.14\% GPU-hour 和 87.12\% AI IT 能量；区域的网络、算力、PUE、储能和售电优势又彼此错位。更关键的是，迁入任务与储能充电会竞争同一新能源余量，因此问题二的固定能源边际并不等于储能重优化后的真实边际。
+问题二只调整任务区域与开工时刻，问题三固定计算负荷只优化储能；问题四则要求\textbf{同时优化任务排程与能源--储能系统}。附件中 Training 承担约 80.14\% 的 GPU-hour 和 87.12\% 的 AI IT 能量，而区域算力、网络时延、PUE、储能和售电能力并不同时占优；任务迁入与储能充电又会竞争同一新能源余量，因此需要直接建立算电联合调度模型。
 
-因此将任务放置直接映射为 AI IT 与设施负荷，并对每个候选负荷状态重新优化能源和储能。约 $2.33\times10^8$ 个合法任务放置由区域多割 Benders 与完整域列生成联合处理；服务质量则在成本最优面内依次压缩总等待和网络时延。工作负载转移与能源系统需要联合管理的思想与近期数据中心 integrated workload--energy management 研究一致\cite{guo_integrated_2025}。总体流程见图\ref{fig:q4-flow}。
+本文将任务放置映射为 AI IT 与设施负荷，并对候选负荷状态重新优化能源和储能。约 $2.33\times10^8$ 个合法任务放置由区域多割 Benders 与完整域列生成联合处理，再在成本最优面内依次压缩等待与网络时延。总体流程见图\ref{fig:q4-flow}。
 
 \begin{figure}[H]
 \centering
@@ -13,28 +13,38 @@
 \label{fig:q4-flow}
 \end{figure}
 
-题面要求同时考察 Cost、Carbon、Latency、QoS、RenewableUtilization 与 regional PeakNetImport。本文不把六项指标等权压缩为单一分数：基准场景以 Cost 为第一经济目标，在其最优面内依次压缩总等待和网络时延；Carbon 在碳预算场景中作为 $\varepsilon$-constraint，新能源利用率与区域峰值净购电则保持题面统一口径作为系统评价量。这样既保留各指标的物理含义，也避免在指标退化或高度同向时人为制造权重冲突。
+题面要求同时评价 Cost、Carbon、Latency、QoS、RenewableUtilization 与 regional PeakNetImport。本文以 Cost 为第一目标，在其最优面内依次最小化总等待和网络时延；Carbon 在碳约束场景中处理，新能源利用率和峰值净购电作为统一评价指标，不再人为设置六指标综合权重。
 
 \subsection{预备工作：联合优化必要性与顺序失真}
 
-50000 个任务数量近似三等分，但资源权重和可调节范围差异明显：Training、Batch、RT 分别约占 80.14\%、15.32\%、4.54\% GPU-hour；RT 到达即开工且合法区域最少。RegionD 的 AvailableGPU 最大（1472），D/E/F 的 PUE 更低且储能、售电能力更强，而 A/B/C 网络时延更有利。六区域逐时 $\mathrm{AvailableRenewable}$ 又完全相同，所以区域绿色优势不能由标签预设，只能由 PUE、负荷、价格、碳强度、储能和售电边界共同决定。
+Training、Batch、RT 分别约占 80.14\%、15.32\%、4.54\% GPU-hour；RT 到达即开工且合法区域最少。另一方面，六区域在算力、网络、PUE、储能、售电、电价和碳强度上的优势相互错位，且逐时可用新能源数值相同，因此不存在由区域标签即可确定的单一最优执行区。
 
-给定任务排程 $\mathbf x$，动态新能源盈余为
-\begin{equation}
-H_{rt}(\mathbf x)=\mathrm{AvailableRenewable}_{rt}-L_{rt}^{Fac}(\mathbf x).
-\end{equation}
-迁入任务可以当期消纳新能源，储能也可以利用同一余量充电并跨时释放，因此二者对新能源余量存在竞争，同时又能在不同时间尺度上相互补充。
+顺序优化探针进一步说明固定能源动作下的任务边际并不等于储能重新优化后的真实边际：对 3 个仅能在 E/F 执行的真实 RT 任务，固定能源动作时“全部迁 F”可节约约 3613.67 CNY；重新求解完整能源--储能 LP 后，代表端点的能源成本差异消失，而保留在 E 的方案网络时延更低。图\ref{fig:q4-prework-pair}并列给出区域结构错位与该顺序失真证据。
 
-顺序优化探针进一步验证了这一点：选取 3 个仅能在 E/F 执行的真实 RT 任务，共 8 种放置。固定能源动作时，“全部迁 F”可节约约 3613.67 CNY；但分别重求完整能源--储能 LP 后，8 种放置的最优能源成本相同，此时保留在 E 的方案网络时延更低。因此
-\begin{equation}
-\text{固定能源边际价值}\neq\text{储能重优化后的真实边际价值}.
-\label{eq:q4-sequential-failure}
-\end{equation}
-能源 LP 的负荷平衡对偶与真实边际成本排序仍高度相关（Pearson 约 0.985、Spearman 约 0.898），适合形成累积 Benders 支撑超平面，而不适合只保留单次线性近似。
+\begin{figure}[H]
+\centering
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/50_q4/figures/图A：六区域结构错位矩阵.png}
+\caption{六区域关键能力结构错位}
+\label{fig:q4-region-mismatch}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/50_q4/figures/图B：顺序 Q2→Q3 失真端点证据（部分 probe）.png}
+\caption{顺序优化的代表端点失真}
+\label{fig:q4-sequential-probe}
+\end{subfigure}
+\caption{联合优化必要性的两类数据证据}
+\label{fig:q4-prework-pair}
+\end{figure}
+\FloatBarrier
+
+因此，区域选择不能只看某一项能源或算力指标，任务负荷变化也必须与储能再优化同时评价。能源 LP 的负荷平衡对偶与真实边际成本排序仍保持较高相关性（Pearson 约 0.985、Spearman 约 0.898），可用于构造累积 Benders 支撑超平面。
 
 \subsection{IWESS 计算--能源--储能联合调度模型}
 
-本文将上述联合模型记为 \textbf{Integrated Workload--Energy--Storage Scheduling（IWESS）}。该名称用于概括任务时空决策与 BESS/电网连续再优化构成的联合数学对象，不把缩写本身作为创新声明。对任务 $i$ 按 SLA、Arrival、LatestFinish 与 2406 边界构造完整合法放置集 $\Omega_i$，仅对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。任务与小时的重叠量为
+本文将联合模型记为 \textbf{Integrated Workload--Energy--Storage Scheduling（IWESS）}。对任务 $i$ 按 SLA、Arrival、LatestFinish 与 2406 边界构造完整合法放置集 $\Omega_i$，仅对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。任务与小时的重叠量为
 \begin{equation}
 \omega_{ist}=\max\bigl(0,\min(t+1,s+p_i)-\max(t,s)\bigr),
 \end{equation}
@@ -44,7 +54,7 @@ L^{AI}_{rt}(\mathbf x)&=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs},\label{eq:q
 L^{Fac}_{rt}(\mathbf x)&=\mathrm{PUE}_r\bigl(L^{NonAI}_{rt}+L^{AI}_{rt}(\mathbf x)\bigr).\label{eq:q4-fac-load}
 \end{align}
 
-能源侧沿用问题三 BESS-ED 变量 $\mathbf y_r=(u,qR,qG,d,gL,s,w,E)$。对给定设施负荷 $L_r^{Fac}$，区域可行集 $\mathcal Y_r(L_r^{Fac})$ 由新能源平衡、负荷平衡、SOC 递推、充放电功率、购售电和终端 SOC 约束共同定义。联合目标为
+能源侧沿用问题三 BESS-ED 变量 $\mathbf y_r=(u,qR,qG,d,gL,s,w,E)$。对给定设施负荷 $L_r^{Fac}$，区域可行集 $\mathcal Y_r(L_r^{Fac})$ 包含新能源平衡、负荷平衡、SOC 递推、充放电功率、购售电和终端 SOC 约束。三层目标为
 \begin{align}
 \mathrm{Cost}(\mathbf y)&=\sum_{r,t}\bigl(c^{buy}_{rt}G^{buy}_{rt}-c^{sell}_{rt}s_{rt}\bigr),\label{eq:q4-cost}\\
 W(\mathbf x)&=\sum_{i,r,s}(s-a_i)x_{irs},\qquad
@@ -53,14 +63,12 @@ D(\mathbf x)=\sum_{i,r,s}\ell_{o_i r}x_{irs}.\label{eq:q4-qos}
 
 \subsubsection{联合模型汇总}
 
-IWESS 的基准字典序目标直接展开为
+IWESS 的字典序模型写为
 \begin{equation}
 \operatorname*{lex\,min}_{\mathbf x,\mathbf y}\quad
 \left(
 \sum_{r,t}\bigl(c^{buy}_{rt}G^{buy}_{rt}-c^{sell}_{rt}s_{rt}\bigr),
-\quad
 \sum_{i,r,s}(s-a_i)x_{irs},
-\quad
 \sum_{i,r,s}\ell_{o_i r}x_{irs}
 \right)
 \label{eq:q4-summary-obj}
@@ -79,7 +87,7 @@ L^{Fac}_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \right.
 \label{eq:q4-summary-con}
 \end{equation}
-其中 $\Omega_i$ 已编码网络 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$；$\mathcal Y_r$ 内含问题三全部能源、储能与电网物理约束。
+其中 $\Omega_i$ 已编码网络 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$，$\mathcal Y_r$ 内含问题三全部能源、储能与电网约束。
 
 \subsection{模型求解：Benders--CG 与字典序精化}
 
@@ -87,26 +95,22 @@ L^{Fac}_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \begin{equation}
 Q_r(L_r)=\min_{\mathbf y_r\in\mathcal Y_r(L_r)}\sum_t\left(c^{buy}_{rt}G^{buy}_{rt}-c^{sell}_{rt}s_{rt}\right),
 \end{equation}
-基准成本场景无全局碳预算，故 $Q(L)=\sum_rQ_r(L_r)$。设第 $k$ 个负荷点的负荷平衡对偶为 $\lambda_{rt}^k$，区域最优性割为
+基准场景无全局碳预算，因此 $Q(L)=\sum_rQ_r(L_r)$。设第 $k$ 个负荷点的负荷平衡对偶为 $\lambda_{rt}^k$，区域最优性割为
 \begin{equation}
 \theta_r\ge Q_r(L_r^k)+\sum_t\lambda_{rt}^k\left(L_{rt}^{Fac}(\mathbf x)-L_{rt}^{Fac}(\mathbf x^k)\right).
 \label{eq:q4-benders-cut}
 \end{equation}
 
-完整合法域约含 $2.33\times10^8$ 个放置，故只保留活动列并对完整隐式域做精确定价，不使用 Top-k 或人工等待窗。Benders decomposition 与 column generation 的组合是处理大规模离散调度与分解结构的成熟求解路线，近期 Omega 研究亦给出了二者联合用于大规模 allocation/scheduling 的实例\cite{wang_bcg_2026}。附件满足 $\mathrm{MaxFacility}=\mathrm{PUE}\times\mathrm{MaxIT}$ 且 $\mathrm{FacilityLoad}=\mathrm{PUE}\times\mathrm{ITLoad}$，因此实现中无损删除重复 Facility 行；Benders 割按非零对偶稀疏存储。40-task 显式校准含 3139 个合法放置，列生成仅用 44 个活动列即可得到相同根节点目标值。
+完整合法域约含 $2.33\times10^8$ 个放置，故主问题只保留活动列，并对完整隐式域执行精确定价，不使用 Top-k 或人工等待窗。Benders decomposition 与 column generation 的组合用于协调离散任务放置和连续能源子问题\cite{wang_bcg_2026}。附件中 Facility 上限约束与 IT 上限按 PUE 成比例重复，实现时无损删除重复行并稀疏存储 Benders 割。
 
-字典序求解分三层进行。第一层最小化 Cost；第二层在 $\mathrm{Cost}\le C^*+\varepsilon_C$ 内最小化总等待；第三层固定前两层锚点后最小化总网络时延。每一层均重新执行完整域定价和真实能源复核；若后序阶段产生新列，则在最终扩展列池上从第一层重新认证。算法见算法\ref{alg:q4-benders-cg}。
+字典序依次求解 Cost、Wait、Latency；每一层都重新执行完整域定价和真实能源复核，若产生新列，则在最终扩展列池上从第一层重新认证。算法见算法\ref{alg:q4-benders-cg}。
 
 \input{\ProjectRoot/modules/50_q4/paper/q4_algorithm.tex}
 
 \subsection{结果与分析}
 
-40-task 精确校准中，仅最小成本可出现 38/40 个任务迁移、总等待 172 h；加入等待与时延目标后得到迁移 5 个、总等待 6 h、最大等待 2 h、总时延 437 ms 的精确字典序方案，说明服务质量精化确有必要。
+40-task 显式校准含 3139 个合法放置，列生成仅使用 44 个活动列即得到相同根节点目标值，见表\ref{tab:q4-40task}。
 
-50k 最终扩展列池包含 137158 个活动列和 1173 条 Benders 割，两轮再认证结果完全一致。
-
-\begingroup  
-\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{40-task Exact 校准结果}
@@ -125,11 +129,9 @@ Benders 迭代 & --- & 2 \\
 \end{table}
 \FloatBarrier
 
-在同一 40-task 完整合法域上继续做字典序精化：Cost-only 的某些等价代表解可出现 38/40 迁移、总等待 172 h；而在 Cost 最优面内依次最小化 Wait、Latency 后，可得到迁移 5 个任务、总等待 6 h、平均等待 0.15 h、最大等待 2 h、总网络时延 437 ms、平均时延 10.925 ms 的 exact 字典序代表解。该结果说明“Cost 最优值接近”不能替代服务质量精化，也验证了 Wait/Latency 必须重新做 full-domain pricing。
+在同一完整合法域上，Cost-only 的等价代表解可出现 38/40 个任务迁移、总等待 172 h；加入 Wait、Latency 两层后，迁移降至 5 个、总等待 6 h、最大等待 2 h，说明服务质量精化确有必要。
 
-\subsubsection{50k final-pool 字典序再认证结果}
-
-50,000 个任务的最终扩展列池包含 137,158 个活动列、1,173 条 region Benders cuts。两轮完整 Cost$\rightarrow$Wait$\rightarrow$Latency 再认证得到完全一致的三个 anchor：
+50,000 个任务的最终扩展列池包含 137,158 个活动列和 1,173 条区域 Benders 割，两轮完整再认证结果一致。
 
 \begin{table}[!htbp]
 \centering
@@ -152,27 +154,30 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \end{table}
 \FloatBarrier
 
-最终排程覆盖全部 50000 个 TaskID，等待均为 0；仅 61 个任务跨区，迁移率 0.122\%，其中 Training 52、Batch 8、RT 1。总网络时延 250860 ms，平均 5.0172 ms，P95 为 5 ms，最大 58 ms，最晚完成 2405.6 h；任务、容量、SLA、截止时间、能源平衡、SOC 和购售电边界全部通过审计，最大物理残差约 $1.14\times10^{-13}$。
+最终排程等待为 0，仅 61 个任务跨区，迁移率 0.122\%；平均网络时延 5.0172 ms、P95 为 5 ms、最大 58 ms，最晚完成 2405.6 h，全部任务与能源硬约束均通过审计。
 
-\noindent\textbf{（1）联合调度对任务迁移与服务质量的改善}\quad
-问题二只调整任务排程时，成本优先方案需迁移 74.896\% 的任务，平均等待 20.475 h、最大等待 2016 h；问题四允许任务排程与储能、电网同时优化后，总等待降为 0，迁移率仅 0.122\%。因此，在同一任务与能源数据下，\textbf{联合优化避免了单纯依靠大规模跨区迁移和长时间延迟来改善能源成本，在维持联合模型成本最优面的同时显著改善了服务质量}。
+问题二仅调整任务排程时迁移率为 74.896\%，平均等待 20.475 h、最大等待 2016 h；联合优化后分别降至 0.122\%、0 h 和 0 h。图\ref{fig:q4-q2q4-compare}直接给出这一变化。
 
-问题三与问题四当前绝对成本差约 $1.23\times10^5$ CNY，但第 2406 h 跨问结算口径尚待统一，因此暂不把该差额解释为正式联合增量收益。
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.80\textwidth]{\ProjectRoot/modules/50_q4/figures/图E：Q2 与 Q4 柔性替代双面板.png}
+\caption{仅任务调度与算电联合调度的迁移及等待对比}
+\label{fig:q4-q2q4-compare}
+\end{figure}
+\FloatBarrier
+
+由图可见，允许储能与购售电随任务排程同步调整后，无需再依赖大规模跨区迁移和长时间等待即可保持能源经济性，服务质量显著改善。问题三与问题四当前绝对成本差约 $1.23\times10^5$ CNY，但第 2406 h 跨问结算口径尚未统一，因此不把该差额解释为正式联合增量收益。
 
 \subsection{模型检验与六指标场景分析}
 
-最终两轮均无缺失负约化成本列，区域 Benders 违反为 0，最终活动列池 MIP gap 为 0；但这不能自动推出完整域整数全局最优。时延层完整域 LP 下界为 250469.9546 ms，最终整数值 250860 ms，相对差
-\begin{equation}
-\frac{250860-250469.9546}{250860}\approx0.1555\%.
-\end{equation}
-因此正式表述为：\textbf{完整域 LP 定价与区域 Benders 已闭合，并获得真实能源可行、两轮再认证稳定的最优已知字典序整数方案；不声称完整域整数全局最优。}
+最终两轮均无缺失负约化成本列，区域 Benders 违反为 0；时延层完整域 LP 下界为 250469.9546 ms，最终整数值 250860 ms，相对差约 0.1555\%。因此本文只表述为\textbf{完整域定价与区域 Benders 已闭合，并获得两轮再认证稳定的最优已知整数方案}，不声称完整域整数全局最优。
 
-三类场景均沿用同一 IWESS 数学模型，仅改变碳预算、电价序列或新能源供给。对于已经完成 Cost、Wait、Latency 再认证或与基准场景数学等价的方案，统一比较运行成本、碳排放、网络时延、服务质量、新能源利用率和区域峰值净购电；新能源下降 20\% 场景因 Cost 层尚未闭合，单独报告严格上下界和可行候选，避免把不同证据等级混为一谈。
+三类正式场景沿用同一 IWESS 模型，仅改变碳约束、电价机制或新能源供给。已认证结果统一比较六项题面指标，见表\ref{tab:q4-formal-certified}。
 
 \noindent\textbf{（1）基准方案的六指标权衡}\par
-基准联合方案的净运行成本为 $-4.5934\times10^8$ CNY，碳排放为 0，总等待为 0，平均网络时延为 5.0172 ms，新能源利用率为 69.52\%，六区域正向峰值净购电均为 0。由此可见，在附件给定的新能源、储能和售电条件下，经济性、低碳性与服务质量并未形成明显冲突：模型首先通过新能源、储能和区域购售电协调吸收能源侧波动，仅需 0.122\% 的任务跨区即可同时维持零等待和较低网络时延。表\ref{tab:q4-formal-certified}进一步给出不同外生场景下的统一六指标比较。
+基准方案净运行成本为 $-4.5934\times10^8$ CNY，碳排放、总等待和六区域正向峰值净购电均为 0，平均网络时延为 5.0172 ms，新能源利用率为 69.52\%。
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \caption{Q4 已认证或与基准等价的正式场景六指标比较}
 \label{tab:q4-formal-certified}
@@ -197,17 +202,17 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \bottomrule
 \end{tabular}}
 \end{table}
-\FloatBarrier
 
-Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密度约 2.6--3.4\%。稀疏装配后 500-task 的 cut 存储从 9.17 MB 降至 0.38 MB（下降约 95.8\%）。这些压缩均来自附件数据中的 exact dominance 或实际 dual support，而不是牺牲可行域换取速度。
+\noindent\textbf{（2）不同碳约束下的策略变化}\par
+基准经济调度已经实现零碳排，因此继续收紧相对碳约束不会进一步改变任务迁移、储能和购售电策略；四档碳约束下六项指标保持一致。
 
-\subsection{模型检验与场景边界}
+\noindent\textbf{（3）不同电价机制下的策略变化}\par
+区域平坦电价与附件逐时电价下任务排程基本一致；峰谷强化后成本略有变化并产生 0.8616 tCO$_2$ 的小量碳排，但等待、平均时延和迁移率均保持不变。说明当前条件下，\textbf{电价机制主要影响能源购售安排，对任务空间配置和服务质量影响较弱}。
 
-\subsubsection{诊断性碳约束敏感性}
+\noindent\textbf{（4）新能源波动下的策略变化}\par
+新能源上升 20\% 后，总等待仍为 0，迁移率由 0.122\% 降至 0.066\%，平均时延降至 5.0084 ms；新能源利用率降至 57.78\% 是因为可用新能源总量扩大快于实际消纳量。新能源下降 20\% 时，电网补能和任务迁移压力明显上升，但 Cost 层尚未闭合，因此只报告严格成本区间和经硬约束验证的可行候选，见表\ref{tab:q4-renew-down-bounded}。
 
-在 $\gamma=1.4$ 新能源波动压力探针（临界放大因子 $\gamma_{\text{crit}}\approx1.303326$）下，沿 Cost--Carbon epsilon-constraint 路径得到表\ref{tab:q4-carbon}。碳预算从 100\% 降至 0\% 时，成本增加约 0.1\%（约 4961.32 CNY），局部平均减排成本约 92.48 CNY/tCO$_2$。该探针仅用于验证 Carbon 约束被激活时模型能够产生可解释权衡，\textbf{不构成题目正式新能源波动场景}。
-
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \caption{新能源下降 20\% 场景的严格 Cost 区间与可行候选指标}
 \label{tab:q4-renew-down-bounded}
@@ -232,27 +237,4 @@ Cost 相对 Gap & 22.45\% \\
 \end{table}
 \FloatBarrier
 
-\subsubsection{50k 可扩展性与最优性边界}
-
-Cost 初始 root 阶段 50k 任务的实际峰值内存约 0.254 GiB，总求解时间约 2.06 min；后续完整字典序再认证将活动列扩展至 137,158，并最终形成 1,173 条 region cuts。两轮 final-pool sweep 中所有阶段的完整域定价均无负 reduced-cost 缺失列，最大区域 Benders violation 为 0，且 restricted-column MIP gap 为 0。
-
-需要强调，`restricted MIP gap=0` 只证明\textbf{当前最终活动列池上的整数问题}已经解到最优，不等于完整域全局整数最优证书。Latency 阶段的完整域 LP 下界为 250,469.9546 ms，而最终整数代表解为 250,860 ms，二者绝对差约 390.0454 ms，相对差约
-\begin{equation}
-\frac{250860-250469.9546}{250860}\approx 0.1555\%.
-\label{eq:q4-lat-gap}
-\end{equation}
-因此本文的正式口径是：\textbf{完整合法域 LP pricing 与 region Benders 已闭合，并在最终扩展列池上获得真实能源可行、两轮再认证稳定的 best-known 字典序整数代表解；不声称 50k 全局整数最优。}
-
-\subsubsection{六指标的角色说明}
-
-题面要求报告 Cost、Carbon、Latency、QoS、RenewableUtilization、regional PeakNetImport 六项指标。根据当前 canonical 结果与数据探针，它们在模型中的角色为：
-
-\begin{itemize}
-  \item \textbf{Cost}：第一字典序优化层；
-  \item \textbf{Carbon}：在数据或场景真正激活冲突时通过 epsilon-constraint 纳入，不预设 Cost/Carbon 权重；
-  \item \textbf{QoS/Wait}：Cost 面上的第二层字典序精化，50k canonical 已达到 Total Wait=0；
-  \item \textbf{Latency}：Wait 后的第三层字典序精化，50k canonical 总时延 250,860 ms；
-  \item \textbf{RenewableUtilization}、\textbf{regional PeakNetImport}：作为题面要求的正式报告指标，在 canonical 与后续场景中统一核算；是否成为独立优化轴仍由冲突探针决定，而不是因为题面列出六项就重复计权。
-\end{itemize}
-
-因此，本问不使用六指标等权综合目标、AHP、熵权或人为 minimax 权重。当前 canonical 联合优化主问题已经完成，但 Q4 整问尚需在相同 joint model 下完成三类正式场景：\textbf{Carbon constraints、electricity-price mechanisms、renewable fluctuation scenarios}。每个场景均必须重新允许 workload placement 与 BESS/Grid 联合优化并重新执行 exact pricing；历史 $\gamma=1.4$ 仅作为诊断探针，不替代正式场景。
+综合来看，\textbf{碳约束在当前零碳基准下不再产生额外影响，电价变化主要作用于能源侧，而新能源供给变化会直接改变任务迁移、电网补能和新能源利用状态}。
