@@ -1,39 +1,40 @@
-算力与能源联合优化已有将数据中心负荷与能源系统协同建模的研究，说明任务位置变化会改变能源系统最优响应\cite{guo_integrated_2025}。针对离散任务分配与连续能源再优化形成的大规模耦合结构，近期研究已将 Benders 分解与列生成结合用于服务器分配与调度\cite{wang_bcg_2026}。本文只借用这类分解求解思想；区域能源子问题、完整合法任务域以及字典序目标均由本题附件数据和前文模型结构确定。
+计算任务与能源系统联合优化可将离散任务分配和连续能源调度分解处理\cite{guo_integrated_2025}；Benders 分解与列生成的组合也适用于大规模服务器分配与调度问题\cite{wang_bcg_2026}。本题据此将区域能源调度作为子问题，并在任务完整合法域中进行列生成。
 
 \begin{algorithm}[H]
 \setstretch{0.82}
 \SetAlFnt{\small}
 \SetArgSty{textnormal}
-\SetKwInput{KwIn}{Input}
-\SetKwInput{KwInit}{Initialize}
-\SetKwInput{KwOut}{Output}
-\SetKwFor{While}{while}{do}{end while}
-\SetKwFor{ForEach}{for each}{do}{end for}
-\SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\caption{区域多割 Benders--列生成的字典序联合求解}
+\SetKwInput{KwIn}{输入}
+\SetKwInput{KwInit}{初始化}
+\SetKwInput{KwOut}{输出}
+\SetKwFor{While}{当}{执行}{结束循环}
+\SetKwFor{ForEach}{对每个}{执行}{结束}
+\SetKwIF{If}{ElseIf}{Else}{若}{则}{否则若}{否则}{结束判断}
+\caption{区域多割 Benders 分解与列生成的字典序求解}
 \label{alg:q4-benders-cg}
-\KwIn{任务集与完整合法域 $\Omega_i$，区域算力容量，新能源、储能、电价及 SLA 参数}
-\KwInit{由可行参考排程生成活动列池 $\mathcal C$；六区域 Benders 割集置空}
+\KwIn{任务集与完整合法域 $\Omega_i$，区域算力容量，新能源、储能、电价及网络时延参数}
+\KwInit{由可行排程生成初始活动列池 $\mathcal C$；六区域 Benders 割集置空}
 
-\textbf{第一层：Cost}\;
-\While{Cost 层未闭合}{
-  求限制主问题 LP；由排程负荷分别求六区域真实能源子问题\;
-  \If{任一区域能源值被 $\theta_r$ 低估}{加入对应区域最优性割并继续\;}
-  对全部任务的隐式完整合法域执行精确定价\;
-  \If{存在负约化成本列}{加入 $\mathcal C$ 并继续\;}
-  求当前扩展列池整数排程并执行真实能源复核；若违反则补整数 Benders 割，否则记录成本代表值 $C^{\mathrm{anc}}$\;
+\textbf{第一层：最小化运行成本}\;
+\While{仍存在新的最优性割或负约化成本列}{
+  求解限制主问题的线性松弛；根据排程负荷分别求六区域能源子问题\;
+  \If{任一区域能源成本高于主问题中的 $\theta_r$}{加入对应区域最优性割并继续\;}
+  在全部任务的完整合法域中计算约化成本\;
+  \If{存在负约化成本列}{加入活动列池 $\mathcal C$ 并继续\;}
+  求解当前列池上的整数排程并重新计算区域能源成本\;
 }
+记录成本最优值 $C^*$\;
 
-\textbf{第二层：Wait}\;
-增加 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，以总等待为目标；随后依次进行区域真实能源复核、完整域定价和整数复核，得到 $W^{\mathrm{anc}}$\;
+\textbf{第二层：最小化总等待}\;
+增加 $\mathrm{Cost}(\mathbf x)\le C^*+\varepsilon_C$，以总等待为目标；重复区域能源求解和完整域列生成，得到 $W^*$\;
 
-\textbf{第三层：Latency}\;
-保持成本约束并增加 $\mathrm{Wait}\le W^{\mathrm{anc}}+\varepsilon_W$，以总网络时延为目标；再次完成区域 Benders、完整域定价和整数能源复核\;
+\textbf{第三层：最小化网络时延}\;
+保持成本约束并增加 $\mathrm{Wait}(\mathbf x)\le W^*+\varepsilon_W$，以总网络时延为目标；再次执行区域能源求解和完整域列生成\;
 
-\textbf{最终再认证}\;
-若等待或时延阶段新增任务列，则在最终扩展列池上重新求解三个字典序层，依次固定成本、总等待和网络时延，直到两轮结果一致，且完整域定价与区域能源复核均闭合\;
+\textbf{重复验证}\;
+若第二层或第三层产生新列，则在最终列池上重新求解三个字典序目标，直至连续两次结果一致且完整域中不再出现负约化成本列\;
 
-\textbf{审计}\;
-检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、能源平衡、SOC、电网及售电边界；分别报告完整域 LP 下界与最终整数可行解，不把活动列池 MIP gap 解释为完整域整数最优证书\;
-\KwOut{任务时空排程、储能/电网方案、六类评价指标及最优性证据边界}
+\textbf{约束检验}\;
+检查任务唯一指派、实时推理即时开工、网络时延、最晚完成时间、2406 h 终止边界、GPU/IT/设施功率、能源平衡、SOC 及电网购售电边界；同时报告线性松弛下界与整数可行解\;
+\KwOut{任务时空排程、储能与电网方案、六项评价指标及最优已知整数解}
 \end{algorithm}
