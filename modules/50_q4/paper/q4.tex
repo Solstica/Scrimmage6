@@ -51,10 +51,16 @@ D(\mathbf x)=\sum_{i,r,s}\ell_{o_i r}x_{irs}.\label{eq:q4-qos}
 
 \subsubsection{联合模型汇总}
 
-最终联合模型写为
+最终联合模型的字典序目标直接展开为
 \begin{equation}
 \operatorname*{lex\,min}_{\mathbf x,\mathbf y}\quad
-\bigl(\mathrm{Cost}(\mathbf y),\ W(\mathbf x),\ D(\mathbf x)\bigr)
+\left(
+\sum_{r,t}\bigl(c^{buy}_{rt}G^{buy}_{rt}-c^{sell}_{rt}s_{rt}\bigr),
+\quad
+\sum_{i,r,s}(s-a_i)x_{irs},
+\quad
+\sum_{i,r,s}\ell_{o_i r}x_{irs}
+\right)
 \label{eq:q4-summary-obj}
 \end{equation}
 \begin{equation}
