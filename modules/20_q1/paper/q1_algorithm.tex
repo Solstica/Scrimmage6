@@ -19,12 +19,12 @@
 \For{$m\leftarrow1$ \KwTo $M$}{按 $N_t\sim\mathrm{Poisson}(\hat\lambda)$、$(R,K)\sim\hat\pi$、$(G,D)\mid K\sim\widehat F_{GD}^{(k)}$ 模拟 24 h GPU 需求\;}
 取 5\%/95\% 分位数形成 90\% 预测区间，并计算 MAE、WAPE、RMSE、PICP\;
 \textbf{调度阶段：}\;
-以 carry-in 初始化逐时 GPU/IT/Facility 占用；按到达时刻处理 2376--2399 h 实际任务\;
+以前序任务遗留占用初始化逐时 GPU/IT/Facility 状态，并按到达时刻处理 2376--2399 h 实际任务\;
 \ForEach{任务 $j$}{
   构造满足任务级 SLA、LatestFinish 与 finish$\le2406$ 的合法区域--时刻集合；RT 仅允许 $s=a_j$\;
-  按“来源区域优先 $\to$ 最早可行开工 $\to$ 低网络时延”枚举候选，并检查 GPU/IT/Facility 三层容量\;
-  选择首个可行候选并更新其整个执行区间的资源占用；若无可行候选则返回 FAIL\;
+  优先选择来源区域，在同一区域内取最早可行开工时刻；仍有多个候选时优先选择网络时延较小者，并检查 GPU/IT/Facility 三层容量\;
+  选择首个可行候选并更新其整个执行区间的资源占用；若不存在可行候选则标记该排程不可行\;
 }
 审计任务唯一执行、RT 即时开工、三层容量、SLA 与 2406 边界\;
-\KwOut{四层短期预测及区间；538 个实际任务的执行区域、开工/完成时刻、GPU 利用率与硬约束审计}
+\KwOut{四层短期预测及区间；538 个实际任务的执行区域、开工/完成时刻、GPU 利用率与约束审计}
 \end{algorithm}
