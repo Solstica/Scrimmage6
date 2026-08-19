@@ -89,9 +89,10 @@ P^{AI}_{rt}(\mathbf x)=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs}.
 
 \subsubsection{模型汇总}
 
-成本优先模型为
+成本优先模型的目标函数直接写为
 \begin{equation}
-\min_{\mathbf x}\quad \mathrm{Cost}(\mathbf x)
+\min_{\mathbf x}\quad
+\sum_{r,t}\Bigl[\mathrm{GridPurchase}_{rt}(\mathbf x)c^{buy}_{rt}-\mathrm{GridSell}^0_{rt}c^{sell}_{rt}\Bigr]\Delta t
 \label{eq:q2-summary-obj}
 \end{equation}
 \begin{equation}
@@ -109,7 +110,12 @@ L_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \right.
 \label{eq:q2-summary-con}
 \end{equation}
-其中 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$ 已由 $C_i$ 的定义进入可行域，任务不可拆分、不可抢占。碳排优先端点仅将式\eqref{eq:q2-summary-obj}替换为 $\min\mathrm{Carbon}(\mathbf x)$，其余约束不变。
+其中 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$ 已由 $C_i$ 的定义进入可行域，任务不可拆分、不可抢占。碳排优先端点保持同一约束系统，仅将目标函数替换为
+\begin{equation}
+\min_{\mathbf x}\quad
+\sum_{r,t}\mathrm{GridPurchase}_{rt}(\mathbf x)\,CI_{rt}\Delta t.
+\label{eq:q2-summary-carbon-obj}
+\end{equation}
 
 \subsection{模型求解：SFETA 完整域动态边际分配}
 
