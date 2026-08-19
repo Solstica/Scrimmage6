@@ -63,9 +63,9 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \hat\pi_{rk}=\frac{n_{rk}}{N_{\mathrm{train}}},\label{eq:q1-params}\\
 &(G,D)\mid K=k\sim\widehat F_{GD}^{(k)}.\label{eq:q1-resource-mark}
 \end{align}
-第 $t$ 小时区域 $r$、任务类型 $k$ 的 GPU 需求为
+记 $\mathbb{I}\{\cdot\}$ 为示性函数，括号内条件成立时取 1，否则取 0。第 $t$ 小时区域 $r$、任务类型 $k$ 的 GPU 需求为
 \begin{equation}
-Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbf 1(R_j=r,K_j=k),\qquad
+Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbb{I}\{R_j=r,K_j=k\},\qquad
 \mathbb E(Y_{rkt})=\lambda\pi_{rk}\mathbb E(G\mid K=k).
 \label{eq:q1-demand}
 \end{equation}
@@ -73,8 +73,8 @@ Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbf 1(R_j=r,K_j=k),\qquad
 
 对 2376--2399 h 实际任务采用“来源区域优先、最早可行开工、必要时再迁移”的基础调度。若任务 $j$ 在区域 $r$ 执行，则逐时资源负荷为
 \begin{align}
-&G_{rt}=\sum_j g_j\omega(j,t)\mathbf 1(r_j^{\rm exec}=r),\label{eq:q1-gpu-load}\\
-&P^{AI}_{rt}=\sum_j\alpha_{k_j}g_j\omega(j,t)\mathbf 1(r_j^{\rm exec}=r),\qquad
+&G_{rt}=\sum_j g_j\omega(j,t)\mathbb{I}\{r_j^{\rm exec}=r\},\label{eq:q1-gpu-load}\\
+&P^{AI}_{rt}=\sum_j\alpha_{k_j}g_j\omega(j,t)\mathbb{I}\{r_j^{\rm exec}=r\},\qquad
 P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 &P^{Fac}_{rt}=\mathrm{PUE}_rP^{IT}_{rt}.\label{eq:q1-fac-load}
 \end{align}
@@ -148,10 +148,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \end{tabular}
 \end{table}
 
-
 图\ref{fig:q1-schedule}给出三类任务按类型分类的甘特图以及六区域 GPU 利用率；2376--2399 h 为实际到达窗口，2400--2405 h 仅结清在途任务。
-
-
 
 \begin{figure}[!htbp]
 \centering
