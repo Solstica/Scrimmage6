@@ -112,12 +112,7 @@ L_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \right.
 \label{eq:q2-summary-con}
 \end{equation}
-其中 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$ 已由 $C_i$ 的定义进入可行域，任务不可拆分、不可抢占。碳排优先端点保持同一约束系统，仅将目标函数替换为
-\begin{equation}
-\min_{\mathbf x}\quad
-\sum_{r,t}\mathrm{GridPurchase}_{rt}(\mathbf x)\,CI_{rt}\Delta t.
-\label{eq:q2-summary-carbon-obj}
-\end{equation}
+其中 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$ 已由 $C_i$ 的定义进入可行域，任务不可拆分、不可抢占。
 
 \subsection{模型求解：SFETA}
 
@@ -133,8 +128,8 @@ REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电�
 
 全部 50000 个任务均获得合法排程。当前 Q2 经济核算覆盖 0--2405 h，因此绝对经济量仅用于本问内部比较；跨问并表时再统一第 2406 h 结算口径。
 
-\begingroup  
-\rowcolors{2}{gray!10}{white}   
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{成本优先方案与附件参考状态对比（0--2405 h 口径）}
@@ -167,8 +162,8 @@ Cost、Carbon 同时下降且新能源利用率提高，说明收益来自逐时
 
 \subsubsection{任务迁移与服务质量}
 
-\begingroup  
-\rowcolors{2}{gray!10}{white}   
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{成本优先方案的任务迁移与等待分布}
@@ -213,8 +208,8 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 
 碳排优先方案相对成本优先方案仅增加约 0.18\% 成本，而成本优先方案相对碳排优先方案增加约 0.62\% 碳排，表明二者高度同向但存在可测边际冲突。
 
-\begingroup  
-\rowcolors{2}{gray!10}{white}   
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{成本优先与碳排优先方案对照}
@@ -232,7 +227,6 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \end{tabular}
 \end{table}
 \endgroup
-
 
 \begin{figure}[!htbp]
 \centering
