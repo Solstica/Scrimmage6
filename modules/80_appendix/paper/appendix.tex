@@ -1,30 +1,159 @@
-\section*{附录：程序及结果文件说明}
-\addcontentsline{toc}{section}{附录：程序及结果文件说明}
+\section*{附录：各问核心程序}
+\addcontentsline{toc}{section}{附录：各问核心程序}
 
-正文各问的模型求解、结果复核与场景计算均由随论文提交的程序完成。为避免重复粘贴大段代码，附录仅列出与正式结果直接对应的主要程序入口；完整源代码、结果表与约束审计文件以提交工程为准。
+本次训练赛仅提交 PDF，因此附录直接给出四问正式求解程序的核心代码节选。为控制篇幅，数据读取、绘图、文件导出和重复审计代码不再展开；下列代码分别对应正文中的 MCP 基础调度、SFETA、BESS-ED 与 Benders--列生成联合求解。
 
-\begingroup\small\sloppy
-\renewcommand{\arraystretch}{1.35}
-\begin{longtable}{p{.43\textwidth}p{.47\textwidth}}
-\toprule
-文件 & 功能\\
-\midrule
-\endfirsthead
-\toprule
-文件 & 功能\\
-\midrule
-\endhead
-\path{modules/20_q1/code/q1_solver.py} & 问题一任务到达统计、MCP 短期概率预测、基础调度及约束审计。\\
-\path{modules/30_q2/code/q2_iterative_solver.py} & 问题二完整合法域 SFETA 迭代任务分配、BMER 边际能源核算及收敛结果导出。\\
-\path{modules/40_q3/code/q3_solver.py} & 问题三固定负荷 BESS-ED 两层字典序能源调度及储能增量价值计算。\\
-\path{modules/50_q4/code/q4_full_solver.py} & 问题四任务放置与区域能源子问题的 Benders--列生成联合求解。\\
-\path{modules/50_q4/code/q4_final_recertification.py} & 问题四最终扩展列池的 Cost、Wait、Latency 字典序再认证。\\
-\path{modules/50_q4/code/q4_formal_scenarios.py} & 不同碳约束、电价机制与新能源波动场景的统一构造与求解。\\
-\path{modules/50_q4/code/q4_qcert.py} & 新能源下降 20\% 场景的完整域 Cost 上下界与可行性证书。\\
-\path{modules/50_q4/code/q4_schedule_metrics.py} & 对场景排程重求真实能源流并统一计算六项评价指标。\\
-\path{scripts/final_preflight.py} & 终稿引用、结果状态与 LaTeX 文件的一致性检查。\\
-\bottomrule
-\end{longtable}
+\begingroup
+\lstset{language=Python,basicstyle=\ttfamily\scriptsize,columns=fullflexible,breaklines=true,showstringspaces=false}
+
+\subsection*{A.1 问题一：MCP 概率预测与本地优先基础调度}
+\begin{lstlisting}[caption={问题一核心代码节选（q1\_solver.py）}]
+def compound(rate, vals, n=5000):
+    ns = rng.poisson(rate, size=n)
+    ans = np.zeros(n, dtype=float)
+    for j, m in enumerate(ns):
+        if m:
+            ans[j] = rng.choice(vals, size=m, replace=True).sum()
+    return ans
+
+refit = work.loc[work.ArrivalHour <= 2375]
+lam2 = len(refit) / 2376.0
+pi2 = refit.groupby(["SourceRegion", "TaskType"]).size() / len(refit)
+em2 = marks(refit)
+for r in regions:
+    for k in types:
+        rate = lam2 * float(pi2.get((r, k), 0.0))
+        sim = compound(rate, em2[k][:, 0])
+        vals2["PI05"][(r, k)] = float(np.quantile(sim, 0.05))
+        vals2["PI95"][(r, k)] = float(np.quantile(sim, 0.95))
+
+# 对测试窗实际任务执行“本地完整时间域优先，再考虑远端”
+chosen = find_candidate([src])
+if chosen is None:
+    other = sorted(
+        [r for r in regions if r != src and lmap[(src, r)] <= x.MaxLatency_ms],
+        key=lambda r: (lmap[(src, r)], r),
+    )
+    chosen = find_candidate(other)
+if chosen is None:
+    bad.append(int(x.TaskID))
+else:
+    r, st = chosen
+    update_occupancy(r, st, x)
+\end{lstlisting}
+
+\subsection*{A.2 问题二：SFETA 完整合法域动态边际任务分配}
+\begin{lstlisting}[caption={问题二核心代码节选（q2\_iterative\_solver.py）}]
+def build_priority(tasks, latency, region_index):
+    work = tasks.copy()
+    work["RegionCount"] = work.apply(
+        lambda row: int(np.sum(
+            latency[region_index[row.SourceRegion], :] <= row.MaxLatency_ms + 1e-9)),
+        axis=1,
+    )
+    work["Slack_h"] = (
+        work.LatestFinishHour - work.ArrivalHour
+        - work.EstimatedDuration_min / 60.0
+    )
+    work["GPUHour"] = work.GPU_Demand * work.EstimatedDuration_min / 60.0
+    return work.sort_values(
+        ["RegionCount", "Slack_h", "GPUHour", "TaskID"],
+        ascending=[True, True, False, True],
+    )
+
+for task in work.itertuples(index=False):
+    core.add_task(gpu, ai, task, old_region, old_start,
+                  power, profile_cache, -1.0)
+    for region in allowed:
+        starts = np.arange(lo, hi + 1, dtype=int)
+        valid, dcurt, dcost, dcarbon = core.evaluate_region_candidates(
+            int(region), starts, profile, float(task.GPU_Demand),
+            float(task.GPU_Demand) * float(power[task.TaskType]),
+            gpu, ai, base_facility, nonai, capacity_gpu, max_it,
+            pue, max_facility, c0, g0, grid0, used0,
+            price, carbon, max_grid,
+        )
+        collect_feasible_candidates(region, starts, valid,
+                                    dcurt, dcost, dcarbon)
+    choice = core.pick_candidate(all_candidates, mode)
+    core.add_task(gpu, ai, task, choice.region, choice.start,
+                  power, profile_cache, 1.0)
+\end{lstlisting}
+
+\subsection*{A.3 问题三：BESS-ED 两层字典序线性规划}
+\begin{lstlisting}[caption={问题三核心代码节选（q3\_solver.py）}]
+# 第一层：净运行成本最小化
+c_cost = np.zeros(n)
+c_cost[off["gL"]:off["gL"] + T] = buy
+c_cost[off["qG"]:off["qG"] + T] = buy
+c_cost[off["s"]:off["s"] + T] = -sell
+
+r1 = linprog(
+    c_cost, A_ub=Aub_base, b_ub=bub_base,
+    A_eq=Aeq, b_eq=beq, bounds=bnds, method="highs"
+)
+if not r1.success:
+    raise RuntimeError(r1.message)
+cost_star = float(r1.fun)
+
+# 第二层：在成本最优面内最小化储能吞吐量
+c_throughput = np.zeros(n)
+for name in ("qR", "qG", "d"):
+    c_throughput[off[name]:off[name] + T] = 1.0
+cost_row = coo_matrix(c_cost.reshape(1, -1))
+A2 = vstack([Aub_base, cost_row], format="csr")
+b2 = np.r_[bub_base, cost_star + TOL_COST]
+r2 = linprog(
+    c_throughput, A_ub=A2, b_ub=b2,
+    A_eq=Aeq, b_eq=beq, bounds=bnds, method="highs"
+)
+if not r2.success:
+    raise RuntimeError(r2.message)
+\end{lstlisting}
+
+\subsection*{A.4 问题四：区域 Benders 与完整域列生成}
+\begin{lstlisting}[caption={问题四核心代码节选（q4\_full\_solver.py）}]
+def price_all(pool, data, gpu_row, it_row,
+              rdual, cdual, cuts, eqdual, tol):
+    """所有合法 task-region-start 均参与精确定价。"""
+    additions = []
+    for i in range(len(data.task)):
+        start0 = int(data.arrival[i])
+        end = (start0 if data.task.iloc[i].TaskType == "RealTimeInference"
+               else legal_last_start(data, i))
+        best = None
+        for r in np.flatnonzero(data.legal[i]):
+            scores = reduced_cost_profile(i, r, start0, end,
+                                          rdual, cdual, cuts)
+            s = first_inactive_argmin(pool, i, r, start0, scores)
+            if s is not None:
+                value = float(scores[s - start0] * data.gpu[i])
+                if best is None or value < best[0]:
+                    best = (value, int(r), int(s))
+        if best is not None:
+            reduced = best[0] - eqdual[i]
+            if reduced < -tol:
+                additions.append((i, best[1], best[2], reduced))
+    return sorted(additions, key=lambda z: z[3])
+
+for iteration in range(1, max_iter + 1):
+    rmp, _, _, _ = solve_rmp(pool, data, gpu_row, it_row, rhs, cuts)
+    load = facility_load(pool, data, rmp["x"])
+    energy = energy_lp(load, data)
+    violation = float(energy["cost"] - rmp["theta"])
+    if violation > benders_tol:
+        cuts.append(make_region_cut(energy, load, data))
+        continue
+    additions = price_all(pool, data, gpu_row, it_row,
+                          rdual, cdual, cuts, rmp["eq_dual"], price_tol)
+    if additions:
+        for i, r, s, _ in additions:
+            pool.add(i, r, s)
+        continue
+    root_closed = True
+    break
+\end{lstlisting}
+
 \endgroup
 
-主要数值结果分别保存在各问题的 \path{results/} 与 \path{tables/} 目录中。正文只引用通过相应约束审计或已明确标注证据等级的结果；其中问题四新能源下降 20\% 场景保留严格成本上下界与经硬约束验证的可行排程，不将其候选服务质量指标表述为全局最优结果。
+问题四在 Cost 层闭合后继续对 Wait、Latency 两层执行相同的完整域定价与真实能源复核，并在最终扩展列池上进行两轮再认证。新能源下降 20\% 场景只保留严格 Cost 上下界及经硬约束审计的可行候选，不将其候选服务质量指标表述为全局最优。
