@@ -1,0 +1,23 @@
+{
+  "状态": "RUNNING",
+  "轮次": 201,
+  "停止原因": "added_benders_cut",
+  "根节点闭合": false,
+  "活动列数": 66809,
+  "Benders切数": 201,
+  "最新": {
+    "iter": 201,
+    "active_columns": 66809,
+    "cuts": 201,
+    "lp_lb_cny": -412143053.2190459,
+    "energy_cost_cny": -411966531.23318803,
+    "theta_cny": -412143053.2190459,
+    "violation_cny": 176521.98585784435,
+    "new_columns": 0,
+    "min_reduced_cost": 0.0,
+    "rss_gib": 0.26332855224609375,
+    "elapsed_min": 11.405402815341949,
+    "eta_min": 5662.9243560612495
+  },
+  "完整候选域": "implicit / 未裁剪"
+}

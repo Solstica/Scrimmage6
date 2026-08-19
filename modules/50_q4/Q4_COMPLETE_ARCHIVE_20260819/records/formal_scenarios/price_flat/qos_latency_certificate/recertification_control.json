@@ -1,0 +1,40 @@
+{
+  "模型版本": "region_multicut_v1",
+  "状态": "DRAFT / NEEDS_RESUME",
+  "当前sweep": 2,
+  "当前阶段": "cost",
+  "Cost锚点_CNY": -459340688.80070555,
+  "Wait锚点_h": 0.0,
+  "Latency锚点_ms": 250860.0,
+  "sweep起始锚点": {
+    "Cost锚点_CNY": -459340688.80070555,
+    "Wait锚点_h": 0.0,
+    "Latency锚点_ms": 250860.0
+  },
+  "初始活动列数": 51260,
+  "阶段记录": [
+    {
+      "sweep": 1,
+      "阶段": "latency",
+      "活动列数": 137158,
+      "新增列数": 19,
+      "Benders切数": 759,
+      "最大区域Benders违反_CNY": 0.0,
+      "最小缺失列约化成本": 0.0,
+      "LP界": 250469.95457921125,
+      "restricted_MIP目标": 250860.0,
+      "restricted_MIP_gap": 0.0,
+      "真实能源成本_CNY": -459340688.8007043,
+      "阶段目标": 250860.0,
+      "轮次": 24,
+      "运行秒": 262.22540259361267,
+      "峰值RSS_GiB": 0.36545562744140625,
+      "global_integer_optimum_proved": false
+    }
+  ],
+  "认证来源": "price_flat跨场景Cost上下界证书",
+  "Cost证书文件": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\price_flat\\certificate\\price_flat_cross_scenario_cost_certificate.json",
+  "原因": "R3 Latency再认证 达到最大迭代轮数",
+  "活动列数": 137158,
+  "Benders切数": 759
+}

@@ -1,0 +1,2 @@
+﻿iter,active_columns,cuts,lp_lb_cny,energy_cost_cny,theta_cny,violation_cny,new_columns,min_reduced_cost,rss_gib,elapsed_min,eta_min
+1,51180,1,-458815194.33295256,-458815194.33295375,-458815194.33295256,-1.1920928955078125e-06,1180,-30146.004223999997,0.16584396362304688,0.6921194990475973,0.0

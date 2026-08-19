@@ -1,0 +1,16 @@
+{
+  "状态": "FINISHED",
+  "完整候选域": "未裁剪的 implicit domain",
+  "任务数": 50000,
+  "候选域总数_预检": 233375201,
+  "根节点闭合": true,
+  "停止原因": "root_lp_closed",
+  "Benders闭合容差_CNY": 0.001,
+  "restricted_integer_status": "restricted_mip_completed",
+  "活动列数": 51260,
+  "Benders切数": 6,
+  "可行上界_能源成本_CNY": -459274946.57280177,
+  "运行分钟": 5.241360267003377,
+  "峰值当前RSS_GiB": 0.22093963623046875,
+  "全局整数最优已证明": false
+}

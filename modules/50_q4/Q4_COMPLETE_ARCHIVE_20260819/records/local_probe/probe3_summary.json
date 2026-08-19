@@ -1,0 +1,21 @@
+{
+  "tasks": 40,
+  "candidates": 3139,
+  "exact_cost": -5450201.934545999,
+  "exact_time_s": 0.2545335292816162,
+  "benders_cost": -5450201.934545998,
+  "benders_converged": true,
+  "benders_iters": 2,
+  "benders_time_s": 0.5672411918640137,
+  "exact_lex_metrics": {
+    "migrated": 5,
+    "total_wait": 6.0,
+    "mean_wait": 0.15,
+    "max_wait": 2.0,
+    "lat_sum": 437.0,
+    "lat_mean": 10.925
+  },
+  "gamma_critical_for_positive_carbon": 1.303326055407524,
+  "gamma_stress": 1.4,
+  "stress_cost_opt_carbon": 53.647629846155745
+}

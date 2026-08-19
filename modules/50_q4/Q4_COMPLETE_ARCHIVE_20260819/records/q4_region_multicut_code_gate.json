@@ -1,0 +1,51 @@
+{
+  "gate": "CODE",
+  "status": "PASS",
+  "errors": [],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_region_multicut_scenario.py",
+      "--help"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_region_multicut_scenario.py",
+    "script_sha256": "cf2acd75852654b8ab4487f5f0a9c231d0c850516df7e98a6f520ef9330c4b6b",
+    "started_at": "2026-08-18T20:32:14+00:00",
+    "finished_at": "2026-08-18T20:32:14+00:00",
+    "returncode": 0,
+    "stdout": "usage: q4_region_multicut_scenario.py [-h] [--attachment-dir ATTACHMENT_DIR]\n                                      [--canonical-final-dir CANONICAL_FINAL_DIR]\n                                      [--output-dir OUTPUT_DIR]\n                                      [--task-limit {100,500,5000}]\n                                      [--max-stage-iter MAX_STAGE_ITER]\n                                      [--max-hours MAX_HOURS]\n                                      [--benders-tol-cny BENDERS_TOL_CNY]\n                                      [--cost-feas-tol-cny COST_FEAS_TOL_CNY]\n                                      [--price-tol PRICE_TOL]\n                                      [--columns-per-task COLUMNS_PER_TASK]\n                                      [--integer-time-limit-s INTEGER_TIME_LIMIT_S]\n                                      [--mip-rel-gap MIP_REL_GAP]\n                                      [--heartbeat-seconds HEARTBEAT_SECONDS]\n                                      [--max-active-columns MAX_ACTIVE_COLUMNS]\n                                      [--max-rss-gib MAX_RSS_GIB]\n                                      [--min-free-gib MIN_FREE_GIB]\n\nrenew_down_80 区域 multi-cut 场景求解器\n\noptions:\n  -h, --help            show this help message and exit\n  --attachment-dir ATTACHMENT_DIR\n  --canonical-final-dir CANONICAL_FINAL_DIR\n  --output-dir OUTPUT_DIR\n  --task-limit {100,500,5000}\n  --max-stage-iter MAX_STAGE_ITER\n  --max-hours MAX_HOURS\n  --benders-tol-cny BENDERS_TOL_CNY\n  --cost-feas-tol-cny COST_FEAS_TOL_CNY\n  --price-tol PRICE_TOL\n  --columns-per-task COLUMNS_PER_TASK\n  --integer-time-limit-s INTEGER_TIME_LIMIT_S\n  --mip-rel-gap MIP_REL_GAP\n  --heartbeat-seconds HEARTBEAT_SECONDS\n  --max-active-columns MAX_ACTIVE_COLUMNS\n  --max-rss-gib MAX_RSS_GIB\n  --min-free-gib MIN_FREE_GIB\n",
+    "stderr": "",
+    "inputs": [],
+    "outputs": []
+  },
+  "metrics": {
+    "naming": {
+      "status": "PASS",
+      "identifier_max_length": 8,
+      "filename_max_length": 12,
+      "underscore_max": 1,
+      "allowed_names": [
+        "args_for_stage",
+        "attachment",
+        "audit_pass",
+        "canonical_pool",
+        "cert_pass",
+        "copy_scenario_attachment",
+        "final_dir",
+        "initial_energy",
+        "load_hash",
+        "load_hot_pool",
+        "q4_region_multicut_scenario",
+        "region_index",
+        "stage_args",
+        "task_index",
+        "task_limit"
+      ],
+      "violations": []
+    },
+    "syntax": "PASS"
+  }
+}

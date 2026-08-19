@@ -1,0 +1,10 @@
+{
+  "状态": "NEEDS_REVIEW",
+  "场景": "renew_down_80",
+  "任务数": 50000,
+  "原因": "达到总运行时间门槛",
+  "活动列数": 137158,
+  "Benders切数": 498,
+  "输出目录": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\renew_down_80_region_multicut_run2\\renew_down_80_region_multicut_full_pool",
+  "热启动": true
+}

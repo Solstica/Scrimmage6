@@ -1,0 +1,16 @@
+Metric,Value,Unit
+Tasks,50000,count
+UniqueTaskID,50000,count
+MigratedTasks,61,count
+MigrationRate,0.00122,fraction
+TotalWait,0,h
+MeanWait,0,h
+MaxWait,0,h
+TotalLatency,250860,ms
+MeanLatency,5.0172,ms
+P95Latency,5,ms
+MaxLatency,58,ms
+MaxFinish,2405.6,h
+AITrainingMigrated,52,count
+BatchInferenceMigrated,8,count
+RealTimeInferenceMigrated,1,count

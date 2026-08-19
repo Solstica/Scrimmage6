@@ -1,0 +1,19 @@
+Metric,Value,Unit,Note
+CandidateVariables_Total,233375201,count,Complete legal integer-hour candidate domain
+CandidateVariables_AITraining,118779696,count,
+CandidateVariables_BatchInference,114547455,count,
+CandidateVariables_RealTimeInference,48050,count,
+MeanCandidatesPerTask,4667.50402,count,
+MaxCandidatesPerTask,14436,count,
+ConstraintNNZ_LowerBound,2957875739,count,Assignment plus GPU/IT/Facility only; excludes Benders cuts and QoS
+CSRMemory_12BytesPerNNZ,35.494508868,GB,Lower-bound storage estimate
+CSRMemory_16BytesPerNNZ,47.326011824,GB,Lower-bound storage estimate
+ObjectiveVector_8Byte,1.867001608,GB,
+BoundsTwoArrays_16Byte,3.734003216,GB,
+IntegralityVector_1Byte,0.233375201,GB,Optimistic lower bound
+RenewableMainDays,100,days,
+RenewableDailyProfilesIdentical,1,bool,All 100 daily 24h profiles exactly identical
+RenewableDailyCV,0.26516619390605767,ratio,
+RenewableDailyAmplitude,600.0,MW,
+RenewableUniqueDailyCV,1,count,
+RenewableUniqueDailyAmplitude,1,count,

@@ -1,0 +1,16 @@
+{
+  "模型版本": "region_multicut_v1",
+  "状态": "RUNNING",
+  "当前sweep": 1,
+  "当前阶段": "cost",
+  "Cost锚点_CNY": null,
+  "Wait锚点_h": null,
+  "Latency锚点_ms": null,
+  "sweep起始锚点": {
+    "Cost锚点_CNY": null,
+    "Wait锚点_h": null,
+    "Latency锚点_ms": null
+  },
+  "初始活动列数": 137139,
+  "阶段记录": []
+}

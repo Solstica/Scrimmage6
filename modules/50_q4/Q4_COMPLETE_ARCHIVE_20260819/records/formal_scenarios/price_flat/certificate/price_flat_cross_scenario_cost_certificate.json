@@ -1,0 +1,40 @@
+{
+  "状态": "VERIFIED / CROSS-SCENARIO CERTIFICATE",
+  "scenario": "price_flat",
+  "attachment_dir": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\price_flat\\attachment",
+  "canonical_schedule": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_final_recertification\\q4_字典序最终排程.csv",
+  "coverage": {
+    "schedule_rows": 50000,
+    "unique_task_ids": 50000,
+    "pool_columns": 50000,
+    "data_tasks": 50000
+  },
+  "LB_flat_full_domain_cost_CNY": -459340688.80070555,
+  "UB_flat_canonical_schedule_energy_CNY": -459340688.8007043,
+  "UB_minus_LB_CNY": 1.2516975402832031e-06,
+  "certificate_tolerance_CNY": 0.001,
+  "certificate_pass": true,
+  "energy_success": true,
+  "energy_audit": {
+    "最大电网购电越界_MW": 0.0,
+    "最大电网上网越界_MW": 0.0,
+    "最大售电上限越界_MW": 0.0,
+    "最大SOC下界越界_MWh": 0.0,
+    "最大SOC上界越界_MWh": 0.0,
+    "终端SOC缺口_MWh": 0.0,
+    "可再生分配平衡最大残差_MW": 1.1368683772161603e-13,
+    "设施负荷平衡最大残差_MW": 0.0,
+    "SOC递推最大残差_MWh": 8.526512829121202e-14,
+    "充电功率上限越界_MW": 0.0,
+    "放电功率上限越界_MW": 0.0
+  },
+  "region_cost_CNY": {
+    "RegionA": 0.0,
+    "RegionB": 0.0,
+    "RegionC": 0.0,
+    "RegionD": -142783279.19999963,
+    "RegionE": -154219909.0007059,
+    "RegionF": -162337500.60000005
+  },
+  "证书说明": "LB 与真实可行 UB 在 0.001 CNY 容差内相等；不等同于全局整数最优证明"
+}
