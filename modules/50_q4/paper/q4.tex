@@ -58,7 +58,7 @@ L^{AI}_{rt}(\mathbf x)&=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs},\label{eq:q
 L^{Fac}_{rt}(\mathbf x)&=\mathrm{PUE}_r\bigl(L^{NonAI}_{rt}+L^{AI}_{rt}(\mathbf x)\bigr).\label{eq:q4-fac-load}
 \end{align}
 
-能源侧沿用问题三的固定负荷多时段储能经济调度（BESS-ED）变量 $\mathbf y_r=(u,qR,qG,d,gL,s,w,E)$。对给定设施负荷 $L_r^{Fac}$，区域可行集 $\mathcal Y_r(L_r^{Fac})$ 包含新能源平衡、负荷平衡、SOC 递推、充放电功率、购售电和终端 SOC 约束。
+能源侧沿用问题三的固定负荷多时段储能经济调度（BESS-ED）。其变量记为 $\mathbf y_r=(u,qR,qG,d,gL,s,w,E)$。对给定设施负荷 $L_r^{Fac}$，区域可行集 $\mathcal Y_r(L_r^{Fac})$ 包含新能源平衡、负荷平衡、SOC 递推、充放电功率、购售电和终端 SOC 约束。
 
 三层目标分别为
 \begin{align}
@@ -139,7 +139,6 @@ Benders 迭代次数 & --- & 2 \\
 \bottomrule
 \end{tabular}
 \end{table}
-\endgroup
 \FloatBarrier
 
 若只优化运行成本，等价成本解中可能出现 38/40 个任务迁移、总等待 172 h；加入等待和网络时延两层目标后，迁移降至 5 个，总等待降至 6 h，最大等待为 2 h。说明字典序目标能够在不增加最优成本的条件下改善服务质量。
@@ -154,6 +153,7 @@ Benders 迭代次数 & --- & 2 \\
 \centering
 \caption{五万任务最终列池的重复求解结果}
 \label{tab:q4-final-recert}
+\small
 \begin{tabular}{lccc}
 \toprule
 \rowcolor{CumcmLightBlue}
@@ -214,6 +214,7 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 各场景的硬约束违反量均为 0，$10^{-13}$ 量级的平衡残差属于浮点计算误差。新能源下降 20\% 行只表示给出的方案满足全部约束，其运行成本仍存在上下界间隙。
 
@@ -222,6 +223,7 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \noindent\textbf{（1）基准方案。}\par
 基准方案净运行成本为 $-4.5934\times10^8$ CNY，碳排放、总等待和六区域正向峰值净购电均为 0，平均网络时延为 5.0172 ms，新能源利用率为 69.52\%。
 
+\begingroup
 \begin{table}[H]
 \centering
 \caption{不同场景的六项指标比较}
