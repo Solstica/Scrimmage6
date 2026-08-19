@@ -151,8 +151,6 @@ BESS-ED 两层字典序模型的目标函数展开为
 
 \subsubsection{分区储能角色验证}
 
-A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高价值时段放电，增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。图\ref{fig:q3-soc-daily}给出的 SOC 日统计显示，D/E/F 均存在明显的跨时充放过程，其中 F 还承担短缺时段补能，和求解前由 $H_{rt}$ 与 SellLimit 得到的角色判断一致。
-
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.7\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_soc_daily_def.png}
@@ -160,6 +158,9 @@ A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高�
 \label{fig:q3-soc-daily}
 \end{figure}
 \FloatBarrier
+
+A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高价值时段放电，增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。图\ref{fig:q3-soc-daily}给出的 SOC 日统计显示，D/E/F 均存在明显的跨时充放过程，其中 F 还承担短缺时段补能，和求解前由 $H_{rt}$ 与 SellLimit 得到的角色判断一致。
+
 \begingroup
 \rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
