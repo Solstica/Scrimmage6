@@ -4,7 +4,7 @@
 
 问题一包含未来 24 h GPU 需求预测与实际任务基础调度两项任务。
 
-\noindent\textbf{（1）短期需求预测：}\hspace{0.5em}需要由历史任务识别小时到达数量、来源区域、任务类型以及 GPU 需求和执行时长的分布，并给出未来 24 h 的点预测与概率区间。
+\noindent\textbf{（1）短期需求预测：}\hspace{0.5em}需要由历史任务识别小时到达数量、来源区域、任务类型以及 GPU 需求和执行时长的分布，并给出未来 24 h 的点预测与概率区间\cite{cohen_dac_2022}。
 
 \noindent\textbf{（2）实际任务调度：}\hspace{0.5em}对第 2376--2399 h 实际到达的任务，在 GPU、IT 功率、设施功率、网络时延和最晚完成时间等约束下确定执行区域与开工时刻。实时推理任务（RealTimeInference，记为 RT）要求到达后立即开工，批量推理（BatchInference）与 AI 训练（AITraining）任务允许在规定时限内延后执行。
 
@@ -32,7 +32,7 @@
 \begin{equation}
 F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \end{equation}
-滞后 1、24、168 h 的自相关均位于约 $\pm0.0404$ 的参考范围内，未发现稳定的短周期或周周期结构。因此短期波动主要来自到达数量的随机变化，Poisson 计数模型与数据特征相符\cite{zou_poissonity_2022,cohen_dac_2022}。诊断结果见图\ref{fig:q1-arrival-diagnosis}。
+滞后 1、24、168 h 的自相关均位于约 $\pm0.0404$ 的参考范围内，未发现稳定的短周期或周周期结构。因此短期波动主要来自到达数量的随机变化，Poisson 计数模型与数据特征相符\cite{zou_poissonity_2022}。诊断结果见图\ref{fig:q1-arrival-diagnosis}。
 
 \begin{figure}[!htbp]
 \centering
