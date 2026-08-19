@@ -1,204 +1,50 @@
 \section*{附录：各问核心程序}
 \addcontentsline{toc}{section}{附录：各问核心程序}
 
-本次训练赛仅提交 PDF，因此附录直接给出四问正式求解程序的核心代码节选。为控制篇幅，数据读取、绘图、文件导出和重复审计代码不再展开；下列代码均截取自当前正式求解脚本，不另造简化函数。
+本次训练赛仅提交 PDF，且附录代码不计入正文页数，因此这里不再只保留代码节选，而是直接附上与四问正式结果对应的核心求解程序全文。代码均来自当前责任分支的正式脚本；数据读取、模型构造、求解、约束审计和结果导出均保留，便于从 PDF 直接核查实现逻辑。
 
 \begingroup
-\lstset{language=Python,basicstyle=\ttfamily\scriptsize,columns=fullflexible,breaklines=true,showstringspaces=false}
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\tiny,
+  numbers=left,
+  numberstyle=\tiny,
+  stepnumber=1,
+  numbersep=5pt,
+  columns=fullflexible,
+  breaklines=true,
+  breakatwhitespace=false,
+  showstringspaces=false,
+  tabsize=4,
+  frame=single
+}
 
-\subsection*{A.1 问题一：MCP 概率预测与本地优先基础调度}
-\begin{lstlisting}[caption={问题一核心代码节选（q1\_solver.py）}]
-def compound(rate, vals, n=5000):
-    ns = rng.poisson(rate, size=n)
-    ans = np.zeros(n, dtype=float)
-    for j, m in enumerate(ns):
-        if m:
-            ans[j] = rng.choice(vals, size=m, replace=True).sum()
-    return ans
+\subsection*{A.1 问题一：MCP 概率预测与基础调度}
+\lstinputlisting[caption={问题一完整求解程序：q1\_solver.py}]{\ProjectRoot/modules/20_q1/code/q1_solver.py}
 
-refit = work.loc[work.ArrivalHour <= 2375]
-lam2 = len(refit) / 2376.0
-pi2 = refit.groupby(["SourceRegion", "TaskType"]).size() / len(refit)
-em2 = marks(refit)
-for r in regions:
-    for k in types:
-        rate = lam2 * float(pi2.get((r, k), 0.0))
-        vals2["M3"][(r, k)] = rate * float(em2[k][:, 0].mean())
-        sim = compound(rate, em2[k][:, 0])
-        vals2["SIM"][(r, k)] = sim
-        vals2["PI05"][(r, k)] = float(np.quantile(sim, 0.05))
-        vals2["PI95"][(r, k)] = float(np.quantile(sim, 0.95))
+\subsection*{A.2 问题二：BMER 与 SFETA 完整合法域调度}
+问题二的正式实现由基础数值核算内核和外层迭代扫描两部分组成，二者共同给出正文中的成本优先/碳排优先排程及约束审计结果。
 
-# 来源区域完整时间域优先；本地不可行时才检查远端合法区域
-chosen = find_candidate([src])
-if chosen is None:
-    chosen = find_candidate(other)
-if not chosen:
-    bad.append(int(x.TaskID))
-    continue
-r, st = chosen
-ri = regions.index(r)
-for h in range(st, min(2406, math.ceil(st + dur))):
-    j = h - 2376
-    if 0 <= j < 30:
-        ov = overlap(float(st), dur, h)
-        gu[ri, j] += x.GPU_Demand * ov
-        ai[ri, j] += x.GPU_Demand * power[x.TaskType] * ov
-\end{lstlisting}
+\lstinputlisting[caption={问题二基础数值内核：q2\_solver.py}]{\ProjectRoot/modules/30_q2/code/q2_solver.py}
 
-\subsection*{A.2 问题二：SFETA 完整合法域动态边际任务分配}
-\begin{lstlisting}[caption={问题二核心代码节选（q2\_iterative\_solver.py）}]
-def build_priority(tasks, latency, region_index):
-    work = tasks.copy()
-    work["RegionCount"] = work.apply(
-        lambda row: int(np.sum(
-            latency[region_index[row.SourceRegion], :] <= row.MaxLatency_ms + 1e-9)),
-        axis=1,
-    )
-    work["Slack_h"] = work.LatestFinishHour - work.ArrivalHour \
-        - work.EstimatedDuration_min / 60.0
-    work["GPUHour"] = work.GPU_Demand * work.EstimatedDuration_min / 60.0
-    return work.sort_values(
-        ["RegionCount", "Slack_h", "GPUHour", "TaskID"],
-        ascending=[True, True, False, True],
-    )
+\lstinputlisting[caption={问题二 SFETA 迭代求解程序：q2\_iterative\_solver.py}]{\ProjectRoot/modules/30_q2/code/q2_iterative_solver.py}
 
-pieces = [[] for _ in range(7)]
-for region in allowed:
-    starts = np.arange(lo, hi + 1, dtype=int)
-    valid, dcurt, dcost, dcarbon = core.evaluate_region_candidates(
-        int(region), starts, profile, float(task.GPU_Demand),
-        float(task.GPU_Demand) * float(power[task.TaskType]),
-        gpu, ai, base_facility, nonai, capacity_gpu, max_it, pue,
-        max_facility, c0, g0, grid0, used0, price, carbon, max_grid,
-    )
-    valid = repair_filter(
-        core, valid, int(region), starts, profile, old_region, bad_hours,
-        float(task.GPU_Demand) * float(power[task.TaskType]), ai,
-        base_facility, nonai, pue, c0, g0, grid0, used0, max_grid,
-    )
-    starts = starts[valid]
-    if not len(starts):
-        continue
-    pieces[0].append(np.full(len(starts), region, dtype=int))
-    pieces[1].append(starts)
-    pieces[2].append(np.full(len(starts), latency[source, region], dtype=float))
-    pieces[3].append(np.full(len(starts), int(region != source), dtype=int))
-    pieces[4].append(dcurt[valid])
-    pieces[5].append(dcost[valid])
-    pieces[6].append(dcarbon[valid])
+\subsection*{A.3 问题三：BESS-ED 两层字典序经济调度}
+\lstinputlisting[caption={问题三完整求解程序：q3\_solver.py}]{\ProjectRoot/modules/40_q3/code/q3_solver.py}
 
-choice = None
-if pieces[0]:
-    choice = core.pick_candidate(tuple(np.concatenate(x) for x in pieces), mode)
-\end{lstlisting}
+\subsection*{A.4 问题四：Benders--CG 联合优化主程序}
+\lstinputlisting[caption={问题四全规模 Benders--列生成求解程序：q4\_full\_solver.py}]{\ProjectRoot/modules/50_q4/code/q4_full_solver.py}
 
-\subsection*{A.3 问题三：BESS-ED 两层字典序线性规划}
-\begin{lstlisting}[caption={问题三核心代码节选（q3\_solver.py）}]
-buy = q.ElectricityPrice_CNY_per_MWh.to_numpy(float)
-sell = q.SellPrice_CNY_per_MWh.to_numpy(float)
-c_cost = np.zeros(n)
-c_cost[off["gL"]:off["gL"] + T] = buy
-c_cost[off["qG"]:off["qG"] + T] = buy
-c_cost[off["s"]:off["s"] + T] = -sell
+\subsection*{A.5 问题四：最终字典序再认证}
+\lstinputlisting[caption={问题四最终列池 Cost--Wait--Latency 再认证：q4\_final\_recertification.py}]{\ProjectRoot/modules/50_q4/code/q4_final_recertification.py}
 
-c_throughput = np.zeros(n)
-for name in ("qR", "qG", "d"):
-    c_throughput[off[name]:off[name] + T] = 1.0
+\subsection*{A.6 问题四：正式场景求解与证据边界}
+\lstinputlisting[caption={碳约束、电价机制与新能源波动统一场景驱动：q4\_formal\_scenarios.py}]{\ProjectRoot/modules/50_q4/code/q4_formal_scenarios.py}
 
-r1 = linprog(c_cost, A_ub=Aub_base, b_ub=bub_base,
-             A_eq=Aeq, b_eq=beq, bounds=bnds, method="highs")
-if not r1.success:
-    raise RuntimeError("Stage 1 failed for {}: {}".format(st.name, r1.message))
-cost_star = float(r1.fun)
+\lstinputlisting[caption={新能源下降 20\% 场景上下界证书：q4\_qcert.py}]{\ProjectRoot/modules/50_q4/code/q4_qcert.py}
 
-cost_row = coo_matrix(c_cost.reshape(1, -1))
-A2 = vstack([Aub_base, cost_row], format="csr")
-b2 = np.r_[bub_base, cost_star + TOL_COST]
-r2 = linprog(c_throughput, A_ub=A2, b_ub=b2,
-             A_eq=Aeq, b_eq=beq, bounds=bnds, method="highs")
-if not r2.success:
-    raise RuntimeError("Stage 2 failed for {}: {}".format(st.name, r2.message))
-\end{lstlisting}
-
-\subsection*{A.4 问题四：区域 Benders 与完整域列生成}
-\begin{lstlisting}[caption={问题四完整域定价与 Benders 主循环节选（q4\_full\_solver.py）}]
-def price_all(pool, data, gpu_row, it_row, rdual, cdual,
-              cuts, eqdual, tol):
-    """完整域精确定价：每个 task-region 的所有合法整数 start 都参与扫描。"""
-    cut_signal = np.zeros((R, H_TASK), dtype=float)
-    for dual, cut in zip(cdual, cuts):
-        cut_signal += -dual * cut.lam[:, :H_TASK]
-    profiles = {}
-    for task_type, duration in set(zip(data.type_idx.tolist(), data.duration.tolist())):
-        prof = overlap_profile(duration)
-        for r in range(R):
-            example = int(np.flatnonzero(data.type_idx == task_type)[0])
-            per_hour = np.zeros(H_TASK)
-            for h in range(H_TASK):
-                gr, ir = int(gpu_row[r, h]), int(it_row[r, h])
-                if gr >= 0:
-                    per_hour[h] += -rdual[gr]
-                if ir >= 0:
-                    per_hour[h] += -rdual[ir] * data.alpha[example]
-                per_hour[h] += cut_signal[r, h] * data.pue[r] * data.alpha[example]
-            profiles[(task_type, r, int(round(duration * 60)))] = \
-                np.convolve(per_hour, prof[::-1], mode="valid")
-
-    active = {}
-    for task, region, start in zip(*pool.arrays()):
-        active.setdefault((int(task), int(region)), set()).add(int(start))
-    additions = []
-    for i in range(len(data.task)):
-        start0 = int(data.arrival[i])
-        end = start0 if data.task.iloc[i].TaskType == "RealTimeInference" \
-            else legal_last_start(data, i)
-        best = None
-        for r in np.flatnonzero(data.legal[i]):
-            scores = profiles[(int(data.type_idx[i]), int(r),
-                               int(round(data.duration[i] * 60)))][start0:end + 1]
-            used = {s for s in active.get((i, int(r)), set()) if start0 <= s <= end}
-            if len(used) >= len(scores):
-                continue
-            local = int(np.argmin(scores))
-            s = start0 + local
-            if s in used:
-                count = min(len(scores), len(used) + 1)
-                candidates = np.argpartition(scores, count - 1)[:count]
-                local = min((int(k) for k in candidates
-                             if start0 + int(k) not in used), key=lambda k: scores[k])
-                s = start0 + local
-            score = float(scores[local] * data.gpu[i])
-            if best is None or score < best[0]:
-                best = (score, int(r), s)
-        if best is not None and best[0] - eqdual[i] < -tol:
-            additions.append((i, best[1], best[2], best[0] - eqdual[i]))
-    return sorted(additions, key=lambda item: item[3])
-
-for iteration in range(completed_iter + 1, args.max_iter + 1):
-    rmp, _, _, _ = solve_rmp(pool, data, gpu_row, it_row, rhs, cuts)
-    load = facility_load(pool, data, rmp["x"])
-    energy = energy_lp(load, data)
-    violation = float(energy["cost"] - rmp["theta"])
-    if violation > args.benders_tol_cny:
-        cuts.append(Cut(
-            const=float(energy["cost"] + np.sum(
-                energy["lam"] * (fixed_facility_load(data) - load))),
-            lam=energy["lam"].copy(),
-        ))
-    else:
-        m = len(rhs)
-        additions = price_all(
-            pool, data, gpu_row, it_row, rmp["ub_dual"][:m],
-            rmp["ub_dual"][m:], cuts, rmp["eq_dual"], args.price_tol,
-        )
-        for i, r, s, _ in additions:
-            pool.add(i, r, s)
-        if not additions:
-            root_closed = True
-            break
-\end{lstlisting}
+\lstinputlisting[caption={问题四任务排程的真实能源重算与六指标核算：q4\_schedule\_metrics.py}]{\ProjectRoot/modules/50_q4/code/q4_schedule_metrics.py}
 
 \endgroup
 
-问题四在 Cost 层闭合后继续对 Wait、Latency 两层执行完整域定价与真实能源复核，并在最终扩展列池上进行两轮再认证。新能源下降 20\% 场景只保留严格 Cost 上下界及经硬约束审计的可行候选，不将其候选服务质量指标表述为全局最优。
+以上程序与正文使用同一组模型口径。问题四新能源下降 20\% 场景仅报告严格 Cost 上下界与经硬约束审计的可行候选，不将候选服务质量指标表述为全局最优结果。
