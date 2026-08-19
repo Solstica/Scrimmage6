@@ -17,7 +17,7 @@
 \label{fig:q2-flow}
 \end{figure}
 
-\subsection{预备工作：任务可调节范围与能源错配}
+\subsection{预备工作}
 
 设任务 $i$ 的到达时刻、来源区域、类型、GPU 需求、持续时长、最晚完成时刻和时延上限分别为 $a_i,o_i,k_i,g_i,p_i,d_i,L_i$。其空间可行域、时间可行域及完整合法域为
 \begin{equation}
@@ -64,7 +64,7 @@ G^0_{rt}=\max\bigl(\mathrm{GridPurchase}^0_{rt}-\mathrm{GridCharge}^0_{rt},0\big
 \end{figure}
 \FloatBarrier
 
-\subsection{基线参照边际能源响应（BMER）模型}
+\subsection{模型建立（一）：基线参照边际能源响应（BMER）}
 
 固定附件中的储能和售电动作后，任务重排只改变设施负荷。定义\textbf{基线参照边际能源响应（Baseline-Referenced Marginal Energy Response，BMER）模型}。令
 \begin{equation}
@@ -87,7 +87,7 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 \end{equation}
 因此新增负荷先利用原有弃电，弃电耗尽后才增加购电；负荷下降时则先减少供负荷购电。
 
-\subsection{完整合法域时空任务调度模型}
+\subsection{模型建立（二）：完整域时空任务调度}
 
 对 $(r,s)\in C_i$ 定义 $x_{irs}\in\{0,1\}$。任务 $i$ 在小时 $t$ 的重叠量为
 \begin{equation}
@@ -131,7 +131,7 @@ L_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \end{equation}
 网络时延、到达时间、最晚完成时间、实时推理即时开工和 2406 h 终止边界均已包含在 $C_i$ 的定义中；任务不可拆分、不可抢占。
 
-\subsection{模型求解：时空灵活性与能源感知任务分配（SFETA）}
+\subsection{模型求解：SFETA}
 
 REPTA 算法利用新能源与电价差异进行跨区域任务分配\cite{yang_repta_2026}。由于本题六区域逐时可用新能源相同，其“本地新能源--远端新能源--最低电价”候选规则不能直接使用，因此改为\textbf{时空灵活性与能源感知任务分配（Spatio-temporal Flexibility and Energy-aware Task Assignment，SFETA）算法}。
 
