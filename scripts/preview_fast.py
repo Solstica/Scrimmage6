@@ -6,11 +6,21 @@ from __future__ import annotations
 Keeps the ownership audit from preview_merge.py, but only overlays files that can
 matter to the compiled paper. Heavy solver archives/results/code/editable figure
 sources are intentionally excluded from this temporary preview only.
+
+Unlike the formal integration gate, fast preview also strips trailing spaces/tabs
+from changed text files inside the temporary detached preview before committing.
+This prevents purely cosmetic whitespace from blocking PDF inspection while never
+modifying any responsibility branch.
 """
 
 from pathlib import Path
 
 import preview_merge as pm
+
+
+_TEXT_SUFFIXES = {
+    ".tex", ".sty", ".cls", ".md", ".py", ".sh", ".json", ".txt"
+}
 
 
 def preview_excluded(path: str | None) -> bool:
@@ -69,8 +79,67 @@ def fast_overlay_branch(module: dict, audit_base_ref: str, preview: Path) -> Non
             pm.run(["git", "checkout", branch_ref, "--", p1], cwd=preview)
 
 
+def _strip_trailing_ws_bytes(data: bytes) -> bytes:
+    """Strip only spaces/tabs immediately before EOL/EOF; preserve CRLF/LF."""
+    chunks = data.splitlines(keepends=True)
+    if not chunks:
+        return data.rstrip(b" \t")
+
+    out: list[bytes] = []
+    for line in chunks:
+        if line.endswith(b"\r\n"):
+            body, ending = line[:-2], b"\r\n"
+        elif line.endswith(b"\n"):
+            body, ending = line[:-1], b"\n"
+        elif line.endswith(b"\r"):
+            body, ending = line[:-1], b"\r"
+        else:
+            body, ending = line, b""
+        out.append(body.rstrip(b" \t") + ending)
+    return b"".join(out)
+
+
+def fast_compose_commit(preview: Path) -> None:
+    """Compose a temporary commit after cosmetic whitespace cleanup.
+
+    The cleanup applies only to text files changed in this detached preview. It
+    never writes back to feature/* branches.
+    """
+    pm.run(["git", "add", "-A"], cwd=preview)
+
+    changed = pm.run(
+        ["git", "diff", "--cached", "--name-only", "-z", "HEAD"],
+        cwd=preview,
+        capture=True,
+    ).stdout.split("\0")
+
+    cleaned = 0
+    for rel in changed:
+        if not rel:
+            continue
+        path = preview / rel
+        if not path.is_file() or path.suffix.lower() not in _TEXT_SUFFIXES:
+            continue
+        old = path.read_bytes()
+        new = _strip_trailing_ws_bytes(old)
+        if new != old:
+            path.write_bytes(new)
+            cleaned += 1
+
+    if cleaned:
+        print(f"[FAST CLEAN] 临时清理 {cleaned} 个文本文件的行尾空白")
+        pm.run(["git", "add", "-A"], cwd=preview)
+
+    if pm.run(["git", "diff", "--cached", "--quiet"], cwd=preview, check=False).returncode:
+        pm.run([
+            "git", "-c", "user.name=CUMCM Preview", "-c", "user.email=preview@local.invalid",
+            "commit", "-m", "preview: compose owned module snapshots"
+        ], cwd=preview)
+
+
 def main() -> None:
     pm.overlay_branch = fast_overlay_branch
+    pm.compose_commit = fast_compose_commit
     pm.main()
 
 
