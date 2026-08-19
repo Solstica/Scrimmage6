@@ -190,7 +190,7 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \begin{subfigure}[t]{0.44\textwidth}
 \centering
 \includegraphics[width=\linewidth]{\ProjectRoot/modules/30_q2/figures/q2 甘特图.png}
-\caption{代表性任务执行区间}
+\caption{代表性任务调度甘特图}
 \label{fig:q2-gantt}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{0.44\textwidth}
@@ -242,7 +242,9 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 
 \subsubsection{初始化与极端等待诊断}
 
-从附件参考状态与前一排程状态初始化，最终成本约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，后者高 1.34\%，故采用前者作为代表解，但不声称构造式算法与初始化无关或达到全局整数最优。最大等待 2016 h 的 TaskID~13051 实际使用约 86.45\% 的合法 slack，Latency=22 ms$<80$ ms，说明该极端值来自能源主目标对官方长时柔性的充分调用；成本与 QoS 的联合权衡留待问题四。
+从附件参考状态与前一排程状态初始化，SFETA 最终成本分别约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，前者较后者低 1.34\%，故本文选取前者作为成本优先方案的代表解。但需要说明的是，SFETA 作为构造式启发式算法，其求解质量与初始排程选择有关，所得结果不声明为全局整数最优解。
+
+在服务质量的极端情形方面，最大等待时长为 2016 h，对应 TaskID~13051 的 Batch 任务。该任务实际使用了约 86.45\% 的合法时间余量，网络时延为 22 ms，远低于 80 ms 的 SLA 上限。说明该极端等待值源于成本主目标对长时柔性裕度的充分利用，而非违反约束或算法异常。成本与 QoS 的联合权衡将在问题四中通过字典序优化进一步处理。
 
 \subsubsection{硬约束与松弛探针}
 
