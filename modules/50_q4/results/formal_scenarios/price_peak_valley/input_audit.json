@@ -1,0 +1,91 @@
+{
+  "场景": "price_peak_valley",
+  "附件目录": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\price_peak_valley\\attachment",
+  "文件哈希": {
+    "region_time_data.xlsx": "9f0eae369b66f297b4e7da1473c3a4f8aad710bc684259fd6461f71f2cb67165",
+    "workload_trace.xlsx": "006c0802f4a5a94a94eb7c54f8333091ac860c7d35c9c2c9ad04c68d4f0165ba",
+    "network_latency.xlsx": "f7e16fc33d8c188b0889e358497e0d96451e04c77ce765a667a50488f02ac157",
+    "GPU_information.xlsx": "68f978ff242da0bab54259283f647c7552693acf6db5e2212ff4e10f6a5d5d2f",
+    "power_mapping.xlsx": "a5bea2b708cc4e5586e59bfd832b8dde7b629d212fcd8c3a0f132c03163ae39e",
+    "storage_information.xlsx": "ff5384eb6e955079766b22432e630dfdec9f347f11cd334d950716b21692b3e4"
+  },
+  "参数统计": {
+    "ElectricityPrice_CNY_per_MWh": {
+      "RegionA": {
+        "mean": 740.5778240548401,
+        "std": 332.463572482404,
+        "min": 333.45,
+        "max": 1369.8
+      },
+      "RegionB": {
+        "mean": 709.7204964686332,
+        "std": 318.61103792387064,
+        "min": 319.56,
+        "max": 1312.725
+      },
+      "RegionC": {
+        "mean": 689.1488907353552,
+        "std": 309.3758176801293,
+        "min": 310.2975,
+        "max": 1274.675
+      },
+      "RegionD": {
+        "mean": 442.28963128375574,
+        "std": 198.5546081770117,
+        "min": 199.1475,
+        "max": 818.075
+      },
+      "RegionE": {
+        "mean": 390.860543207312,
+        "std": 175.4669898719531,
+        "min": 175.9875,
+        "max": 722.95
+      },
+      "RegionF": {
+        "mean": 411.4321364769422,
+        "std": 184.70194169787624,
+        "min": 185.25,
+        "max": 761.0
+      }
+    },
+    "AvailableRenewable_MW": {
+      "RegionA": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      },
+      "RegionB": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      },
+      "RegionC": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      },
+      "RegionD": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      },
+      "RegionE": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      },
+      "RegionF": {
+        "mean": 799.8039302035729,
+        "std": 212.03444375539962,
+        "min": 500.0,
+        "max": 1100.0
+      }
+    }
+  },
+  "与canonical附件不同": true
+}
