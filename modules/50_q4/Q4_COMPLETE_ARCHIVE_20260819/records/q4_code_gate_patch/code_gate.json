@@ -1,0 +1,1687 @@
+{
+  "gate": "CODE",
+  "status": "FAIL",
+  "errors": [
+    "命名不合规: file q4_qos_refinement.py (file name; 长度 17 超过 12; 下划线 2 个超过 1)",
+    "命名不合规: class StageSpec (line 88; 长度 9 超过 8)",
+    "命名不合规: class StageOutcome (line 96; 长度 12 超过 8)",
+    "命名不合规: class StageStopped (line 112; 长度 12 超过 8)",
+    "命名不合规: function read_latency (line 116; 长度 12 超过 8)",
+    "命名不合规: function pool_values (line 121; 长度 11 超过 8)",
+    "命名不合规: argument latency_raw (line 121; 长度 11 超过 8)",
+    "命名不合规: function assemble_stage_model (line 128; 长度 20 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument cut_const (line 129; 长度 9 超过 8)",
+    "命名不合规: argument objective (line 129; 长度 9 超过 8)",
+    "命名不合规: argument cut_regions (line 130; 长度 11 超过 8)",
+    "命名不合规: function solve_stage_lp (line 164; 长度 14 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument cut_const (line 165; 长度 9 超过 8)",
+    "命名不合规: argument objective (line 165; 长度 9 超过 8)",
+    "命名不合规: argument cut_regions (line 166; 长度 11 超过 8)",
+    "命名不合规: function solve_stage_mip (line 190; 长度 15 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument cut_const (line 191; 长度 9 超过 8)",
+    "命名不合规: argument objective (line 191; 长度 9 超过 8)",
+    "命名不合规: argument cut_regions (line 192; 长度 11 超过 8)",
+    "命名不合规: argument time_limit (line 192; 长度 10 超过 8)",
+    "命名不合规: function active_starts (line 210; 长度 13 超过 8)",
+    "命名不合规: function best_missing (line 217; 长度 12 超过 8)",
+    "命名不合规: function price_full_domain (line 232; 长度 17 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument resource_dual (line 233; 长度 13 超过 8)",
+    "命名不合规: argument assignment_dual (line 234; 长度 15 超过 8)",
+    "命名不合规: argument latency_raw (line 234; 长度 11 超过 8)",
+    "命名不合规: argument wait_cap_dual (line 235; 长度 13 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument columns_per_task (line 235; 长度 16 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function add_region_cuts (line 290; 长度 15 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function append_metric (line 303; 长度 13 超过 8)",
+    "命名不合规: function save_state (line 320; 长度 10 超过 8)",
+    "命名不合规: argument stage_iter (line 320; 长度 10 超过 8)",
+    "命名不合规: argument wait_star (line 321; 长度 9 超过 8)",
+    "命名不合规: argument initial_columns (line 321; 长度 15 超过 8)",
+    "命名不合规: function load_state (line 343; 长度 10 超过 8)",
+    "命名不合规: function write_checkpoint (line 360; 长度 16 超过 8)",
+    "命名不合规: function load_latency_incumbent (line 364; 长度 22 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function save_latency_incumbent (line 371; 长度 22 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument latency_raw (line 372; 长度 11 超过 8)",
+    "命名不合规: function append_latency_certificate (line 406; 长度 26 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function restricted_mip_lower_bound (line 416; 长度 26 超过 8; 下划线 3 个超过 1)",
+    "命名不合规: function run_final_recertification (line 423; 长度 25 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function load_cost_anchor (line 446; 长度 16 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument input_dir (line 446; 长度 9 超过 8)",
+    "命名不合规: argument cost_tolerance (line 446; 长度 14 超过 8)",
+    "命名不合规: argument required_benders_tol (line 446; 长度 20 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function check_limits (line 474; 长度 12 超过 8)",
+    "命名不合规: function run_stage (line 483; 长度 9 超过 8)",
+    "命名不合规: argument latency_raw (line 484; 长度 11 超过 8)",
+    "命名不合规: argument initial_columns (line 485; 长度 15 超过 8)",
+    "命名不合规: argument wait_star_state (line 486; 长度 15 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: argument start_iter (line 486; 长度 10 超过 8)",
+    "命名不合规: argument metrics_name (line 487; 长度 12 超过 8)",
+    "命名不合规: function audit_solution (line 660; 长度 14 超过 8)",
+    "命名不合规: argument latency_raw (line 661; 长度 11 超过 8)",
+    "命名不合规: variable MODEL_VERSION (line 54; 长度 13 超过 8)",
+    "命名不合规: variable DEFAULT_RESULT (line 55; 长度 14 超过 8)",
+    "命名不合规: variable LATENCY_INCUMBENT_JSON (line 56; 长度 22 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable LATENCY_INCUMBENT_CSV (line 57; 长度 21 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable LATENCY_CERTIFICATE_CSV (line 58; 长度 23 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable WAIT_RECOVERY_JSON (line 59; 长度 18 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable RECOVERY_WAIT_ANCHOR_H (line 62; 长度 22 超过 8; 下划线 3 个超过 1)",
+    "命名不合规: variable METRIC_FIELDS (line 63; 长度 13 超过 8)",
+    "命名不合规: variable EXTENDED_METRIC_FIELDS (line 75; 长度 22 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable LATENCY_CERTIFICATE_FIELDS (line 79; 长度 26 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable objective (line 90; 长度 9 超过 8)",
+    "命名不合规: variable objective (line 99; 长度 9 超过 8)",
+    "命名不合规: variable iterations (line 102; 长度 10 超过 8)",
+    "命名不合规: variable added_columns (line 103; 长度 13 超过 8)",
+    "命名不合规: variable min_reduced_cost (line 104; 长度 16 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable mip_objective (line 105; 长度 13 超过 8)",
+    "命名不合规: variable final_max_region_violation (line 106; 长度 26 超过 8; 下划线 3 个超过 1)",
+    "命名不合规: variable benders_cuts (line 107; 长度 12 超过 8)",
+    "命名不合规: variable runtime_s (line 108; 长度 9 超过 8)",
+    "命名不合规: variable peak_rss_gib (line 109; 长度 12 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable theta_cost (line 159; 长度 10 超过 8)",
+    "命名不合规: variable cut_signal (line 236; 长度 10 超过 8)",
+    "命名不合规: variable beta_wait (line 254; 长度 9 超过 8)",
+    "命名不合规: variable task_types (line 257; 长度 10 超过 8)",
+    "命名不合规: variable additions (line 259; 长度 9 超过 8)",
+    "命名不合规: variable negative_regions (line 261; 长度 16 超过 8)",
+    "命名不合规: variable temporary (line 324; 长度 9 超过 8)",
+    "命名不合规: variable chosen_task (line 376; 长度 11 超过 8)",
+    "命名不合规: variable chosen_region (line 377; 长度 13 超过 8)",
+    "命名不合规: variable chosen_start (line 378; 长度 12 超过 8)",
+    "命名不合规: variable final_out (line 425; 长度 9 超过 8)",
+    "命名不合规: variable summary_path (line 426; 长度 12 超过 8)",
+    "命名不合规: variable recorded_tol (line 448; 长度 12 超过 8)",
+    "命名不合规: variable task_index (line 453; 长度 10 超过 8)",
+    "命名不合规: variable placement (line 454; 长度 9 超过 8)",
+    "命名不合规: variable metrics_path (line 489; 长度 12 超过 8)",
+    "命名不合规: variable total_added (line 490; 长度 11 超过 8)",
+    "命名不合规: variable last_min_rc (line 491; 长度 11 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable stage_started (line 492; 长度 13 超过 8)",
+    "命名不合规: variable peak_rss_gib (line 494; 长度 12 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable latency_incumbent (line 495; 长度 17 超过 8)",
+    "命名不合规: variable iterations (line 501; 长度 10 超过 8)",
+    "命名不合规: variable iteration (line 503; 长度 9 超过 8)",
+    "命名不合规: variable chosen_task (line 665; 长度 11 超过 8)",
+    "命名不合规: variable chosen_region (line 665; 长度 13 超过 8)",
+    "命名不合规: variable chosen_start (line 665; 长度 12 超过 8)",
+    "命名不合规: variable resource_value (line 682; 长度 14 超过 8)",
+    "命名不合规: variable assignment (line 683; 长度 10 超过 8)",
+    "命名不合规: variable input_dir (line 727; 长度 9 超过 8)",
+    "命名不合规: variable latency_raw (line 729; 长度 11 超过 8)",
+    "命名不合规: variable cost_placement (line 731; 长度 14 超过 8)",
+    "命名不合规: variable stage_metrics (line 797; 长度 13 超过 8)",
+    "命名不合规: variable wait_added (line 798; 长度 10 超过 8)",
+    "命名不合规: variable latency_added (line 799; 长度 13 超过 8)",
+    "命名不合规: variable theta_coeff (line 135; 长度 11 超过 8)",
+    "命名不合规: variable candidates (line 224; 长度 10 超过 8)",
+    "命名不合规: variable available (line 225; 长度 9 超过 8)",
+    "命名不合规: variable cut_signal (line 238; 长度 10 超过 8)",
+    "命名不合规: variable task_type (line 241; 长度 9 超过 8)",
+    "命名不合规: variable beta_wait (line 256; 长度 9 超过 8)",
+    "命名不合规: variable candidates (line 269; 长度 10 超过 8)",
+    "命名不合规: variable wait_value (line 356; 长度 10 超过 8)",
+    "命名不合规: variable violates_cost (line 497; 长度 13 超过 8)",
+    "命名不合规: variable violates_wait (line 498; 长度 13 超过 8)",
+    "命名不合规: variable peak_rss_gib (line 505; 长度 12 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable objective (line 507; 长度 9 超过 8)",
+    "命名不合规: variable cut_regions (line 512; 长度 11 超过 8)",
+    "命名不合规: variable region_violation (line 520; 长度 16 超过 8)",
+    "命名不合规: variable violation (line 521; 长度 9 超过 8)",
+    "命名不合规: variable cap_violation (line 522; 长度 13 超过 8)",
+    "命名不合规: variable violated_regions (line 523; 长度 16 超过 8)",
+    "命名不合规: variable root_closed (line 528; 长度 11 超过 8)",
+    "命名不合规: variable objective (line 571; 长度 9 超过 8)",
+    "命名不合规: variable cut_regions (line 576; 长度 11 超过 8)",
+    "命名不合规: variable integer_energy (line 585; 长度 14 超过 8)",
+    "命名不合规: variable integer_region_violation (line 588; 长度 24 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable integer_violation (line 589; 长度 17 超过 8)",
+    "命名不合规: variable cap_violation (line 590; 长度 13 超过 8)",
+    "命名不合规: variable candidate_latency (line 591; 长度 17 超过 8)",
+    "命名不合规: variable latency_lb (line 592; 长度 10 超过 8)",
+    "命名不合规: variable latency_ub (line 593; 长度 10 超过 8)",
+    "命名不合规: variable latency_gap (line 594; 长度 11 超过 8)",
+    "命名不合规: variable integer_violated_regions (line 595; 长度 24 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable integer_objective (line 625; 长度 17 超过 8)",
+    "命名不合规: variable mip_objective (line 629; 长度 13 超过 8)",
+    "命名不合规: variable cost_anchor (line 734; 长度 11 超过 8)",
+    "命名不合规: variable recovery_marker (line 736; 长度 15 超过 8)",
+    "命名不合规: variable wait_outcome (line 759; 长度 12 超过 8)",
+    "命名不合规: variable latency_spec (line 788; 长度 12 超过 8)",
+    "命名不合规: variable latency_outcome (line 789; 长度 15 超过 8)",
+    "命名不合规: variable task_type (line 240; 长度 9 超过 8)",
+    "命名不合规: variable latency_incumbent (line 500; 长度 17 超过 8)",
+    "命名不合规: variable violated_regions (line 525; 长度 16 超过 8)",
+    "命名不合规: variable total_added (line 539; 长度 11 超过 8)",
+    "命名不合规: variable last_min_rc (line 540; 长度 11 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable integer_violated_regions (line 597; 长度 24 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: variable latency_incumbent (line 631; 长度 17 超过 8)",
+    "命名不合规: variable latency_ub (line 632; 长度 10 超过 8)",
+    "命名不合规: variable latency_gap (line 633; 长度 11 超过 8)",
+    "命名不合规: variable stage_iter (line 733; 长度 10 超过 8)",
+    "命名不合规: variable wait_star (line 733; 长度 9 超过 8)",
+    "命名不合规: variable initial_columns (line 733; 长度 15 超过 8)",
+    "命名不合规: variable cost_anchor (line 752; 长度 11 超过 8)",
+    "命名不合规: variable cost_placement (line 752; 长度 14 超过 8)",
+    "命名不合规: variable stage_iter (line 753; 长度 10 超过 8)",
+    "命名不合规: variable wait_star (line 753; 长度 9 超过 8)",
+    "命名不合规: variable initial_columns (line 753; 长度 15 超过 8)",
+    "命名不合规: variable recovery_spec (line 761; 长度 13 超过 8)",
+    "命名不合规: variable wait_outcome (line 762; 长度 12 超过 8)",
+    "命名不合规: variable recovery_path (line 763; 长度 13 超过 8)",
+    "命名不合规: variable stage_iter (line 768; 长度 10 超过 8)",
+    "命名不合规: variable wait_spec (line 772; 长度 9 超过 8)",
+    "命名不合规: variable wait_outcome (line 773; 长度 12 超过 8)",
+    "命名不合规: variable wait_star (line 774; 长度 9 超过 8)",
+    "命名不合规: variable recovery_path (line 775; 长度 13 超过 8)",
+    "命名不合规: variable negative_regions (line 282; 长度 16 超过 8)",
+    "命名不合规: variable additions (line 533; 长度 9 超过 8)",
+    "命名不合规: variable wait_star (line 740; 长度 9 超过 8)",
+    "命名不合规: variable stage_iter (line 741; 长度 10 超过 8)",
+    "命名不合规: variable stage_iter (line 748; 长度 10 超过 8)",
+    "命名不合规: variable stage_iter (line 778; 长度 10 超过 8)",
+    "命名不合规: variable stage_iter (line 782; 长度 10 超过 8)",
+    "命名不合规: variable gpu_index (line 247; 长度 9 超过 8)",
+    "命名不合规: variable root_closed (line 545; 长度 11 超过 8)",
+    "expected output missing or empty: D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_refinement_patch_smoke2\\checkpoint.json"
+  ],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_qos_refinement.py",
+      "--resume",
+      "--max-stage-iter",
+      "1",
+      "--output-dir",
+      "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\qos_refinement_patch_smoke2",
+      "--no-final-recertification"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_qos_refinement.py",
+    "script_sha256": "c9697eb5f41bc534e0e70c8dda0f17b92b0aa71edabcac1890443dc712a6edfc",
+    "started_at": "2026-08-17T20:12:47+00:00",
+    "finished_at": "2026-08-17T20:12:47+00:00",
+    "returncode": null,
+    "stdout": "",
+    "stderr": "",
+    "inputs": [],
+    "outputs": []
+  },
+  "metrics": {
+    "naming": {
+      "status": "FAIL",
+      "identifier_max_length": 8,
+      "filename_max_length": 12,
+      "underscore_max": 1,
+      "allowed_names": [],
+      "violations": [
+        {
+          "kind": "file",
+          "name": "q4_qos_refinement.py",
+          "line": 0,
+          "issues": [
+            "长度 17 超过 12",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "StageSpec",
+          "line": 88,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "StageOutcome",
+          "line": 96,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "class",
+          "name": "StageStopped",
+          "line": 112,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "read_latency",
+          "line": 116,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "pool_values",
+          "line": 121,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "latency_raw",
+          "line": 121,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "assemble_stage_model",
+          "line": 128,
+          "issues": [
+            "长度 20 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_const",
+          "line": 129,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "objective",
+          "line": 129,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_regions",
+          "line": 130,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "solve_stage_lp",
+          "line": 164,
+          "issues": [
+            "长度 14 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_const",
+          "line": 165,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "objective",
+          "line": 165,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_regions",
+          "line": 166,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "solve_stage_mip",
+          "line": 190,
+          "issues": [
+            "长度 15 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_const",
+          "line": 191,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "objective",
+          "line": 191,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cut_regions",
+          "line": 192,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "time_limit",
+          "line": 192,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "active_starts",
+          "line": 210,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "best_missing",
+          "line": 217,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "price_full_domain",
+          "line": 232,
+          "issues": [
+            "长度 17 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "resource_dual",
+          "line": 233,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "assignment_dual",
+          "line": 234,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "latency_raw",
+          "line": 234,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "wait_cap_dual",
+          "line": 235,
+          "issues": [
+            "长度 13 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "columns_per_task",
+          "line": 235,
+          "issues": [
+            "长度 16 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "add_region_cuts",
+          "line": 290,
+          "issues": [
+            "长度 15 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "append_metric",
+          "line": 303,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "save_state",
+          "line": 320,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "stage_iter",
+          "line": 320,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "wait_star",
+          "line": 321,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "initial_columns",
+          "line": 321,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "load_state",
+          "line": 343,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "write_checkpoint",
+          "line": 360,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "load_latency_incumbent",
+          "line": 364,
+          "issues": [
+            "长度 22 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "save_latency_incumbent",
+          "line": 371,
+          "issues": [
+            "长度 22 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "latency_raw",
+          "line": 372,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "append_latency_certificate",
+          "line": 406,
+          "issues": [
+            "长度 26 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "restricted_mip_lower_bound",
+          "line": 416,
+          "issues": [
+            "长度 26 超过 8",
+            "下划线 3 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "run_final_recertification",
+          "line": 423,
+          "issues": [
+            "长度 25 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "load_cost_anchor",
+          "line": 446,
+          "issues": [
+            "长度 16 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "input_dir",
+          "line": 446,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "cost_tolerance",
+          "line": 446,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "required_benders_tol",
+          "line": 446,
+          "issues": [
+            "长度 20 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "check_limits",
+          "line": 474,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "run_stage",
+          "line": 483,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "latency_raw",
+          "line": 484,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "initial_columns",
+          "line": 485,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "wait_star_state",
+          "line": 486,
+          "issues": [
+            "长度 15 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "start_iter",
+          "line": 486,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "metrics_name",
+          "line": 487,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "audit_solution",
+          "line": 660,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "latency_raw",
+          "line": 661,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "MODEL_VERSION",
+          "line": 54,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "DEFAULT_RESULT",
+          "line": 55,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "LATENCY_INCUMBENT_JSON",
+          "line": 56,
+          "issues": [
+            "长度 22 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "LATENCY_INCUMBENT_CSV",
+          "line": 57,
+          "issues": [
+            "长度 21 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "LATENCY_CERTIFICATE_CSV",
+          "line": 58,
+          "issues": [
+            "长度 23 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "WAIT_RECOVERY_JSON",
+          "line": 59,
+          "issues": [
+            "长度 18 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "RECOVERY_WAIT_ANCHOR_H",
+          "line": 62,
+          "issues": [
+            "长度 22 超过 8",
+            "下划线 3 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "METRIC_FIELDS",
+          "line": 63,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "EXTENDED_METRIC_FIELDS",
+          "line": 75,
+          "issues": [
+            "长度 22 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "LATENCY_CERTIFICATE_FIELDS",
+          "line": 79,
+          "issues": [
+            "长度 26 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "objective",
+          "line": 90,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "objective",
+          "line": 99,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "iterations",
+          "line": 102,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "added_columns",
+          "line": 103,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "min_reduced_cost",
+          "line": 104,
+          "issues": [
+            "长度 16 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "mip_objective",
+          "line": 105,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "final_max_region_violation",
+          "line": 106,
+          "issues": [
+            "长度 26 超过 8",
+            "下划线 3 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "benders_cuts",
+          "line": 107,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "runtime_s",
+          "line": 108,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "peak_rss_gib",
+          "line": 109,
+          "issues": [
+            "长度 12 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "theta_cost",
+          "line": 159,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cut_signal",
+          "line": 236,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "beta_wait",
+          "line": 254,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "task_types",
+          "line": 257,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "additions",
+          "line": 259,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "negative_regions",
+          "line": 261,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "temporary",
+          "line": 324,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_task",
+          "line": 376,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_region",
+          "line": 377,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_start",
+          "line": 378,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "final_out",
+          "line": 425,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "summary_path",
+          "line": 426,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "recorded_tol",
+          "line": 448,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "task_index",
+          "line": 453,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "placement",
+          "line": 454,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "metrics_path",
+          "line": 489,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "total_added",
+          "line": 490,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "last_min_rc",
+          "line": 491,
+          "issues": [
+            "长度 11 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_started",
+          "line": 492,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "peak_rss_gib",
+          "line": 494,
+          "issues": [
+            "长度 12 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_incumbent",
+          "line": 495,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "iterations",
+          "line": 501,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "iteration",
+          "line": 503,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_task",
+          "line": 665,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_region",
+          "line": 665,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "chosen_start",
+          "line": 665,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "resource_value",
+          "line": 682,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "assignment",
+          "line": 683,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "input_dir",
+          "line": 727,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_raw",
+          "line": 729,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cost_placement",
+          "line": 731,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_metrics",
+          "line": 797,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_added",
+          "line": 798,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_added",
+          "line": 799,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "theta_coeff",
+          "line": 135,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "candidates",
+          "line": 224,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "available",
+          "line": 225,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cut_signal",
+          "line": 238,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "task_type",
+          "line": 241,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "beta_wait",
+          "line": 256,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "candidates",
+          "line": 269,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_value",
+          "line": 356,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "violates_cost",
+          "line": 497,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "violates_wait",
+          "line": 498,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "peak_rss_gib",
+          "line": 505,
+          "issues": [
+            "长度 12 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "objective",
+          "line": 507,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cut_regions",
+          "line": 512,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "region_violation",
+          "line": 520,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "violation",
+          "line": 521,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cap_violation",
+          "line": 522,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "violated_regions",
+          "line": 523,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "root_closed",
+          "line": 528,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "objective",
+          "line": 571,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cut_regions",
+          "line": 576,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_energy",
+          "line": 585,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_region_violation",
+          "line": 588,
+          "issues": [
+            "长度 24 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_violation",
+          "line": 589,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cap_violation",
+          "line": 590,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "candidate_latency",
+          "line": 591,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_lb",
+          "line": 592,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_ub",
+          "line": 593,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_gap",
+          "line": 594,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_violated_regions",
+          "line": 595,
+          "issues": [
+            "长度 24 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_objective",
+          "line": 625,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "mip_objective",
+          "line": 629,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cost_anchor",
+          "line": 734,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "recovery_marker",
+          "line": 736,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_outcome",
+          "line": 759,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_spec",
+          "line": 788,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_outcome",
+          "line": 789,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "task_type",
+          "line": 240,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_incumbent",
+          "line": 500,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "violated_regions",
+          "line": 525,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "total_added",
+          "line": 539,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "last_min_rc",
+          "line": 540,
+          "issues": [
+            "长度 11 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "integer_violated_regions",
+          "line": 597,
+          "issues": [
+            "长度 24 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_incumbent",
+          "line": 631,
+          "issues": [
+            "长度 17 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_ub",
+          "line": 632,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "latency_gap",
+          "line": 633,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 733,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_star",
+          "line": 733,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "initial_columns",
+          "line": 733,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cost_anchor",
+          "line": 752,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "cost_placement",
+          "line": 752,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 753,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_star",
+          "line": 753,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "initial_columns",
+          "line": 753,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "recovery_spec",
+          "line": 761,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_outcome",
+          "line": 762,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "recovery_path",
+          "line": 763,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 768,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_spec",
+          "line": 772,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_outcome",
+          "line": 773,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_star",
+          "line": 774,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "recovery_path",
+          "line": 775,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "negative_regions",
+          "line": 282,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "additions",
+          "line": 533,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "wait_star",
+          "line": 740,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 741,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 748,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 778,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "stage_iter",
+          "line": 782,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "gpu_index",
+          "line": 247,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "root_closed",
+          "line": 545,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        }
+      ]
+    },
+    "syntax": "PASS"
+  }
+}

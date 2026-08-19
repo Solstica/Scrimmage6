@@ -1,0 +1,2 @@
+﻿轮次,活动列数,Benders切数,LP最小缺失列约化成本,LP最大区域违反_CNY,restricted_MIP_Latency_ms,真实能源成本_CNY,成本上界违反_CNY,RegionE违反_CNY,RegionF违反_CNY,可行Latency上界_ms,Latency下界_ms,Latency相对Gap,事件
+24,137158,759,0.0,5.960464477539063e-08,250860.0,-459340688.8007043,0.0,0.0,0.0,250860.0,250860.0,0.0,stage_completed

@@ -1,6 +1,6 @@
-# Q4 绘图审核与冻结门禁（2026-08-18更新）
+# Q4 绘图审核与冻结门禁（2026-08-18 21:30更新）
 
-本文件规定 Q4 canonical 联合优化完成后的正文图优先级。当前 `region_multicut_v1` 已完成两轮 final-pool `Cost -> Wait -> Latency` 再认证，50k canonical 端点已经可用于结果图；但题目正式场景尚未完成，因此整问仍是 `FINISHED_DRAFT`，不是 `FROZEN + CHECKED`。
+本文件规定 Q4 canonical 联合优化完成后的正文图优先级，并复核 `Q4_绘图报告.md` 的具体方案。当前 canonical 端点可用于正式结果图；Carbon / price / renewable 三类正式场景尚未完成，场景图不得提前进入结论。
 
 ## 当前 canonical 真结果
 
@@ -18,160 +18,145 @@
 
 不得把 `restricted MIP gap=0` 写成“full-domain integer gap=0”或“50k global integer optimum proved”。
 
-## 正文主图必须服务三条线
+## 正文图必须服务三条线
 
 1. **为什么必须联合优化**：区域优势错位、计算柔性与储能柔性争用同一新能源、顺序 Q2->Q3 会失真；
-2. **算法为什么可信**：40-task exact + Benders/CG/full-domain pricing + final-pool recertification；
-3. **联合优化到底改变了什么**：Q2 的高 workload 调整需求在 Q4 中被 BESS 柔性大幅替代，最终 Wait=0、migration=0.122%。
+2. **联合模型为什么可信**：40-task exact、完整域 pricing、真实 Energy recourse、最终再认证；
+3. **联合优化改变了什么**：Q2 的高 workload 调整需求在 Q4 中被 BESS 柔性大幅替代，最终 Wait=0、migration=0.122%。
 
 ---
 
-## P0 主图1：六区域算力—网络—能源—储能结构矩阵
+## P0 图A：六区域算力—网络—能源—储能结构矩阵——保留，但必须改表达
 
-必须展示原始/标准化但**不加权汇总**的区域特征：
+图型可继续使用热图，但不能把不同方向指标直接标准化后都解释为“越大越好”。
 
-- AvailableGPU；
-- PUE；
-- RT/低时延可达性；
-- StorageCapacity；
-- MaxCharge/MaxDischarge；
-- SellLimit；
-- Price/Carbon 的代表统计；
-- baseline Curtailment。
+推荐列分块：
 
-图应让读者直接看见：
+- 算力：AvailableGPU（↑）；
+- 网络：RT/低时延可达性（↑）、代表时延（↓）；
+- 能效：PUE（↓）；
+- 储能/售电：StorageCapacity、MaxCharge/Discharge、SellLimit（↑）；
+- 能源经济：Price、CarbonIntensity（↓）、baseline Curtailment（只表示可消纳空间，不直接定义为“优势”）。
 
-`低时延优势 != 算力优势 != PUE优势 != 储能/售电优势`。
+二选一：
 
-不得构造区域综合得分、AHP/熵权或把 E/F 直接标成“绿色最优区”。附件六区域逐时 AvailableRenewable 数值相同。
+1. **结构标准化矩阵**：直接画各指标 z-score，并在列名加 `↑/↓`，不统一解释颜色为“优劣”；
+2. **优势方向矩阵**：仅对明确的 cost-type 指标反号，使颜色统一表示“更有利”，但图注必须说明只是方向统一，未做任何加权、综合评分或 AHP/熵权。
 
-## P0 主图2：顺序 Q2->Q3 失真 probe
+图A必须保持“无综合区域得分”。原始数值另放配套表或附录。
 
-用 3 个真实 RT、8 个 E/F placement 的小规模 probe：
+## P0 图B：顺序 Q2->Q3 失真 probe——当前绘图报告漏掉，必须补
 
-- 冻结 BESS 的 Q2 static marginal 会显示迁 F 约节约 `3613.67 CNY`；
-- 每个 placement 重新求真实 BESS recourse 后，8 个组合的最优能源成本相同；
-- 此时低 latency 的 E placement 更优。
+这是 Q4 最有解释力的数据/机制图之一，不应被迁移矩阵或求解器闭合图替代。
 
-图中直接标：
+建议双面板：
 
-`Q2 static marginal != Q4 post-BESS recourse`。
+- (a) 3 个真实 RT、8 个 E/F placement 在 Q2 static marginal 下的成本差，标出“全部迁 F 约节约 3613.67 CNY”；
+- (b) 每个 placement 重新求 BESS/Energy recourse 后的真实能源最优成本，8 个组合相同，同时标出 E 方案 latency 更低。
 
-这张图是“为什么不能固定 Q2 后再跑 Q3”的最直接证据。
+图中直接写：
 
-## P0 主图3：两类柔性争用并替代同一新能源
+`Q2 static marginal != Q4 post-BESS recourse`
 
-机制图核心变量：
+这张图回答“为什么不能先固定 Q2 最优排程再跑 Q3”。
 
-`H_rt(x)=AvailableRenewable_rt-FacilityLoad_rt(x)`。
+## P0 图C：迁移结构——C1/C2 可合并，但 C1 必须屏蔽对角线
 
-同一时空新能源余量可：
+### C1 区域迁移矩阵
 
-- 被迁入 workload 当期消纳；
-- 进入 BESS 跨时段释放。
+canonical 只有 61 个迁移任务。如果把 50000 个全部任务计入 6x6 矩阵，对角线约 49939 个本地任务会完全压死非对角信号。
 
-最终结果必须在图注或旁边指出：在当前附件数据下，两类柔性不仅互补，而且表现出强替代关系——储能柔性吸收了绝大部分原本由 workload 时间/空间调整承担的调节需求。
+因此正式热图必须使用：
 
-## P0 主图4：50k final-pool 字典序再认证
+- 仅 `Moved=1` 的 61 个任务；或
+- 对角线 mask/置空，仅显示 off-diagonal moved counts。
 
-现在可以正式制作。
+图注写“迁移任务的源→目标分布”，不能叫“全部任务执行矩阵”。每格直接显示整数任务数。
 
-建议双面板或三阶段表图：
+### C2 不同任务类型迁移率
 
-### (a) Sweep 1 / Sweep 2 anchors
+可以和 C1 做成同一复合图右侧小面板。建议同时标“迁移数/任务总数”和迁移率，避免 0.0x% 的极小百分比失去规模感。
 
-- Cost：`-459340688.8007043 CNY`，两轮一致；
-- Wait：`0 h`，两轮一致；
-- Latency：`250860 ms`，两轮一致。
+## P1 图D：final recertification——不要把 D1、D2 都作为正文主图
 
-### (b) closure evidence
+当前 `Sweep 1 = Sweep 2` 的 Cost/Wait/Latency 三个锚点完全一致，Wait 又恒为 0；另外 min reduced cost 和 max Benders violation 最终也都是 0。把这些画成三张柱图/双Y图，视觉信息量很低。
 
-- active columns：137139 -> 137158 -> 137158；
-- Latency Sweep1 新增 19 列，Sweep2 新增 0；
-- final cuts=1173；
-- min missing reduced cost=0；
-- max region Benders violation=0。
+更推荐：
 
-### (c) 最优性边界
+- 正文使用一张**再认证证据表/证书卡片**：Sweep1、Sweep2、Cost、Wait、Latency、active columns、cuts、LP LB、integer UB、0.1555% gap；
+- 若一定要图，只保留一个次级图：活动列/切数随再认证阶段变化，并在终点标 `RC=0, violation=0`；
+- 完整 D1/D2 可放附录或模型检验，不占正文主图位置。
 
-同时给出：
+## P0 图E：联合优化的服务质量收益——重构当前 E1/E2
 
-- Latency LP LB=`250469.954579 ms`；
-- integer UB=`250860 ms`；
-- relative gap≈`0.1555%`。
+### 原 E1 “等待分布”不建议单独成图
 
-图注必须写“best-known integer representative / final-pool recertified”，不写 global optimum。
+50000 个任务全部 Wait=0，画一根 50000 的柱子没有信息增量。改成正文数字结论或合并到跨问比较：
 
-## P0 主图5：Q2-only vs Q3-only vs Q4-joint
+`Q2 mean wait 20.475 h -> Q4 0 h`
 
-**accounting 统一后才允许冻结。**
+### E1 建议改为 Q2 vs Q4 柔性替代双面板
 
-这一张应成为 Q4 最重要的最终结果图之一。至少比较：
+- (a) migration：74.896% -> 0.122%；
+- (b) mean wait：20.475 h -> 0 h；
 
-- Cost；
-- Carbon；
-- migration；
-- Wait；
-- Latency；
-- RenewableUtilization；
-- regional PeakNetImport。
+必要时再用标注补 max wait：2016 h -> 0 h。
 
-重点突出已经确认的 workload 侧变化：
+这是 Q4 最重要的结果图之一，直接支撑“储能柔性替代绝大部分 workload 时空调节需求”。
 
-- Q2 Cost-primary migration≈74.896%，mean wait≈20.475 h；
-- Q4 migration=0.122%，Total/Mean/Max Wait=0。
+### E2 网络时延分布可保留
 
-结果解释：不是 Q4 “不需要 workload flexibility”，而是 BESS 时间柔性使绝大部分 workload 时间调整不再必要，只剩少量空间修正。
+绝大多数任务不超过 5 ms、尾部很稀疏。普通线性计数柱图会被第一档支配，因此建议：
 
-Q3 E1 与 Q4 表面成本差 `~122897.76 CNY` 在 accounting 未统一前不得画成正式 synergy 数字。
+- 计数柱图 + 尾部 inset；或
+- 精确 ECDF（不是平滑拟合），标 P95=5 ms、max=58 ms。
 
-## P0 主图6：题目正式场景
+禁止用核密度/平滑曲线制造不存在的连续分布。
 
-必须最终覆盖：
+## P0 图F：正式场景六指标——当前只能保留模板
 
-1. Carbon constraints；
-2. electricity-price mechanisms；
-3. renewable fluctuation scenarios。
+场景全部完成、统一 accounting 后再画。
 
-每个场景都必须是 joint reoptimization，不得固定 canonical workload 只重算 Energy LP。
+不建议把六指标放进一个雷达图或一个双Y综合图。建议按场景族分面：
 
-历史 `gamma=1.4` 只能保留 diagnostic probe，不能放在“正式场景结果”标题下。
+- Carbon constraints；
+- electricity-price mechanisms；
+- renewable fluctuation。
 
----
+每个场景族优先展示**相对 canonical 的变化量/变化率**：
 
-## 算法/验证图保留项
+- Cost 因 canonical 为负值（净收益），优先画 `ΔCost`，避免原始负柱方向造成误读；
+- Carbon、RenewableUtilization、PeakNetImport 各自独立尺度；
+- Wait、Latency 单独面板。
 
-### 计算—能源耦合流程图
-保留，但它只是 mechanism figure，不能替代区域结构数据图。
+不同场景族不要强行排成“同一横轴的一组类别”，因为它们代表不同机制。
 
-### Benders + Exact CG 流程图
-保留：Restricted Master -> 6-region Energy recourse -> multi-cut -> exact pricing。可注明隐式完整域约 `2.33e8` placements。
+`price_flat` 未完成前禁止使用运行中 DRAFT 数字。
 
-### 40-task exact benchmark
-保留为 validation badge/小图或表，避免占主图中心。它证明算法逻辑，不外推成 50k global integer certificate。
+## P0 统一排版修正
 
-### Region multi-cut convergence
-可放次级图/附录。现在 final result 已经比“每轮 violation 曲线”更重要；若正文篇幅紧张，优先保留 final-pool recertification 图而不是长收敛曲线。
+`Q4_绘图报告.md` 中“**双栏图宽约 180 mm**”与当前论文模板不一致。当前 A4 四边页边距均为 25 mm，正文最大宽度约：
 
-## 禁止事项
+`210 mm - 25 mm - 25 mm = 160 mm`。
 
-- 删除旧 restricted-pool `total wait=378199 h / max wait=1171 h` 的正式展示；
-- 不把昨夜 MemoryError/恢复过程当论文结果图；
-- 不把 `MIP gap=0` 单独画成“全局整数最优”；
-- 不把 Q2 高迁移率直接解释为 Q4 应高迁移；
-- 不把 Q3/Q4 未统一 accounting 的绝对成本直接做柱图；
-- 不新增六指标综合分。
+因此：
 
-## 推荐最终图序
+- 正文全宽复合图建议按 `155--160 mm` 导出；
+- 对应 LaTeX 使用 `\FigureDoubleWidth=1.00\textwidth` 或略小；
+- 单图约 `0.60\textwidth`，对应约 95 mm；
+- 180 mm 图会越出正文版心，不得作为最终导出宽度。
+
+中文宋体、英文/数字 Times New Roman、坐标带单位、SVG/PDF 矢量优先的要求保留。
+
+## 推荐最终正文图序
 
 1. Q4 总体流程图；
-2. **区域优势错位结构矩阵**；
-3. **顺序 Q2->Q3 失真 probe / 两类柔性耦合机制**（可合并）；
-4. Benders + Exact CG 算法图；
-5. **50k final-pool recertification**；
-6. **Q2/Q3/Q4 unified comparison**；
-7. **Carbon / price / renewable 正式场景**。
+2. **图A 区域结构错位矩阵**；
+3. **图B 顺序 Q2->Q3 失真 probe + 计算/BESS耦合机制**；
+4. Benders + 完整域列生成算法图（可压缩）；
+5. **图E Q2 vs Q4 柔性替代结果**；
+6. 迁移结构 / 时延分布（按篇幅二选一或组合）；
+7. final recertification 证据表（优先表而非图）；
+8. **图F 三类正式场景**。
 
-统一叙事：
-
-`区域与任务数据冲突 -> 顺序优化会失真 -> 联合模型 -> 完整域求解闭合 -> 储能替代大部分 workload 调节 -> 场景下检验该机制是否保持`。
+40-task exact benchmark、cut 数/内存/收敛轨迹等属于算法验证，优先进入表格或附录，不与数据机制图争正文版面。

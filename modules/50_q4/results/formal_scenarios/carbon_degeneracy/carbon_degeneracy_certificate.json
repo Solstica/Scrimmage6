@@ -1,0 +1,100 @@
+{
+  "状态": "PASS",
+  "canonical_carbon_tCO2": 0.0,
+  "carbon_zero_tol": 1e-09,
+  "退化成立": true,
+  "数学说明": "若 canonical Carbon=0，则四个相对预算均为 Carbon<=0；因 Carbon>=0，四场景具有同一零碳可行子集。canonical 字典序代表解在更大的原可行域上已达到 Cost 锚点，且 Wait=0，因此该解在四个碳预算下仍保持 Cost/Wait 锚点；无需重复四次联合求解。",
+  "能源指标": {
+    "Cost_CNY": -459340688.8007043,
+    "Carbon_tCO2": 0.0,
+    "RenewableUtilization_pct": 69.52081930719858,
+    "PeakNetImport_MW": 0.0,
+    "RegionalPeakNetImport_MW": {
+      "RegionA": 0.0,
+      "RegionB": 0.0,
+      "RegionC": 0.0,
+      "RegionD": 0.0,
+      "RegionE": 0.0,
+      "RegionF": 0.0
+    },
+    "能源审计": {
+      "最大电网购电越界_MW": 0.0,
+      "最大电网上网越界_MW": 0.0,
+      "最大售电上限越界_MW": 0.0,
+      "最大SOC下界越界_MWh": 0.0,
+      "最大SOC上界越界_MWh": 0.0,
+      "终端SOC缺口_MWh": 0.0,
+      "可再生分配平衡最大残差_MW": 1.1368683772161603e-13,
+      "设施负荷平衡最大残差_MW": 0.0,
+      "SOC递推最大残差_MWh": 8.526512829121202e-14,
+      "充电功率上限越界_MW": 0.0,
+      "放电功率上限越界_MW": 0.0
+    }
+  },
+  "任务指标": {
+    "总等待_h": 0.0,
+    "平均等待_h": 0.0,
+    "P95等待_h": 0.0,
+    "最大等待_h": 0.0,
+    "总时延_ms": 250860.0,
+    "平均时延_ms": 5.0172,
+    "P95时延_ms": 5.0,
+    "最大时延_ms": 58.0,
+    "迁移任务数": 61,
+    "迁移率": 0.00122
+  },
+  "场景": [
+    {
+      "场景": "carbon_100",
+      "碳预算比例": 1.0,
+      "碳预算_tCO2": 0.0,
+      "Cost_CNY": -459340688.8007043,
+      "Carbon_tCO2": 0.0,
+      "总等待_h": 0.0,
+      "平均时延_ms": 5.0172,
+      "RenewableUtilization_pct": 69.52081930719858,
+      "PeakNetImport_MW": 0.0,
+      "迁移率": 0.00122,
+      "证书状态": "DEGENERATE_EQUIVALENT_PASS"
+    },
+    {
+      "场景": "carbon_75",
+      "碳预算比例": 0.75,
+      "碳预算_tCO2": 0.0,
+      "Cost_CNY": -459340688.8007043,
+      "Carbon_tCO2": 0.0,
+      "总等待_h": 0.0,
+      "平均时延_ms": 5.0172,
+      "RenewableUtilization_pct": 69.52081930719858,
+      "PeakNetImport_MW": 0.0,
+      "迁移率": 0.00122,
+      "证书状态": "DEGENERATE_EQUIVALENT_PASS"
+    },
+    {
+      "场景": "carbon_50",
+      "碳预算比例": 0.5,
+      "碳预算_tCO2": 0.0,
+      "Cost_CNY": -459340688.8007043,
+      "Carbon_tCO2": 0.0,
+      "总等待_h": 0.0,
+      "平均时延_ms": 5.0172,
+      "RenewableUtilization_pct": 69.52081930719858,
+      "PeakNetImport_MW": 0.0,
+      "迁移率": 0.00122,
+      "证书状态": "DEGENERATE_EQUIVALENT_PASS"
+    },
+    {
+      "场景": "carbon_25",
+      "碳预算比例": 0.25,
+      "碳预算_tCO2": 0.0,
+      "Cost_CNY": -459340688.8007043,
+      "Carbon_tCO2": 0.0,
+      "总等待_h": 0.0,
+      "平均时延_ms": 5.0172,
+      "RenewableUtilization_pct": 69.52081930719858,
+      "PeakNetImport_MW": 0.0,
+      "迁移率": 0.00122,
+      "证书状态": "DEGENERATE_EQUIVALENT_PASS"
+    }
+  ]
+}

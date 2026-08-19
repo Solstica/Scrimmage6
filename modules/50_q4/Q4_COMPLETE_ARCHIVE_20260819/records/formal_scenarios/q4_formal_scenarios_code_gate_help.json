@@ -1,0 +1,250 @@
+{
+  "gate": "CODE",
+  "status": "FAIL",
+  "errors": [
+    "命名不合规: file q4_formal_scenarios.py (file name; 长度 19 超过 12; 下划线 2 个超过 1)",
+    "命名不合规: function scenario_by_id (line 38; 长度 14 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function rewrite_region_time (line 45; 长度 19 超过 8; 下划线 2 个超过 1)",
+    "命名不合规: function canonical_carbon (line 75; 长度 16 超过 8)",
+    "命名不合规: argument attachment_dir (line 75; 长度 14 超过 8)",
+    "命名不合规: argument final_dir (line 75; 长度 9 超过 8)",
+    "命名不合规: function run_solver (line 90; 长度 10 超过 8)",
+    "命名不合规: argument attachment_dir (line 90; 长度 14 超过 8)",
+    "命名不合规: argument output_dir (line 90; 长度 10 超过 8)",
+    "命名不合规: argument carbon_budget (line 90; 长度 13 超过 8)",
+    "命名不合规: argument max_hours (line 90; 长度 9 超过 8)",
+    "命名不合规: function write_protocol (line 111; 长度 14 超过 8)",
+    "命名不合规: variable SCENARIOS (line 24; 长度 9 超过 8)",
+    "命名不合规: variable task_index (line 78; 长度 10 超过 8)",
+    "命名不合规: variable region_index (line 79; 长度 12 超过 8)",
+    "命名不合规: variable original_energy (line 92; 长度 15 超过 8)",
+    "命名不合规: function constrained (line 94; 长度 11 超过 8)",
+    "命名不合规: argument renew_override (line 94; 长度 14 超过 8)",
+    "命名不合规: argument carbon_budget (line 94; 长度 13 超过 8)",
+    "命名不合规: variable protocol_dir (line 131; 长度 12 超过 8)",
+    "命名不合规: variable scenario_dir (line 141; 长度 12 超过 8)",
+    "命名不合规: variable attach_dir (line 142; 长度 10 超过 8)",
+    "命名不合规: variable carbon_budget_outer (line 97; 长度 19 超过 8; 下划线 2 个超过 1)"
+  ],
+  "warnings": [],
+  "run": {
+    "command": [
+      "D:\\python3.12.7\\python.exe",
+      "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_formal_scenarios.py",
+      "--list"
+    ],
+    "cwd": "D:\\第三次训练赛-worktrees\\q4",
+    "python": "3.12.7 (tags/v3.12.7:0b05ead, Oct  1 2024, 03:06:41) [MSC v.1941 64 bit (AMD64)]",
+    "script": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\code\\q4_formal_scenarios.py",
+    "script_sha256": "c5e93d5dbd6dea458a75340eb37ccb065de3827efdab67669bf02f1137544d47",
+    "started_at": "2026-08-18T11:41:24+00:00",
+    "finished_at": "2026-08-18T11:41:24+00:00",
+    "returncode": null,
+    "stdout": "",
+    "stderr": "",
+    "inputs": [],
+    "outputs": []
+  },
+  "metrics": {
+    "naming": {
+      "status": "FAIL",
+      "identifier_max_length": 8,
+      "filename_max_length": 12,
+      "underscore_max": 1,
+      "allowed_names": [
+        "q4"
+      ],
+      "violations": [
+        {
+          "kind": "file",
+          "name": "q4_formal_scenarios.py",
+          "line": 0,
+          "issues": [
+            "长度 19 超过 12",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "scenario_by_id",
+          "line": 38,
+          "issues": [
+            "长度 14 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "rewrite_region_time",
+          "line": 45,
+          "issues": [
+            "长度 19 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "canonical_carbon",
+          "line": 75,
+          "issues": [
+            "长度 16 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "attachment_dir",
+          "line": 75,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "final_dir",
+          "line": 75,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "run_solver",
+          "line": 90,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "attachment_dir",
+          "line": 90,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "output_dir",
+          "line": 90,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "carbon_budget",
+          "line": 90,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "max_hours",
+          "line": 90,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "write_protocol",
+          "line": 111,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "SCENARIOS",
+          "line": 24,
+          "issues": [
+            "长度 9 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "task_index",
+          "line": 78,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "region_index",
+          "line": 79,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "original_energy",
+          "line": 92,
+          "issues": [
+            "长度 15 超过 8"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "constrained",
+          "line": 94,
+          "issues": [
+            "长度 11 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "renew_override",
+          "line": 94,
+          "issues": [
+            "长度 14 超过 8"
+          ]
+        },
+        {
+          "kind": "argument",
+          "name": "carbon_budget",
+          "line": 94,
+          "issues": [
+            "长度 13 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "protocol_dir",
+          "line": 131,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "scenario_dir",
+          "line": 141,
+          "issues": [
+            "长度 12 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "attach_dir",
+          "line": 142,
+          "issues": [
+            "长度 10 超过 8"
+          ]
+        },
+        {
+          "kind": "variable",
+          "name": "carbon_budget_outer",
+          "line": 97,
+          "issues": [
+            "长度 19 超过 8",
+            "下划线 2 个超过 1"
+          ]
+        }
+      ]
+    },
+    "syntax": "PASS"
+  }
+}

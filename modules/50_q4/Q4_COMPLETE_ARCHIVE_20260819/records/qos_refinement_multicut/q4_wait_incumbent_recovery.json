@@ -1,0 +1,7 @@
+{
+  "状态": "COMPLETED",
+  "Latency恢复轮次": 180,
+  "恢复方式": "Cost目标+Wait锚点约束",
+  "重建Wait锚点_h": 32.0,
+  "可行Latency上界_ms": 1492564.0
+}

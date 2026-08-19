@@ -1,0 +1,70 @@
+{
+  "版本": "formal_joint_v1",
+  "场景": [
+    {
+      "id": "carbon_100",
+      "kind": "carbon",
+      "fraction": 1.0,
+      "description": "canonical 碳预算"
+    },
+    {
+      "id": "carbon_75",
+      "kind": "carbon",
+      "fraction": 0.75,
+      "description": "canonical 碳预算 75%"
+    },
+    {
+      "id": "carbon_50",
+      "kind": "carbon",
+      "fraction": 0.5,
+      "description": "canonical 碳预算 50%"
+    },
+    {
+      "id": "carbon_25",
+      "kind": "carbon",
+      "fraction": 0.25,
+      "description": "canonical 碳预算 25%"
+    },
+    {
+      "id": "price_attachment",
+      "kind": "price",
+      "mode": "attachment",
+      "description": "附件逐时价格"
+    },
+    {
+      "id": "price_flat",
+      "kind": "price",
+      "mode": "flat",
+      "description": "区域均值平价"
+    },
+    {
+      "id": "price_peak_valley",
+      "kind": "price",
+      "mode": "peak_valley",
+      "description": "峰谷透明敏感性，峰值+25%，谷值-25%"
+    },
+    {
+      "id": "renew_nominal",
+      "kind": "renewable",
+      "mode": "nominal",
+      "description": "附件名义新能源"
+    },
+    {
+      "id": "renew_down_80",
+      "kind": "renewable",
+      "mode": "down_80",
+      "description": "统一下调 20%"
+    },
+    {
+      "id": "renew_up_120",
+      "kind": "renewable",
+      "mode": "up_120",
+      "description": "统一上调 20%"
+    }
+  ],
+  "约束": [
+    "每个场景重新运行 full-domain joint model",
+    "不固定 canonical 排程",
+    "不声称全局整数最优"
+  ]
+}

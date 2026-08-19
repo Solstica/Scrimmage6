@@ -1,0 +1,6 @@
+{
+  "状态": "MIP_NO_INCUMBENT",
+  "消息": "Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+  "活动列数": 137158,
+  "输入断点": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\renew_down_80_region_multicut_full_pool"
+}

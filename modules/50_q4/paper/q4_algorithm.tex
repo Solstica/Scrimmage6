@@ -1,86 +1,39 @@
-% 算法: Region multi-cut Benders + Exact Column Generation + 字典序再认证
+算力与能源联合优化已有将数据中心负荷与能源系统协同建模的研究，说明任务位置变化会改变能源系统最优响应\cite{guo_integrated_2025}。针对离散任务分配与连续能源再优化形成的大规模耦合结构，近期研究已将 Benders 分解与列生成结合用于服务器分配与调度\cite{wang_bcg_2026}。本文只借用这类分解求解思想；区域能源子问题、完整合法任务域以及字典序目标均由本题附件数据和前文模型结构确定。
+
 \begin{algorithm}[H]
-\setstretch{0.92}
-\SetAlFnt{\normalsize}
+\setstretch{0.82}
+\SetAlFnt{\small}
 \SetArgSty{textnormal}
 \SetKwInput{KwIn}{Input}
 \SetKwInput{KwInit}{Initialize}
 \SetKwInput{KwOut}{Output}
-\SetKwFor{For}{for}{do}{end for}
-\SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwFor{While}{while}{do}{end while}
+\SetKwFor{ForEach}{for each}{do}{end for}
 \SetKwIF{If}{ElseIf}{Else}{if}{then}{else if}{else}{end if}
-\SetKw{KwRet}{return}
-\SetKw{Continue}{continue}
-\SetKw{Break}{break}
-\caption{Region multi-cut Benders + Exact Column Generation 的联合字典序求解}
+\caption{区域多割 Benders--列生成的字典序联合求解}
 \label{alg:q4-benders-cg}
-\KwIn{任务集 $\mathcal I$，完整合法域 $\Omega_i$，区域 GPU/IT/Facility 容量，新能源出力 $\bar R_{rt}$，BESS 参数，购售电价格，SLA 与时域 $0,\dots,2406$}
-\KwInit{由可行参考排程生成初始活动列池 $\mathcal C$；区域 Benders 割集置空；阶段 $z\leftarrow\mathrm{Cost}$}
-\BlankLine
+\KwIn{任务集与完整合法域 $\Omega_i$，区域算力容量，新能源、储能、电价及 SLA 参数}
+\KwInit{由可行参考排程生成活动列池 $\mathcal C$；六区域 Benders 割集置空}
 
-\emph{阶段一：Cost root 的 Benders--CG 双闭环}\;
-\While{Cost root 未闭合}{
-    在活动列池 $\mathcal C$ 与当前区域割集上求解 Restricted Master LP：
-    \begin{minipage}[t]{0.86\linewidth}
-    \vspace{0.4em}
-    $\min \sum_r \theta_r$ \\
-    s.t. $\sum_{(r,s)\in\mathcal C_i}x_{irs}=1,\ \forall i$ \\
-    \hspace{1.2em}GPU/IT 容量约束（Facility 重复行可 exact presolve）\\
-    \hspace{1.2em}$\theta_r\ge Q_r(L_r^k)+(\boldsymbol\lambda_r^k)^\top(L_r(\mathbf x)-L_r^k),\ \forall r,k$\\
-    \hspace{1.2em}$0\le x_{irs}\le1$
-    \end{minipage}\;
-    得到 workload LP 解 $\mathbf x^{LP}$ 与 Master dual\;
-    \ForEach{区域 $r$}{
-        由 $\mathbf x^{LP}$ 计算 $L_{rt}^{\mathrm{Fac}}$ 并求真实 Energy LP，得到 $Q_r(L_r)$ 与 load dual $\boldsymbol\lambda_r$\;
-        \If{$Q_r(L_r)-\theta_r>\varepsilon_B$}{添加该区域 Benders cut\;}
-    }
-    \If{本轮新增任一区域 cut}{\Continue}
-    对所有任务执行\textbf{完整隐式合法域 Exact Pricing}\;
-    \If{存在 reduced cost $< -\varepsilon_P$ 的 placement}{加入对应新列到 $\mathcal C$；\Continue}
-    Cost root LP 双门禁闭合\;
+\textbf{第一层：Cost}\;
+\While{Cost 层未闭合}{
+  求限制主问题 LP；由排程负荷分别求六区域真实能源子问题\;
+  \If{任一区域能源值被 $\theta_r$ 低估}{加入对应区域最优性割并继续\;}
+  对全部任务的隐式完整合法域执行精确定价\;
+  \If{存在负约化成本列}{加入 $\mathcal C$ 并继续\;}
+  求当前扩展列池整数排程并执行真实能源复核；若违反则补整数 Benders 割，否则记录成本代表值 $C^{\mathrm{anc}}$\;
 }
-在当前扩展列池上求 restricted MIP，得到真实 Energy LP 复核通过的 Cost 可行整数 incumbent，记其成本为 $C^{\mathrm{anc}}$；\textbf{不据此声称 50k 全局整数最优}\;
-\BlankLine
 
-\emph{阶段二：Wait 字典序精化}\;
-设置 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，目标改为 $\min\sum_i w_i$\;
-\While{Wait 阶段未闭合}{
-    在当前活动列上求 Wait Restricted Master LP\;
-    对各区域求真实 Energy LP；若 Cost-cap underestimator 低估则加入对应 region cut\;
-    若 Benders 已闭合，则对\textbf{完整合法域}做 Wait reduced-cost pricing\;
-    若发现负 reduced-cost placement，则加列并继续闭合\;
-    若 Benders 与 Wait pricing 同时闭合，则求 restricted MIP，并用真实 Energy LP 复核 Cost cap\;
-    若整数候选违反真实 Cost cap，则在违规区域加入 integer Benders cuts 并继续\;
-    否则得到 Wait 可行整数 anchor $W^{\mathrm{anc}}$ 与对应排程\;
-}
-\BlankLine
+\textbf{第二层：Wait}\;
+增加 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$，以总等待为目标；随后依次进行区域真实能源复核、完整域定价和整数复核，得到 $W^{\mathrm{anc}}$\;
 
-\emph{阶段三：Latency 字典序精化}\;
-保持 $\mathrm{TrueCost}(\mathbf x)\le C^{\mathrm{anc}}+\varepsilon_C$ 与 $\mathrm{Wait}(\mathbf x)\le W^{\mathrm{anc}}+\varepsilon_W$，目标改为 $\min\sum_i\ell_i$\;
-\While{Latency 阶段未闭合}{
-    求 Latency Restricted Master LP\;
-    对各区域真实 Energy LP 做 region multi-cut 复核\;
-    Benders 闭合后，对\textbf{完整合法域}执行 Latency pricing\;
-    若有负 reduced-cost placement，则加列并重新闭合\;
-    若 LP 双门禁闭合，则求 restricted MIP；用真实 Energy LP 复核 Cost cap 与全部能源约束\;
-    若整数候选不满足真实 recourse，则对违规区域添加 integer Benders cuts 并继续\;
-    否则得到 Latency 可行整数 incumbent\;
-}
-\BlankLine
+\textbf{第三层：Latency}\;
+保持成本约束并增加 $\mathrm{Wait}\le W^{\mathrm{anc}}+\varepsilon_W$，以总网络时延为目标；再次完成区域 Benders、完整域定价和整数能源复核\;
 
-\emph{阶段四：最终列池字典序再认证}\;
-\While{后序阶段新增列仍能改善前序整数 anchor}{
-    在最终扩展列池上重新执行 Cost 层，更新 $C^{\mathrm{anc}}$\;
-    在新 Cost cap 下重新执行 Wait 层，更新 $W^{\mathrm{anc}}$\;
-    在新 Cost/Wait cap 下重新执行 Latency 层\;
-    每一层仍保留 region Benders 真实 recourse 复核与 full-domain exact pricing\;
-}
-\BlankLine
+\textbf{最终再认证}\;
+若等待或时延阶段新增任务列，则在最终扩展列池上重新求解三个字典序层，依次固定成本、总等待和网络时延，直到两轮结果一致，且完整域定价与区域能源复核均闭合\;
 
-\emph{阶段五：硬约束与证据边界审计}\;
-检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、Renewable/Load balance、SOC 递推与终端 SOC、GridImport/Export、SellLimit；报告 full-domain root certificate、integer incumbent 与可得的 LB/UB/gap，不把 restricted MIP 写成全局整数最优\;
-\BlankLine
-\KwRet{通过真实能源复核的计算排程与能源排程，以及 Cost/Wait/Latency/Carbon/Renewable/Peak 等指标}
-\KwOut{任务区域--时间分配、BESS 充放电计划、电网购售电计划、约束审计与最优性证据边界}
+\textbf{审计}\;
+检查任务唯一指派、RT 即时开工、SLA、LatestFinish、finish$\le2406$、GPU/IT/Facility、能源平衡、SOC、电网及售电边界；分别报告完整域 LP 下界与最终整数可行解，不把活动列池 MIP gap 解释为完整域整数最优证书\;
+\KwOut{任务时空排程、储能/电网方案、六类评价指标及最优性证据边界}
 \end{algorithm}

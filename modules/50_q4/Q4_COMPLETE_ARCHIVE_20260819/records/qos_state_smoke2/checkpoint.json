@@ -1,0 +1,8 @@
+{
+  "模型版本": "region_multicut_v1",
+  "状态": "RECOVERING_WAIT_INCUMBENT",
+  "当前阶段": "Wait=32可行端点恢复",
+  "活动列数": 137139,
+  "Benders切数": 923,
+  "等待锚点_h": 32.0
+}
