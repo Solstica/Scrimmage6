@@ -44,7 +44,28 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \begin{equation}
 \pi_{rk}=P(R=r,K=k).
 \end{equation}
-给定任务类型后，区域对 GPU 需求和执行时长的附加影响较弱，因此按任务类型估计 $(G,D)$ 的联合经验分布。与此同时，AI 训练任务虽然仅约占三分之一的任务数，却贡献约 80\% 的 GPU-hour，说明后续调度应依据资源消耗而非任务数量判断负荷贡献。相关结构见图\ref{fig:q1-composition}。
+给定任务类型后，区域对 GPU 需求和执行时长的附加影响较弱，因此按任务类型估计 $(G,D)$ 的联合经验分布。与此同时，AI 训练任务虽然仅约占三分之一的任务数，却贡献约 80\% 的 GPU-hour，说明后续调度应依据资源消耗而非任务数量判断负荷贡献。六区域三类任务的累计 GPU-hour 见表\ref{tab:q1-gpuhour-stat}，其中 D/E/F 的负荷主要由 AI 训练任务贡献，而 A/B/C 的实时推理任务占比相对更高。
+
+\begin{table}[!htbp]
+\centering
+\caption{六区域三类任务累计 GPU-hour 统计（$10^3$ GPU\,$\cdot$\,h）}
+\label{tab:q1-gpuhour-stat}
+\begin{tabular}{lrrrr}
+\toprule
+\rowcolor{CumcmLightBlue}
+区域 & AITraining & BatchInference & RealTimeInference & 合计 \\
+\midrule
+RegionA & 214.32 & 154.34 & 79.79 & 448.45 \\
+RegionB & 212.29 & 151.26 & 67.20 & 430.76 \\
+RegionC & 198.33 & 117.90 & 58.70 & 374.93 \\
+RegionD & 1387.12 & 155.18 & 6.56 & 1548.86 \\
+RegionE & 978.54 & 100.16 & 9.05 & 1087.75 \\
+RegionF & 1032.94 & 90.26 & 6.84 & 1130.04 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+相关结构见图\ref{fig:q1-composition}。
 
 \begin{figure}[!htbp]
 \centering
@@ -95,6 +116,8 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \right.
 \label{eq:q1-model-summary}
 \end{equation}
+
+\subsection{模型求解：两阶段概率预测与基础调度}
 
 \input{\ProjectRoot/modules/20_q1/paper/q1_algorithm.tex}
 
