@@ -2,7 +2,7 @@
 
 \subsection{问题一的描述与分析}
 
-问题一承担短期需求预测与基线调度两项任务。训练段表明：小时到达计数近似等离散，关键时滞相关较弱；Region 与 TaskType 的组成相关明显，而给定 TaskType 后 SourceRegion 对 GPU 需求和持续时长的附加解释很弱；同时 AI Training 虽约占三分之一任务，却贡献约 80\% 的 GPU-hour。因此先在训练段检验到达过程与业务组成，据此构造联合业务标记和类型条件资源标记，完成未来 24 h 概率预测；随后对实际到达任务实施本地优先基础调度，整体流程见图\ref{fig:q1-flow}。
+问题一包含短期需求预测与基线调度两项任务。训练段显示：小时到达计数近似等离散，时滞相关性弱；Region 与 TaskType 组成相关明显，但给定 TaskType 后区域对资源需求附加解释较弱；AI Training 约占三分之一任务，却贡献约 80\% GPU-hour。据此构造联合业务标记与类型条件资源标记，完成 24 h 概率预测，并对实际任务实施本地优先调度，流程见图\ref{fig:q1-flow}。
 
 \begin{figure}[H]
 \centering
@@ -15,12 +15,7 @@
 
 为避免信息泄漏，\textbf{所有用于确定模型结构的统计诊断仅使用 0--2351 h 训练段}；2352--2375 h 只检查区间覆盖与稳定性，2376--2399 h 为最终测试段。全 50000 任务统计仅作描述性展示。
 
-设训练段小时到达数为 $N_t$，Fano 因子
-\begin{equation}
-F=\frac{\widehat{\mathrm{Var}}(N_t)}{\widehat{\mathbb E}(N_t)}
-\end{equation}
-得到 $F\approx0.97$；时滞 $1,24,168$ 的自相关分别约为 $-0.0059,-0.0385,0.0336$，大多位于 $\pm1.96/\sqrt{2352}\approx\pm0.0404$ 内，未见稳定周期结构。Poisson 适用性由本附件统计检验决定，相关工作仅作为工作负载 Poisson 性诊断与需求聚合建模的方法背景\cite{zou_poissonity_2022,cohen_dac_2022}。图\ref{fig:q1-arrival-diagnosis}给出诊断结果。
-
+训练段小时到达数 Fano 因子 $F\approx0.97$，时滞 1、24、168 的自相关均在 $\pm0.0404$ 内，未见稳定周期结构，Poisson 适用性由本附件统计检验决定，相关工作仅作为工作负载 Poisson 性诊断与需求聚合建模的方法背景\cite{zou_poissonity_2022,cohen_dac_2022}。图\ref{fig:q1-arrival-diagnosis}给出诊断结果。
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/主图2：Poisson 适用性诊断双面板.png}
