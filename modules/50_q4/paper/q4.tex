@@ -2,7 +2,7 @@
 
 \subsection{问题四的描述与分析}
 
-问题四同时优化任务执行区域、开工时刻、储能充放电和电网购售电。问题二只调整任务排程，问题三只调整能源与储能，因此两者分别给出了计算侧和能源侧的单独优化结果。
+问题四同时优化任务执行区域、开工时刻、储能充放电和电网购售电\cite{zhou_multiflex_2024}。问题二只调整任务排程，问题三只调整能源与储能，因此两者分别给出了计算侧和能源侧的单独优化结果。
 
 \noindent\textbf{（1）任务与能源相互影响：}\hspace{0.5em}AI 训练任务贡献约 80.14\% 的 GPU-hour 和 87.12\% 的 AI IT 能量；任务迁移会改变区域设施负荷，而储能充电又会占用同一时段的新能源余量，因此两类决策不能独立处理。
 
@@ -46,7 +46,7 @@ AI 训练、批量推理和实时推理任务分别约占 80.14\%、15.32\%、4.
 
 \subsection{计算--能源--储能联合调度（IWESS）模型}
 
-建立\textbf{计算--能源--储能联合调度（Integrated Workload--Energy--Storage Scheduling，IWESS）模型}。对任务 $i$，根据网络时延、到达时间、最晚完成时间和 2406 h 终止边界构造完整合法放置集 $\Omega_i$，并对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。
+建立\textbf{计算--能源--储能联合调度（Integrated Workload--Energy--Storage Scheduling，IWESS）模型}\cite{guo_integrated_2025}。对任务 $i$，根据网络时延、到达时间、最晚完成时间和 2406 h 终止边界构造完整合法放置集 $\Omega_i$，并对 $(r,s)\in\Omega_i$ 定义 $x_{irs}\in\{0,1\}$。
 
 任务与小时 $t$ 的重叠量为
 \begin{equation}
@@ -214,7 +214,6 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \bottomrule
 \end{tabular}
 \end{table}
-\endgroup
 
 各场景的硬约束违反量均为 0，$10^{-13}$ 量级的平衡残差属于浮点计算误差。新能源下降 20\% 行只表示给出的方案满足全部约束，其运行成本仍存在上下界间隙。
 
@@ -223,7 +222,6 @@ Benders 割数 & 1,160 & 1,173 & 1,173 \\
 \noindent\textbf{（1）基准方案。}\par
 基准方案净运行成本为 $-4.5934\times10^8$ CNY，碳排放、总等待和六区域正向峰值净购电均为 0，平均网络时延为 5.0172 ms，新能源利用率为 69.52\%。
 
-\begingroup
 \begin{table}[H]
 \centering
 \caption{不同场景的六项指标比较}
