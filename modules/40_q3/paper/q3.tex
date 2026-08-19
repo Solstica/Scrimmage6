@@ -9,9 +9,9 @@ L_{rt}=\mathrm{PUE}_r\bigl(L^{AI}_{rt}+L^{NonAI}_{rt}\bigr),\qquad t=0,\ldots,24
 \end{equation}
 因此储能不能改变设施负荷波动，能改变的是\textbf{净电网交互功率}。附件还显示：六区总可用新能源约为设施负荷的 1.74--1.81 倍，A--E 全时段新能源不低于负荷，F 仅 1 个短缺小时；A/B/C 不允许售电，D/E/F 允许外送。故储能角色应由新能源盈余和售电边界决定，而非区域名称。总体流程见图\ref{fig:q3-flow}。
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_flow.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_flow.png}
 \caption{问题三从能源结构诊断到储能经济调度的总体流程}
 \label{fig:q3-flow}
 \end{figure}
@@ -48,7 +48,7 @@ F & 1.782 & 1 & 允许售电 \\
 
 由此直接得到三类储能角色：A/B/C 持续盈余且不可售电，成本最优代表解应为零储能动作；D/E 持续盈余且可售电，储能承担售电价值时移；F 除价值时移外，还可覆盖唯一新能源短缺小时。该分类来自求解前的数据结构，六区仍使用完全相同的数学模型。其物理含义可概括为 \textbf{renewable curtailment recovery（RCR）与跨时价值释放}：储能优先回收原本无法利用的新能源，并在后续具有购电缺口或更高外送价值的时段释放。
 
-区域内部的 Price--Carbon 时间相关约为 $-0.378$，Carbon--Renewable 约为 $-0.663$；这与问题二混合六区域--小时后的 Price--Carbon 正相关并不冲突，二者统计口径不同。无储能优化后系统购电已仅剩 F 区约 31.60 MWh，加入储能后进一步降至数值零，因此 Carbon 在本问主要随购电量退化为结果指标，无需人为设置 Cost--Carbon 权重。
+区域内部的 Price 与 Carbon 时间相关约为 $-0.378$，Carbon 与 Renewable 相关约为 $-0.663$；这与问题二混合六区域--小时后的 Price 与 Carbon 正相关并不冲突，二者统计口径不同。无储能优化后系统购电已仅剩 F 区约 31.60 MWh，加入储能后进一步降至数值零，因此 Carbon 在本问主要随购电量退化为结果指标，无需人为设置 Cost 与 Carbon 的综合权重。
 
 \subsection{固定负荷多时段 BESS 经济调度模型}
 
@@ -63,7 +63,7 @@ P^{net}_{rt}=G^{buy}_{rt}-s_{rt}.
 \mathrm{Cost}(\mathbf y)&=\sum_{r,t}\bigl[c^{buy}_{rt}(gL_{rt}+qG_{rt})-c^{sell}_{rt}s_{rt}\bigr]\Delta t,\label{eq:q3-cost}\\
 \mathrm{Throughput}(\mathbf y)&=\sum_{r,t}(qR_{rt}+qG_{rt}+d_{rt})\Delta t.\label{eq:q3-throughput}
 \end{align}
-先最小化 Cost，再在成本最优面内最小化 Throughput，以消除纯成本 LP 的无意义充放电循环；实现中使用 $\mathrm{Cost}\le\mathrm{Cost}^*+10^{-4}$ CNY 作为第二层容差。储能同时充放电（SCD）及其互补约束是成熟问题\cite{wang_exact_relax_2024}；本文第二层仅作为成本最优面内的物理 tie-break，不将其表述为一般 exact-relaxation 定理。
+先最小化 Cost，再在成本最优面内最小化 Throughput，以消除纯成本 LP 的无意义充放电循环；实现中使用 $\mathrm{Cost}\le\mathrm{Cost}^*+10^{-4}$ CNY 作为第二层容差。储能同时充放电（SCD）及其互补约束是成熟问题\cite{wang_exact_relax_2024}；本文第二层仅作为成本最优面内的物理次级判据，不将其表述为一般 exact-relaxation 定理。
 
 \subsubsection{模型汇总}
 
@@ -97,7 +97,7 @@ BESS-ED 两层字典序模型的目标函数展开为
 
 \subsection{模型求解与对照方案}
 
-为分离机制贡献，设置三种方案：\textbf{附件原始能源基准}仅作现实参考；\textbf{固定负荷无储能优化方案}令 $qR=qG=d=0$，衡量当期新能源重新分配价值；\textbf{固定负荷储能协同方案}使用完整 BESS-ED 模型。程序内部的 B0/E0/E1 仅用于文件映射，正文均采用上述物理名称。储能独立增量价值定义为“储能协同方案 $-$ 无储能优化方案”的指标变化。求解流程见算法\ref{alg:q3-two-stage}。
+为分离机制贡献，设置三种方案：\textbf{附件原始能源基准}仅作现实参考；\textbf{固定负荷无储能优化方案}令 $qR=qG=d=0$，衡量当期新能源重新分配价值；\textbf{固定负荷储能协同方案}使用完整 BESS-ED 模型。储能独立增量价值定义为“储能协同方案相对于无储能优化方案”的指标变化。求解流程见算法\ref{alg:q3-two-stage}。
 
 \input{\ProjectRoot/modules/40_q3/paper/q3_algorithm.tex}
 
@@ -141,10 +141,11 @@ BESS-ED 两层字典序模型的目标函数展开为
 \caption{无储能与储能协同方案的系统净电网交互功率日统计}
 \label{fig:q3-netgrid-daily}
 \end{figure}
+\FloatBarrier
 
 \subsubsection{分区储能角色验证}
 
-A/B/C 正式解均选择零储能动作；D/E 通过低售电价值时段充电、高价值时段放电释放同期新能源外送，储能增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 还在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。该结果与求解前由 $H_{rt}$ 和 SellLimit 得到的 RCR/价值时移机制预判一致。
+A/B/C 正式解均选择零储能动作；D/E 通过低售电价值时段充电、高价值时段放电释放同期新能源外送，储能增量价值分别为 9,743,701.13 和 13,696,192.16 CNY；F 还在唯一短缺小时以放电替代购电，增量价值 15,957,570.01 CNY。该结果与求解前由 $H_{rt}$ 和 SellLimit 得到的 RCR 与价值时移机制预判一致。
 
 \begin{figure}[!htbp]
 \centering
@@ -152,6 +153,7 @@ A/B/C 正式解均选择零储能动作；D/E 通过低售电价值时段充电�
 \caption{D/E/F 区域储能荷电状态日统计}
 \label{fig:q3-soc-daily}
 \end{figure}
+\FloatBarrier
 
 \begin{table}[!htbp]
 \centering
@@ -174,15 +176,16 @@ F & 15,957,570.01 & 139,058.35 & 74,196.11 & 64,862.24 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_f_mechanism.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/40_q3/figures/q3_f_mechanism.png}
 \caption{RegionF 唯一新能源短缺小时的储能响应机制}
 \label{fig:q3-f-mechanism}
 \end{figure}
+\FloatBarrier
 
 第二层最小吞吐量后，同时充放电区域--小时数为 0，总吞吐量为 346,201.93 MWh；A/B/C 的微小数值购电属于求解容差，正式记为 0。
 
 \subsection{模型检验}
 
-新能源平衡、负荷平衡和 SOC 递推的最大残差均小于 $2\times10^{-13}$，终端 SOC、SOC/功率、购售电边界均满足。完整 LP 与 reduced-model 探针的逐区储能增量价值差异小于 $10^{-4}$ CNY；更重要的是，求解前由 $H_{rt}$ 与 SellLimit 得到的三类区域分别对应零动作、售电价值时移和短缺覆盖，说明机制来自附件结构而非事后解释。
+新能源平衡、负荷平衡和 SOC 递推的最大残差均小于 $2\times10^{-13}$，终端 SOC、SOC/功率、购售电边界均满足。完整 LP 与简化等价模型探针的逐区储能增量价值差异小于 $10^{-4}$ CNY；更重要的是，求解前由 $H_{rt}$ 与 SellLimit 得到的三类区域分别对应零动作、售电价值时移和短缺覆盖，说明机制来自附件结构而非事后解释。
