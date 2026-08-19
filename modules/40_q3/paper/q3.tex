@@ -27,6 +27,8 @@ H_{rt}=\mathrm{AvailableRenewable}_{rt}-L_{rt}.
 \end{equation}
 六区域结构见表\ref{tab:q3-surplus-structure}。
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{六区域固定负荷下的新能源盈余结构}
@@ -45,6 +47,7 @@ F & 1.782 & 1 & 允许售电 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 由此得到三类储能角色：A/B/C 持续盈余且不可售电，最优解为零储能动作；D/E 持续盈余且可售电，储能承担售电价值时移；F 除价值时移外，还可覆盖唯一新能源短缺小时。该分类来自求解前数据结构，六区使用完全相同的数学模型。其物理含义可概括为 \textbf{新能源弃电回收（RCR）与跨时价值释放}：储能优先回收原本无法利用的新能源，并在后续购电缺口或高外送价值时段释放。
 
@@ -105,7 +108,9 @@ BESS-ED 两层字典序模型的目标函数展开为
 
 \subsubsection{系统总体结果}
 
-\begin{table}[!htbp]
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
+\\begin{table}[!htbp]
 \centering
 \caption{固定负荷下三种能源调度方案的系统级结果}
 \label{tab:q3-system-results}
@@ -124,6 +129,7 @@ BESS-ED 两层字典序模型的目标函数展开为
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 储能协同方案相对无储能方案进一步改善净运行成本 39,397,463.30 CNY，这才是储能的独立经济价值。无储能方案仅 F 区购电 31.60 MWh、产生 8.8506 tCO$_2$；储能协同后六区购电均为数值零，碳排随之归零。区域峰值净购电取
 \begin{equation}
@@ -154,7 +160,8 @@ A/B/C 正式解均为零储能动作；D/E 在低售电价值时段充电、高�
 \label{fig:q3-soc-daily}
 \end{figure}
 \FloatBarrier
-
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{储能协同方案的区域储能运行指标}
@@ -175,6 +182,7 @@ F & 15,957,570.01 & 139,058.35 & 74,196.11 & 64,862.24 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\endgroup
 
 \begin{figure}[H]
 \centering
