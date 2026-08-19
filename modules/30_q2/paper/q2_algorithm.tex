@@ -16,20 +16,20 @@
 \KwIn{任务集 $\mathcal I$，附件能源基准，网络/资源边界，目标模式 $m\in\{\mathrm{Cost},\mathrm{Carbon}\}$，收敛容差 $\epsilon$}
 \KwInit{以“来源区域、到达即执行”构造参考排程；允许首轮扫描消除少量容量超限}
 \ForEach{任务 $i$}{构造空间合法域 $R_i$ 与完整时间合法域 $T_i$，记 $\Omega_i=R_i\times T_i$；}
-按 $|R_i|$ 升序 $\to$ 时间余量升序 $\to$ GPU-hour 降序固定扫描顺序\;
+固定扫描顺序：先处理合法区域较少的任务，再处理时间余量较小的任务；若前两项相同，则优先处理 GPU-hour 较大的任务\;
 \For{$k\leftarrow1$ \KwTo $K_{\max}$}{
   重构当前 GPU、IT、Facility 与逐时能源状态\;
   \ForEach{排序后的任务 $i$}{
     暂时移除 $i$，得到残余状态 $S^{-i}$\;
     枚举 $(r,s)\in\Omega_i$，逐一检查 GPU、IT、Facility、GridImport、SLA、LatestFinish 与 finish$\le2406$；RT 另要求 $s=a_i$\;
     对可行候选计算 $\Delta\mathrm{GridPurchase}$、$\Delta\mathrm{Curtailment}$、$\Delta\mathrm{Cost}$ 与 $\Delta\mathrm{Carbon}$\;
-    \If{$m=\mathrm{Cost}$}{按 Cost$\to$Carbon$\to$Curtailment$\to$早开工$\to$本地$\to$低时延选择\;}
-    \Else{按 Carbon$\to$Cost$\to$Curtailment$\to$早开工$\to$本地$\to$低时延选择\;}
-    将任务插回所选候选；若无新候选，则仅在旧位置仍满足硬约束时保留，否则返回 FAIL\;
+    \If{$m=\mathrm{Cost}$}{先比较 Cost，再比较 Carbon 和 Curtailment；仍并列时依次优先较早开工、本地区域和较低网络时延\;}
+    \Else{先比较 Carbon，再比较 Cost 和 Curtailment；仍并列时依次优先较早开工、本地区域和较低网络时延\;}
+    将任务插回所选候选；若无新候选，则仅在旧位置仍满足全部约束时保留，否则标记该排程不可行\;
   }
-  重新计算真实目标与全部硬约束；首轮同时承担参考状态可行化\;
-  \If{$k\ge2$ 且相对改善 $<\epsilon$ 且无回退且硬约束通过}{\textbf{break}\;}
+  重新计算真实目标与全部约束；首轮同时承担参考状态可行化\;
+  \If{$k\ge2$ 且相对改善 $<\epsilon$ 且无回退且约束审计通过}{\textbf{break}\;}
 }
 计算 Cost、Carbon、RenewableUtilization、迁移、等待与网络时延，并从不同初始排程重复求解以审计路径依赖\;
-\KwOut{任务执行区域与开工时刻，以及目标值、平行评价指标和硬约束审计}
+\KwOut{任务执行区域与开工时刻，以及目标值、平行评价指标和约束审计}
 \end{algorithm}
