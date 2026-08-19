@@ -87,6 +87,8 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 验证后使用 0--2375 h 重新估计参数，对 2376--2399 h 做最终 24 h 预测。系统层 MAE、WAPE、RMSE 和 90\% PICP 分别约为 142.9、0.233、184.6 和 87.5\%，见表\ref{tab:q1-forecast-metrics}。
 
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{问题一系统层短期预测指标}
@@ -99,6 +101,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \bottomrule
 \end{tabular}
 \end{table}
+\endendgroup
 
 24 个测试小时中 21 个落入 90\% 区间；2377、2387、2390 超过上界，说明模型能覆盖总体波动，但对少量突发峰值仍有低估。
 
@@ -114,6 +117,8 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 2376--2399 h 共到达 538 个任务，全部保持来源区域执行，仅 4 个任务发生本地时间顺延；最大 GPU 利用率 99.02\%，全区域时段平均利用率 37.23\%，最晚完成时刻 2405.6 h，满足 2406 边界。
 
+\begingroup
+\rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
 \caption{问题一实际任务基础调度结果}
@@ -127,6 +132,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \bottomrule
 \end{tabular}
 \end{table}
+\endendgroup
 
 图\ref{fig:q1-schedule}给出题目要求的甘特图和 GPU 利用率；2376--2399 h 为实际到达窗口，2400--2405 h 仅结清在途任务。
 
