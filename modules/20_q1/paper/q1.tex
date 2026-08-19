@@ -44,7 +44,7 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \begin{equation}
 \pi_{rk}=P(R=r,K=k).
 \end{equation}
-给定任务类型后，区域对 GPU 需求和执行时长的附加影响较弱，因此按任务类型估计 $(G,D)$ 的联合经验分布。与此同时，AI 训练任务虽然仅约占三分之一的任务数，却贡献约 80\% 的 GPU-hour，说明后续调度应依据资源消耗而非任务数量判断负荷贡献。六区域三类任务的累计 GPU-hour 见表\ref{tab:q1-gpuhour-stat}，其中 D/E/F 的负荷主要由 AI 训练任务贡献，而 A/B/C 的实时推理任务占比相对更高。
+给定任务类型后，区域对 GPU 需求和执行时长的附加影响较弱，因此按任务类型估计 $(G,D)$ 的联合经验分布。
 
 \begingroup
 \rowcolors{2}{gray!10}{white}
@@ -68,8 +68,6 @@ RegionF & 1032.94 & 90.26 & 6.84 & 1130.04 \\
 \end{table}
 \endgroup
 
-相关结构见图\ref{fig:q1-composition}。
-
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\FigureDoubleWidth]{\ProjectRoot/modules/20_q1/figures/fig_q1_task_structure.png}
@@ -77,6 +75,9 @@ RegionF & 1032.94 & 90.26 & 6.84 & 1130.04 \\
 \label{fig:q1-composition}
 \end{figure}
 \FloatBarrier
+
+AI 训练任务虽然仅约占三分之一的任务数，却贡献约 80\% 的 GPU-hour，说明后续调度应依据资源消耗而非任务数量判断负荷贡献。六区域三类任务的累计 GPU-hour 见表\ref{tab:q1-gpuhour-stat}，其中 D/E/F 的负荷主要由 AI 训练任务贡献，而 A/B/C 的实时推理任务占比相对更高。
+
 
 \subsection{模型建立：标记复合 Poisson（MCP）}
 
