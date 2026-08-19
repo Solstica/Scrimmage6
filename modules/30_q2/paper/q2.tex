@@ -4,11 +4,11 @@
 
 问题二释放 50000 个任务的跨区迁移与开工时刻柔性，但固定附件给出的储能和购售电动作，以单独识别\textbf{计算调度}的能源价值。附件揭示两项关键结构：RT 到达即开工，而 Batch/Training 具有较大时空自由度，Training 又贡献约 80\% GPU-hour；同时 0--2399 h 的 14400 个区域--小时中有 13230 个同时存在弃电和供负荷购电，占 91.9\%，累计弃电约 $7.748\times10^6$ MWh，为基准 AI 设施能量的 8.15 倍。故主要矛盾是\textbf{计算负荷与现有绿色能源状态的时空错配}，而非新能源总量不足。
 
-本文据此采用“\textbf{任务柔性诊断--BMER 边际能源响应--完整合法域调度--SFETA 求解}”的路线，不对 Cost、Carbon 与新能源利用率设置主观权重。总体流程见图\ref{fig:q2-flow}。
+因此先刻画任务在时间和空间上的可调节范围，再由附件能源基准建立 BMER 边际响应；在此基础上构造完整合法域任务调度模型，并采用 SFETA 搜索可行排程。Cost、Carbon 与新能源利用率均保留独立物理口径，不设置主观综合权重。总体流程见图\ref{fig:q2-flow}。
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/30_q2/figures/q2_flow.png}
+\includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/q2_flow.png}
 \caption{问题二建模求解总体流程}
 \label{fig:q2-flow}
 \end{figure}
@@ -41,6 +41,7 @@ C_i&=R_i\times T_i.\label{eq:q2-complete-domain}
 \caption{基准能源时空错配及弃电的低碳属性}
 \label{fig:q2-energy-mismatch}
 \end{figure}
+\FloatBarrier
 
 \subsection{BMER 基线参照边际能源响应模型}
 
@@ -67,6 +68,7 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 \caption{BMER 下设施负荷变化的分段边际能源响应}
 \label{fig:q2-marginal-response}
 \end{figure}
+\FloatBarrier
 
 \subsection{完整合法域时空任务调度模型}
 
@@ -85,7 +87,7 @@ P^{AI}_{rt}(\mathbf x)=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs}.
 \mathrm{Carbon}(\mathbf x)&=\sum_{r,t}\mathrm{GridPurchase}_{rt}(\mathbf x)\,CI_{rt}\Delta t,\label{eq:q2-carbon}\\
 \eta_R(\mathbf x)&=\frac{\sum_{r,t}(\mathrm{UsedRenewable}_{rt}+\mathrm{RenewableCharge}^0_{rt}+\mathrm{GridSell}^0_{rt})\Delta t}{\sum_{r,t}\mathrm{AvailableRenewable}_{rt}\Delta t}.\label{eq:q2-eta-r}
 \end{align}
-正文以成本优先方案为代表解，碳排优先方案仅用于检验 Cost--Carbon 边际冲突。
+正文以成本优先方案为代表解，碳排优先方案仅用于检验 Cost 与 Carbon 的边际冲突。
 
 \subsubsection{模型汇总}
 
@@ -119,7 +121,7 @@ L_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 
 \subsection{模型求解：SFETA}
 
-REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电价互补性进行快速任务分配\cite{yang_repta_2026}。本题六区域逐时新能源可用量相同，不能直接沿用“本地 RES--远端 RES--最低电价”的候选顺序，因此在其领域规则驱动思想上改造为 \textbf{SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）}：保留完整隐式合法域，按 $|R_i|$ 升序、时间余量升序、GPU-hour 降序扫描；每次暂时移除任务，并在全部 $C_i$ 中依据 BMER 给出的边际 Cost/Carbon/弃电后果检查候选与硬约束。完整合法域约含 $2.33\times10^8$ 个候选，SFETA 不使用 Top-k 或人工等待窗。
+REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电价互补性进行快速任务分配\cite{yang_repta_2026}。本题六区域逐时新能源可用量相同，不能直接照搬依次优先本地新能源、远端新能源和最低电价的候选规则，因此在其领域规则驱动思想上改造为 \textbf{SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）}：保留完整隐式合法域，按 $|R_i|$ 升序、时间余量升序、GPU-hour 降序扫描；每次暂时移除任务，并在全部 $C_i$ 中依据 BMER 给出的边际 Cost、Carbon 与弃电后果检查候选及约束。完整合法域约含 $2.33\times10^8$ 个候选，SFETA 不使用 Top-k 或人工等待窗。
 
 首轮直接从附件“来源区域、到达即执行”状态出发，该状态含 44 个 GPU 超限区域--小时，故\textbf{首轮扫描同时完成可行化和目标改善}。之后重复完整扫描；主目标相对改善 $<10^{-3}$、无回退任务且审计通过时停止。SFETA 是本问的求解算法名称，不替代前述数学目标与约束系统。算法见算法\ref{alg:q2-sfeta}。
 
@@ -158,6 +160,7 @@ Cost、Carbon 同时下降且新能源利用率提高，说明收益来自逐时
 \caption{SFETA 收敛轨迹与初始化敏感性}
 \label{fig:q2-convergence}
 \end{figure}
+\FloatBarrier
 
 \subsubsection{任务迁移与服务质量}
 
@@ -179,23 +182,28 @@ RealTimeInference & 16,724 & 11,685 & 69.870\% & 0 & 0 & 0 \\
 \end{tabular}
 \end{table}
 
-RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；Batch/Training 同时利用空间和时间柔性。全体任务平均网络时延 26.75 ms、P95 为 \textbf{76 ms}、最大 82 ms，均满足任务级 SLA。代表性甘特图与迁移矩阵见图\ref{fig:q2-gantt}、\ref{fig:q2-migration-heatmap}。
+RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；Batch/Training 同时利用空间和时间柔性。全体任务平均网络时延 26.75 ms、P95 为 \textbf{76 ms}、最大 82 ms，均满足任务级 SLA。代表性甘特图与迁移矩阵见图\ref{fig:q2-placement-pair}。
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/30_q2/figures/q2 甘特图.png}
-\caption{代表性任务的执行区间与到达时刻}
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/30_q2/figures/q2 甘特图.png}
+\caption{代表性任务执行区间}
 \label{fig:q2-gantt}
-\end{figure}
-
-\begin{figure}[!htbp]
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.48\textwidth}
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-4 区域迁移热图.png}
-\caption{来源区域到执行区域的任务迁移矩阵}
+\includegraphics[width=\linewidth]{\ProjectRoot/modules/30_q2/figures/Q2-4 区域迁移热图.png}
+\caption{区域任务迁移矩阵}
 \label{fig:q2-migration-heatmap}
+\end{subfigure}
+\caption{任务时空排程的代表性结果}
+\label{fig:q2-placement-pair}
 \end{figure}
+\FloatBarrier
 
-\subsubsection{Cost--Carbon 边际冲突}
+\subsubsection{成本与碳排边际冲突}
 
 碳排优先方案相对成本优先方案仅增加约 0.18\% 成本，而成本优先方案相对碳排优先方案增加约 0.62\% 碳排，表明二者高度同向但存在可测边际冲突。
 
@@ -222,14 +230,15 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \caption{成本与碳排代表方案的端点关系}
 \label{fig:q2-cost-carbon-endpoints}
 \end{figure}
+\FloatBarrier
 
-计算柔性由此获得显著经济、低碳和新能源利用收益，但同时带来大规模迁移与长等待；这组“收益--服务代价”结果作为问题四联合释放储能柔性时的单侧基准。
+计算柔性由此获得显著经济、低碳和新能源利用收益，但同时带来大规模迁移与长等待；这组收益与服务代价结果作为问题四联合释放储能柔性时的单侧基准。
 
 \subsection{模型检验}
 
 \subsubsection{初始化与极端等待诊断}
 
-从附件参考状态与前一排程状态初始化，最终成本约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，后者高 1.34\%，故采用前者作为代表解，但不声称构造式算法与初始化无关或达到全局整数最优。最大等待 2016 h 的 TaskID~13051 实际使用约 86.45\% 的合法 slack，Latency=22 ms$<80$ ms，说明该极端值来自能源主目标对官方长时柔性的充分调用；Cost--QoS 联合权衡留待问题四。
+从附件参考状态与前一排程状态初始化，最终成本约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，后者高 1.34\%，故采用前者作为代表解，但不声称构造式算法与初始化无关或达到全局整数最优。最大等待 2016 h 的 TaskID~13051 实际使用约 86.45\% 的合法 slack，Latency=22 ms$<80$ ms，说明该极端值来自能源主目标对官方长时柔性的充分调用；成本与 QoS 的联合权衡留待问题四。
 
 \subsubsection{硬约束与松弛探针}
 
