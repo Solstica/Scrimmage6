@@ -11,7 +11,7 @@
 \label{fig:q1-flow}
 \end{figure}
 
-\subsection{数据诊断与预测结构}
+\subsection{预备工作：需求随机结构与任务异质性}
 
 为避免信息泄漏，\textbf{所有用于确定模型结构的统计诊断仅使用 0--2351 h 训练段}；2352--2375 h 只检查区间覆盖与稳定性，2376--2399 h 为最终测试段。全 50000 任务统计仅作描述性展示。
 
@@ -19,7 +19,7 @@
 \begin{equation}
 F=\frac{\widehat{\mathrm{Var}}(N_t)}{\widehat{\mathbb E}(N_t)}
 \end{equation}
-得到 $F\approx0.97$；时滞 $1,24,168$ 的自相关分别约为 $-0.0059,-0.0385,0.0336$，大多位于 $\pm1.96/\sqrt{2352}\approx\pm0.0404$ 内，未见稳定周期结构。图\ref{fig:q1-arrival-diagnosis}给出诊断结果。
+得到 $F\approx0.97$；时滞 $1,24,168$ 的自相关分别约为 $-0.0059,-0.0385,0.0336$，大多位于 $\pm1.96/\sqrt{2352}\approx\pm0.0404$ 内，未见稳定周期结构。Poisson 适用性由本附件统计检验决定，相关工作仅作为工作负载 Poisson 性诊断与需求聚合建模的方法背景\cite{zou_poissonity_2022,cohen_dac_2022}。图\ref{fig:q1-arrival-diagnosis}给出诊断结果。
 
 \begin{figure}[!htbp]
 \centering
@@ -37,9 +37,9 @@ Region 与 TaskType 的 Cramér's $V\approx0.434$，因此保留联合业务标�
 \label{fig:q1-composition}
 \end{figure}
 
-\subsection{结构化标记复合 Poisson 预测与基础调度模型}
+\subsection{标记复合 Poisson（MCP）短期概率预测与基础调度模型}
 
-训练段长度为 $T_{\mathrm{train}}=2352$，到达率、联合业务标记和类型条件资源标记分别估计为
+本文将“Poisson 到达计数 + 联合业务标记 + 类型条件资源标记”形成的需求模型记为 \textbf{Marked Compound Poisson（MCP）workload model}。训练段长度为 $T_{\mathrm{train}}=2352$，到达率、联合业务标记和类型条件资源标记分别估计为
 \begin{align}
 &\hat\lambda=\frac{N_{\mathrm{train}}}{T_{\mathrm{train}}},\qquad
 \hat\pi_{rk}=\frac{n_{rk}}{N_{\mathrm{train}}},\label{eq:q1-params}\\
@@ -64,7 +64,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 \subsubsection{模型汇总}
 
-本问无加权优化目标，预测与基线调度统一写为
+本问无加权优化目标，MCP 预测与基线调度统一写为
 \begin{equation}
 \left\{
 \begin{aligned}
