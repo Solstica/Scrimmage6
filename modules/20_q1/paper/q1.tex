@@ -62,7 +62,6 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 \subsubsection{模型汇总}
 
-本问无加权优化目标，MCP 预测与基线调度统一写为
 \begin{equation}
 \left\{
 \begin{aligned}
@@ -72,13 +71,12 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 &\hat Y_{rkt}=\hat\lambda\hat\pi_{rk}\mathbb E(G\mid K=k),\\
 &G_{rt}\le C_r^{GPU},\quad P^{IT}_{rt}\le C_r^{IT},\quad P^{Fac}_{rt}\le C_r^{Fac},\\
 &\mathrm{Latency}(o_j,r_j^{exec})\le L_j,\quad s_j\ge a_j,\quad s_j+p_j\le\min(d_j,2406),\\
-&s_j=a_j\quad(k_j=\mathrm{RT}),\qquad\text{任务不可拆分、不可抢占且执行区域固定}.
+&s_j=a_j\quad(k_j=\mathrm{RT}).
 \end{aligned}
 \right.
 \label{eq:q1-model-summary}
 \end{equation}
 
-预测与调度采用同一伪代码实现，见算法\ref{alg:q1-unified}。
 \input{\ProjectRoot/modules/20_q1/paper/q1_algorithm.tex}
 
 \subsection{结果与分析}
