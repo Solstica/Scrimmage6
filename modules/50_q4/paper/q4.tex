@@ -231,6 +231,8 @@ Cost 主层交替执行：Restricted Master $\rightarrow$ 真实 Energy LP $\rig
 
 采用 40 个真实任务（16 Training、14 Batch、10 RT，ArrivalHour 2376--2390）进行显式 exact 校准。完整合法域包含 3139 个 placements，列生成仅需 44 个 active columns 即达到完全相同的 root objective $-5{,}450{,}201.934546$ CNY；Region multi-cut Benders 在 2 次迭代内复现该 exact Cost 值。
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{40-task Exact 校准结果}
@@ -248,6 +250,8 @@ Benders 迭代 & --- & 2 \\
 \end{tabular}
 \end{table}
 \FloatBarrier
+\endgroup  
+
 
 在同一 40-task 完整合法域上继续做字典序精化：Cost-only 的某些等价代表解可出现 38/40 迁移、总等待 172 h；而在 Cost 最优面内依次最小化 Wait、Latency 后，可得到迁移 5 个任务、总等待 6 h、平均等待 0.15 h、最大等待 2 h、总网络时延 437 ms、平均时延 10.925 ms 的 exact 字典序代表解。该结果说明“Cost 最优值接近”不能替代服务质量精化，也验证了 Wait/Latency 必须重新做 full-domain pricing。
 
@@ -255,6 +259,8 @@ Benders 迭代 & --- & 2 \\
 
 50,000 个任务的最终扩展列池包含 137,158 个活动列、1,173 条 region Benders cuts。两轮完整 Cost$\rightarrow$Wait$\rightarrow$Latency 再认证得到完全一致的三个 anchor：
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{50k final-pool 字典序再认证结果}
@@ -275,6 +281,7 @@ Benders cuts & 1,160 & 1,173 & 1,173 \\
 \end{tabular}
 \end{table}
 \FloatBarrier
+\endgroup  
 
 最终任务级排程覆盖全部 50,000 个 TaskID 且无重复，所有任务等待均为 0；仅有 61 个任务发生跨区执行，迁移率为 0.122\%，其中 AITraining 52 个、BatchInference 8 个、RealTimeInference 1 个。总网络时延为 250,860 ms，平均时延为 5.0172 ms，P95 为 5 ms，最大时延为 58 ms；最晚任务于 2405.6 h 完成，未越过 2406 边界。能源、SOC、购售电、任务覆盖、GPU/IT、SLA、LatestFinish 与终端 SOC 的独立硬约束审计全部通过，最大物理残差约为 $1.14\times10^{-13}$。
 
@@ -290,6 +297,8 @@ Q3 E1 与 Q4 当前绝对成本的表面差额约为 $1.23\times10^5$ CNY，但�
 
 Exact Presolve 的压缩效果见表\ref{tab:q4-probeA}。Presolve 后资源行数减少约 62--64\%，非零元减少约 58--61\%，求解时间约减半，目标值完全不变。
 
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{Exact Presolve 压缩效果}
@@ -306,6 +315,7 @@ Exact Presolve 的压缩效果见表\ref{tab:q4-probeA}。Presolve 后资源行�
 \end{tabular}
 \end{table}
 \FloatBarrier
+\endgroup  
 
 Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密度约 2.6--3.4\%。稀疏装配后 500-task 的 cut 存储从 9.17 MB 降至 0.38 MB（下降约 95.8\%）。这些压缩均来自附件数据中的 exact dominance 或实际 dual support，而不是牺牲可行域换取速度。
 
@@ -314,7 +324,8 @@ Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密
 \subsubsection{诊断性碳约束敏感性}
 
 在 $\gamma=1.4$ 新能源波动压力探针（临界放大因子 $\gamma_{\text{crit}}\approx1.303326$）下，沿 Cost--Carbon epsilon-constraint 路径得到表\ref{tab:q4-carbon}。碳预算从 100\% 降至 0\% 时，成本增加约 0.1\%（约 4961.32 CNY），局部平均减排成本约 92.48 CNY/tCO$_2$。该探针仅用于验证 Carbon 约束被激活时模型能够产生可解释权衡，\textbf{不构成题目正式新能源波动场景}。
-
+\begingroup  
+\rowcolors{2}{gray!10}{white}   
 \begin{table}[!htbp]
 \centering
 \caption{Cost--Carbon 权衡前沿（$\gamma=1.4$ 诊断探针）}
@@ -333,6 +344,7 @@ Benders cut 的 dual support 平均仅 3.4--4.1 个非零元素，平均 cut 密
 \end{tabular}
 \end{table}
 \FloatBarrier
+\endgroup  
 
 \subsubsection{50k 可扩展性与最优性边界}
 
