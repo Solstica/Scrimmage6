@@ -2,24 +2,36 @@
 
 \begin{algorithm}[H]
 \SetAlgoLined
-\setstretch{0.88}
+\setstretch{0.86}
 \SetAlFnt{\small}
 \SetArgSty{textnormal}
-\SetKwInput{KwIn}{Input}
-\SetKwInput{KwInit}{Initialize}
-\SetKwInput{KwOut}{Output}
-\SetKwFor{ForEach}{for each}{do}{end for}
+\SetKwInput{KwIn}{输入}
+\SetKwInput{KwInit}{初始化}
+\SetKwInput{KwOut}{输出}
+\SetKwFor{ForEach}{对每个}{执行}{结束}
 \caption{固定负荷下的两层字典序储能经济调度}
 \label{alg:q3-two-stage}
-\KwIn{固定设施负荷 $L[r,\cdot]$，新能源出力，购售电价格、碳强度，储能与电网边界参数}
-\KwInit{$\varepsilon\leftarrow10^{-4}$ CNY}
+\KwIn{设施负荷 $L_{rt}$，新能源 $R_{rt}$，购售电价格、碳强度，储能与电网边界参数}
+\KwInit{$\varepsilon\leftarrow10^{-4}$ CNY；建立三种对照：附件基准、无储能优化、BESS-ED}
+
 \ForEach{区域 $r\in\{A,B,C,D,E,F\}$}{
+  读取 $L_{rt}$、$R_{rt}$、价格及储能参数，构造 $u,qR,qG,d,gL,s,w,E$ 的变量索引\;
+  建立新能源平衡、负荷平衡和 SOC 递推等式，并加入充放电功率、购售电上限及终端 SOC 约束\;
+
   \textbf{第一层：最小化净运行成本}\;
-  在新能源平衡、固定负荷平衡、SOC 动态、充放电功率及购售电边界下求解区域线性规划，得到最优成本 $\mathrm{Cost}_r^*$\;
+  构造目标
+  $\mathrm{Cost}_r=\sum_t[c^{buy}_{rt}(gL_{rt}+qG_{rt})-c^{sell}_{rt}s_{rt}]\Delta t$\;
+  求解区域线性规划，若不可行则终止并返回约束诊断；否则记录最优值 $\mathrm{Cost}_r^*$\;
+
   \textbf{第二层：在成本最优面内最小化储能吞吐量}\;
-  增加 $\mathrm{Cost}_r\le\mathrm{Cost}_r^*+\varepsilon$，最小化 $\sum_t(qR+qG+d)\Delta t$，得到物理代表解\;
-  计算成本、碳排放、峰值净购电、电网交互波动和储能吞吐量\;
+  增加 $\mathrm{Cost}_r\le\mathrm{Cost}_r^*+\varepsilon$\;
+  最小化 $\mathrm{Throughput}_r=\sum_t(qR_{rt}+qG_{rt}+d_{rt})\Delta t$，得到物理代表解\;
+
+  重构 $G^{buy}_{rt}=gL_{rt}+qG_{rt}$、$P^{net}_{rt}=G^{buy}_{rt}-s_{rt}$ 与逐时 SOC\;
+  计算区域成本、碳排放、新能源利用率、峰值净购电、净电网波动、平均绝对爬坡及储能吞吐量\;
+  审计新能源/负荷平衡、SOC 递推、终端 SOC、充放电功率与购售电边界，并检查同时充放电小时数\;
 }
-汇总六区指标，并与“附件原始能源基准”和“固定负荷无储能优化方案”比较，以两者差值量化储能增量价值\;
-\KwOut{六区域储能、购售电方案及成本、碳排、新能源利用率、峰值净购电和电网交互波动指标}
+
+汇总六区域结果；分别与附件原始能源基准、固定负荷无储能优化方案比较，以“BESS-ED 减无储能优化”的差值量化储能独立增量价值\;
+\KwOut{六区域逐时储能与购售电方案、系统级评价指标及约束审计结果}
 \end{algorithm}
