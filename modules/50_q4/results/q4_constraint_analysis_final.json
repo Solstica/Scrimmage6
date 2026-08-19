@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "source_files": {
+    "canonical": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\fast_metrics\\canonical.json",
+    "price_flat": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\fast_metrics\\price_flat.json",
+    "price_peak_valley": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\fast_metrics\\price_peak_valley.json",
+    "renew_up_120": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\fast_metrics\\renew_up_120.json",
+    "renew_down_80": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\results\\formal_scenarios\\fast_metrics\\renew_down_80.json"
+  },
+  "audit_scenarios": [
+    "canonical",
+    "price_peak_valley",
+    "renew_up_120",
+    "renew_down_80"
+  ],
+  "omitted_from_pressure_plot": [
+    "price_flat"
+  ],
+  "reason": "price_flat与canonical的约束压力指标近似重合，正式六指标表保留，压力图避免重复端点",
+  "audit_csv": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\figures\\editable\\图H_约束审计矩阵.csv",
+  "pressure_csv": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\figures\\editable\\图I_场景约束压力.csv",
+  "figure_png": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\figures\\图I_场景约束压力图.png",
+  "figure_svg": "D:\\第三次训练赛-worktrees\\q4\\modules\\50_q4\\figures\\图I_场景约束压力图.svg",
+  "hard_audit_all_pass": true,
+  "max_balance_residual_MW": 1.1368683772161603e-13,
+  "renew_down_80_evidence": "CERTIFIED_BOUNDED（有界候选）"
+}
