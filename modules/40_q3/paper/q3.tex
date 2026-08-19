@@ -67,10 +67,14 @@ P^{net}_{rt}=G^{buy}_{rt}-s_{rt}.
 
 \subsubsection{模型汇总}
 
-两层字典序模型写为
+两层字典序模型的目标函数展开为
 \begin{equation}
 \operatorname*{lex\,min}_{\mathbf y}\quad
-\bigl(\mathrm{Cost}(\mathbf y),\ \mathrm{Throughput}(\mathbf y)\bigr)
+\left(
+\sum_{r,t}\bigl[c^{buy}_{rt}(gL_{rt}+qG_{rt})-c^{sell}_{rt}s_{rt}\bigr]\Delta t,
+\quad
+\sum_{r,t}(qR_{rt}+qG_{rt}+d_{rt})\Delta t
+\right)
 \label{eq:q3-summary-obj}
 \end{equation}
 \begin{equation}
