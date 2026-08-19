@@ -4,9 +4,9 @@
 
 问题一包含未来 24 h GPU 需求预测与实际任务基础调度两项任务。
 
-\noindent\textbf{（1）短期需求预测。}\quad 需要由历史任务识别小时到达数量、来源区域、任务类型以及 GPU 需求和执行时长的分布，并给出未来 24 h 的点预测与概率区间。
+\noindent\textbf{（1）短期需求预测：}\hspace{0.5em}需要由历史任务识别小时到达数量、来源区域、任务类型以及 GPU 需求和执行时长的分布，并给出未来 24 h 的点预测与概率区间。
 
-\noindent\textbf{（2）实际任务调度。}\quad 对第 2376--2399 h 实际到达的任务，在 GPU、IT 功率、设施功率、网络时延和最晚完成时间等约束下确定执行区域与开工时刻。实时推理任务（RealTimeInference，记为 RT）要求到达后立即开工，批量推理（BatchInference）与 AI 训练（AITraining）任务允许在规定时限内延后执行。
+\noindent\textbf{（2）实际任务调度：}\hspace{0.5em}对第 2376--2399 h 实际到达的任务，在 GPU、IT 功率、设施功率、网络时延和最晚完成时间等约束下确定执行区域与开工时刻。实时推理任务（RealTimeInference，记为 RT）要求到达后立即开工，批量推理（BatchInference）与 AI 训练（AITraining）任务允许在规定时限内延后执行。
 
 训练段的小时到达数接近等离散，短期自相关较弱；来源区域与任务类型存在明显关联，且 AI 训练任务贡献约 80\% 的 GPU-hour。由此采用 Poisson 到达模型描述任务数量，并用区域--任务类型联合标记及任务类型条件资源分布描述任务差异。建模与求解流程见图\ref{fig:q1-flow}。
 
@@ -19,7 +19,7 @@
 
 \subsection{预备工作：需求随机结构与任务异质性}
 
-\noindent\textbf{（1）数据划分。}\quad 为避免测试信息进入模型选择过程，将时序数据划分为
+\noindent\textbf{（1）数据划分：}\hspace{0.5em}为避免测试信息进入模型选择过程，将时序数据划分为
 \begin{equation}
 \mathcal D_{\mathrm{train}}=[0,2351],\qquad
 \mathcal D_{\mathrm{val}}=[2352,2375],\qquad
@@ -28,7 +28,7 @@
 \end{equation}
 训练段用于确定模型结构与参数，验证段检验预测区间覆盖和参数稳定性，测试段只用于最终评价。验证通过后，用 0--2375 h 数据重新估计参数并预测最终 24 h。
 
-\noindent\textbf{（2）到达过程诊断。}\quad 训练段小时到达数的 Fano 因子为
+\noindent\textbf{（2）到达过程诊断：}\hspace{0.5em}训练段小时到达数的 Fano 因子为
 \begin{equation}
 F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \end{equation}
@@ -41,7 +41,7 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \label{fig:q1-arrival-diagnosis}
 \end{figure}
 
-\noindent\textbf{（3）任务异质性诊断。}\quad 来源区域与任务类型的 Cramér 关联系数为 $V\approx0.434$，因此二者采用联合标记
+\noindent\textbf{（3）任务异质性诊断：}\hspace{0.5em}来源区域与任务类型的 Cramér 关联系数为 $V\approx0.434$，因此二者采用联合标记
 \begin{equation}
 \pi_{rk}=P(R=r,K=k).
 \end{equation}
@@ -63,9 +63,9 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \hat\pi_{rk}=\frac{n_{rk}}{N_{\mathrm{train}}},\label{eq:q1-params}\\
 &(G,D)\mid K=k\sim\widehat F_{GD}^{(k)}.\label{eq:q1-resource-mark}
 \end{align}
-第 $t$ 小时区域 $r$、任务类型 $k$ 的 GPU 需求为
+记 $\mathbb{I}\{\cdot\}$ 为示性函数，括号内条件成立时取 1，否则取 0。第 $t$ 小时区域 $r$、任务类型 $k$ 的 GPU 需求为
 \begin{equation}
-Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbf 1(R_j=r,K_j=k),\qquad
+Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbb{I}\{R_j=r,K_j=k\},\qquad
 \mathbb E(Y_{rkt})=\lambda\pi_{rk}\mathbb E(G\mid K=k).
 \label{eq:q1-demand}
 \end{equation}
@@ -73,8 +73,8 @@ Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbf 1(R_j=r,K_j=k),\qquad
 
 对 2376--2399 h 实际任务采用“来源区域优先、最早可行开工、必要时再迁移”的基础调度。若任务 $j$ 在区域 $r$ 执行，则逐时资源负荷为
 \begin{align}
-&G_{rt}=\sum_j g_j\omega(j,t)\mathbf 1(r_j^{\rm exec}=r),\label{eq:q1-gpu-load}\\
-&P^{AI}_{rt}=\sum_j\alpha_{k_j}g_j\omega(j,t)\mathbf 1(r_j^{\rm exec}=r),\qquad
+&G_{rt}=\sum_j g_j\omega(j,t)\mathbb{I}\{r_j^{\rm exec}=r\},\label{eq:q1-gpu-load}\\
+&P^{AI}_{rt}=\sum_j\alpha_{k_j}g_j\omega(j,t)\mathbb{I}\{r_j^{\rm exec}=r\},\qquad
 P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 &P^{Fac}_{rt}=\mathrm{PUE}_rP^{IT}_{rt}.\label{eq:q1-fac-load}
 \end{align}
@@ -148,10 +148,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 \end{tabular}
 \end{table}
 
-
 图\ref{fig:q1-schedule}给出三类任务按类型分类的甘特图以及六区域 GPU 利用率；2376--2399 h 为实际到达窗口，2400--2405 h 仅结清在途任务。
-
-
 
 \begin{figure}[!htbp]
 \centering
