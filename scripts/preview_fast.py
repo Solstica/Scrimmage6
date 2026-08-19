@@ -6,7 +6,7 @@ from __future__ import annotations
 Keeps the ownership audit from preview_merge.py, but only overlays files that can
 matter to the compiled paper. Heavy solver archives/results/code/editable figure
 sources are intentionally excluded from this temporary preview only, except for
-the small set of source files explicitly printed in the PDF appendix.
+the source files explicitly printed in the PDF appendix.
 
 Unlike the formal integration gate, fast preview also strips trailing spaces/tabs
 from changed text files inside the temporary detached preview before committing.
@@ -24,16 +24,27 @@ _TEXT_SUFFIXES = {
 }
 
 # These files are direct LaTeX inputs through \lstinputlisting in the PDF appendix.
+_APPENDIX_CODE_BY_BRANCH = {
+    "feature/q1": (
+        "modules/20_q1/code/q1_solver.py",
+    ),
+    "feature/q2": (
+        "modules/30_q2/code/q2_solver.py",
+        "modules/30_q2/code/q2_iterative_solver.py",
+    ),
+    "feature/q3": (
+        "modules/40_q3/code/q3_solver.py",
+    ),
+    "feature/q4": (
+        "modules/50_q4/code/q4_full_solver.py",
+        "modules/50_q4/code/q4_final_recertification.py",
+        "modules/50_q4/code/q4_formal_scenarios.py",
+        "modules/50_q4/code/q4_qcert.py",
+        "modules/50_q4/code/q4_schedule_metrics.py",
+    ),
+}
 _APPENDIX_CODE_INPUTS = {
-    "modules/20_q1/code/q1_solver.py",
-    "modules/30_q2/code/q2_solver.py",
-    "modules/30_q2/code/q2_iterative_solver.py",
-    "modules/40_q3/code/q3_solver.py",
-    "modules/50_q4/code/q4_full_solver.py",
-    "modules/50_q4/code/q4_final_recertification.py",
-    "modules/50_q4/code/q4_formal_scenarios.py",
-    "modules/50_q4/code/q4_qcert.py",
-    "modules/50_q4/code/q4_schedule_metrics.py",
+    p for paths in _APPENDIX_CODE_BY_BRANCH.values() for p in paths
 }
 
 
@@ -95,6 +106,12 @@ def fast_overlay_branch(module: dict, audit_base_ref: str, preview: Path) -> Non
             pm.run(["git", "checkout", branch_ref, "--", p2], cwd=preview)
         else:
             pm.run(["git", "checkout", branch_ref, "--", p1], cwd=preview)
+
+    # Code can be unchanged relative to the audit base and therefore absent from
+    # the diff above. Since the appendix directly inputs these exact files, force
+    # their current responsibility-branch versions into the temporary preview.
+    for path in _APPENDIX_CODE_BY_BRANCH.get(module["branch"], ()):
+        pm.run(["git", "checkout", branch_ref, "--", path], cwd=preview)
 
 
 def _strip_trailing_ws_bytes(data: bytes) -> bytes:
