@@ -49,7 +49,7 @@ Y_{rkt}=\sum_{j=1}^{N_t}G_j\mathbf 1(R_j=r,K_j=k),\qquad
 \mathbb E(Y_{rkt})=\lambda\pi_{rk}\mathbb E(G\mid K=k).
 \label{eq:q1-demand}
 \end{equation}
-预测区间通过 $10^4$ 次 Monte Carlo 抽取 $N_t$、$(R,K)$ 与条件资源标记得到经验 5\%/95\% 分位数。
+预测区间通过 $5000$ 次 Monte Carlo 抽取 $N_t$、$(R,K)$ 与条件资源标记得到经验 5\%/95\% 分位数。
 
 对 2376--2399 h 实际任务，采用“来源区域优先、最早可行开工、必要时再迁移”的基础调度。若任务 $j$ 在区域 $r$ 执行，则逐时资源负荷为
 \begin{align}
@@ -104,7 +104,7 @@ P^{IT}_{rt}=P^{AI}_{rt}+P^{NonAI}_{rt},\label{eq:q1-it-load}\\
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.5\textwidth]{\ProjectRoot/modules/20_q1/figures/主图3：测试集 24 h 概率预测.png}
+\includegraphics[width=\FigureSingleWidth]{\ProjectRoot/modules/20_q1/figures/主图3：测试集 24 h 概率预测.png}
 \caption{2376--2399 h 系统层 GPU 需求概率预测}
 \label{fig:q1-fig08}
 \end{figure}
