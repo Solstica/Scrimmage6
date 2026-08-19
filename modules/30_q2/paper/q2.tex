@@ -2,9 +2,13 @@
 
 \subsection{问题二的描述与分析}
 
-问题二释放 50000 个任务的跨区迁移与开工时刻柔性，但固定附件给出的储能和购售电动作，以单独识别\textbf{计算调度}的能源价值。附件揭示两项关键结构：RT 到达即开工，而 Batch/Training 具有较大时空自由度，Training 又贡献约 80\% GPU-hour；同时 0--2399 h 的 14400 个区域--小时中有 13230 个同时存在弃电和供负荷购电，占 91.9\%，累计弃电约 $7.748\times10^6$ MWh，为基准 AI 设施能量的 8.15 倍。故主要矛盾是\textbf{计算负荷与现有绿色能源状态的时空错配}，而非新能源总量不足。
+问题二在任务原有约束不变的条件下，允许调整任务执行区域和开工时刻；储能及购售电动作保持附件给定状态，从而单独考察任务调度对能源利用的影响。
 
-因此先刻画任务在时间和空间上的可调节范围，再由附件能源基准建立 BMER 边际响应；在此基础上构造完整合法域任务调度模型，并采用 SFETA 搜索可行排程。Cost、Carbon 与新能源利用率均保留独立物理口径，不设置主观综合权重。总体流程见图\ref{fig:q2-flow}。
+\noindent\textbf{（1）任务可调节性。}\quad 实时推理任务到达后立即执行，只能调整执行区域；批量推理和 AI 训练任务还可在最晚完成时间之前延后开工。AI 训练任务贡献约 80\% 的 GPU-hour，因此少量训练任务的位置变化即可显著改变区域负荷。
+
+\noindent\textbf{（2）能源时空错配。}\quad 0--2399 h 共 14400 个区域--小时，其中 13230 个同时存在弃电和供负荷购电，占 91.9\%；累计弃电约为 $7.748\times10^6$ MWh，是基准 AI 设施能量的 8.15 倍。可见主要问题不是新能源总量不足，而是计算负荷与可用新能源、电价和碳强度在时间和区域上的不匹配。
+
+据此先构造任务合法时空域，再建立基线参照边际能源响应模型，并在完整合法域内进行任务分配。建模与求解流程见图\ref{fig:q2-flow}。
 
 \begin{figure}[H]
 \centering
@@ -13,9 +17,9 @@
 \label{fig:q2-flow}
 \end{figure}
 
-\subsection{预备工作：任务柔性与能源错配}
+\subsection{预备工作：任务可调节范围与能源错配}
 
-设任务 $i$ 的到达时刻、来源区域、类型、GPU 需求、持续时长、最晚完成时刻和时延上限分别为 $a_i,o_i,k_i,g_i,p_i,d_i,L_i$。其空间、时间与完整合法域分别为
+设任务 $i$ 的到达时刻、来源区域、类型、GPU 需求、持续时长、最晚完成时刻和时延上限分别为 $a_i,o_i,k_i,g_i,p_i,d_i,L_i$。其空间可行域、时间可行域及完整合法域为
 \begin{equation}
 R_i=\{r\mid \mathrm{NetworkLatency}[o_i,r]\le L_i\}.
 \label{eq:q2-spatial-domain}
@@ -31,16 +35,26 @@ T_i=\begin{cases}
 C_i=R_i\times T_i.
 \label{eq:q2-complete-domain}
 \end{equation}
-因此 RT 的时间决策柔性严格为 0。Batch 与 Training 的时间余量中位数约为 1207 h 和 1184 h；Training 单任务 GPU-hour 中位数约 194.35，并承担约 87\% 的 AI IT 能耗。图\ref{fig:q2-flexibility}说明调度应优先保护空间受限、时间紧迫任务，再利用高 GPU-hour 任务的长时柔性。
+实时推理任务的时间可调节范围为 0；批量推理与 AI 训练任务的时间余量中位数分别约为 1207 h 和 1184 h。AI 训练任务单任务 GPU-hour 中位数约为 194.35，并承担约 87\% 的 AI IT 能耗。图\ref{fig:q2-flexibility}比较了三类任务在区域、时间和计算工作量上的差异。
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{\ProjectRoot/modules/30_q2/figures/Q2-1 任务柔性三面板.png}
-\caption{三类任务的空间柔性、时间柔性与 GPU-hour 对比}
+\caption{三类任务的空间可调节范围、时间余量与 GPU-hour 对比}
 \label{fig:q2-flexibility}
 \end{figure}
 
-定义基准供负荷购电 $G_0=\max(\mathrm{GridPurchase}_0-\mathrm{GridCharge}_0,0)$。全部 14400 个区域--小时均存在弃电，其中 13230 个同时有 $G_0>0$；图\ref{fig:q2-energy-mismatch}进一步表明，弃电与可用新能源相关系数约为 0.925--0.995，与碳强度相关约为 $-0.690$ 至 $-0.849$。六区域逐时 $\mathrm{AvailableRenewable}$ 数值相同，因此不能按“新能源区”标签预设 E/F 更绿色；区域差异来自 PUE、负荷、价格、碳强度、弃电及容量边界。进入新增购电区后，Price 与 CarbonIntensity 的 pooled Pearson/Spearman 相关约为 0.578/0.613，故成本与碳排总体同向但并未完全退化。
+定义供负荷购电
+\begin{equation}
+G^0_{rt}=\max\bigl(\mathrm{GridPurchase}^0_{rt}-\mathrm{GridCharge}^0_{rt},0\bigr).
+\end{equation}
+全部 14400 个区域--小时均存在弃电，其中 13230 个同时满足 $G^0_{rt}>0$。弃电与可用新能源、碳强度的相关关系为
+\begin{equation}
+\rho(\mathrm{Curtailment},\mathrm{Renewable})\approx0.925\sim0.995,
+\qquad
+\rho(\mathrm{Curtailment},CI)\approx-0.690\sim-0.849.
+\end{equation}
+六区域逐时可用新能源数值相同，区域差异主要来自 PUE、设施负荷、电价、碳强度、弃电和容量约束。新增购电区间内，电价与碳强度的 Pearson 和 Spearman 相关系数约为 0.578 和 0.613，说明运行成本与碳排放总体同向，但仍存在可比较的差异。相关结果见图\ref{fig:q2-energy-mismatch}。
 
 \begin{figure}[!htbp]
 \centering
@@ -50,9 +64,9 @@ C_i=R_i\times T_i.
 \end{figure}
 \FloatBarrier
 
-\subsection{BMER 基线参照边际能源响应模型}
+\subsection{基线参照边际能源响应（BMER）模型}
 
-本问固定附件储能和售电动作，仅由任务重排改变设施负荷。为明确该响应是\textbf{相对于附件参考状态的增量核算}而非一般电力系统定律，本文将其记为 \textbf{Baseline-Referenced Marginal Energy Response（BMER）}。令
+固定附件中的储能和售电动作后，任务重排只改变设施负荷。定义\textbf{基线参照边际能源响应（Baseline-Referenced Marginal Energy Response，BMER）模型}。令
 \begin{equation}
 \Delta L_{rt}=L_{rt}(\mathbf x)-L^0_{rt},\qquad
 L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr),
@@ -67,7 +81,11 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 \end{cases}
 \label{eq:q2-delta-g}
 \end{equation}
-其中 $C^0_{rt}$ 为基准弃电，且 $\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}$。因此新增负荷优先吸收参考状态中的弃电，弃电耗尽后才形成新增购电；负荷下降则优先削减供负荷购电。
+其中 $C^0_{rt}$ 为基准弃电，且
+\begin{equation}
+\Delta\mathrm{Curtailment}_{rt}=\Delta G_{rt}-\Delta L_{rt}.
+\end{equation}
+因此新增负荷先利用原有弃电，弃电耗尽后才增加购电；负荷下降时则先减少供负荷购电。
 
 \subsection{完整合法域时空任务调度模型}
 
@@ -80,17 +98,17 @@ L_{rt}(\mathbf x)=\mathrm{PUE}_r\bigl(P^{NonAI}_{rt}+P^{AI}_{rt}(\mathbf x)\bigr
 P^{AI}_{rt}(\mathbf x)=\sum_{i,s}\alpha_{k_i}g_i\omega_{ist}x_{irs}.
 \label{eq:q2-ai-power}
 \end{equation}
-运行成本、碳排放和新能源利用率分别记为
+运行成本、碳排放和新能源利用率分别为
 \begin{align}
 \mathrm{Cost}(\mathbf x)&=\sum_{r,t}\bigl[\mathrm{GridPurchase}_{rt}(\mathbf x)c^{buy}_{rt}-\mathrm{GridSell}^0_{rt}c^{sell}_{rt}\bigr]\Delta t,\label{eq:q2-cost}\\
 \mathrm{Carbon}(\mathbf x)&=\sum_{r,t}\mathrm{GridPurchase}_{rt}(\mathbf x)\,CI_{rt}\Delta t,\label{eq:q2-carbon}\\
 \eta_R(\mathbf x)&=\frac{\sum_{r,t}(\mathrm{UsedRenewable}_{rt}+\mathrm{RenewableCharge}^0_{rt}+\mathrm{GridSell}^0_{rt})\Delta t}{\sum_{r,t}\mathrm{AvailableRenewable}_{rt}\Delta t}.\label{eq:q2-eta-r}
 \end{align}
-正文以成本优先方案为代表解，碳排优先方案仅用于检验 Cost 与 Carbon 的边际冲突。
+运行成本作为主要优化目标，碳排放优先方案用于比较两类目标的边际差异。
 
 \subsubsection{模型汇总}
 
-成本优先模型的目标函数直接写为
+综合任务唯一指派、资源容量和 BMER 响应，成本优先模型可表述为
 \begin{equation}
 \min_{\mathbf x}\quad
 \sum_{r,t}\Bigl[\mathrm{GridPurchase}_{rt}(\mathbf x)c^{buy}_{rt}-\mathrm{GridSell}^0_{rt}c^{sell}_{rt}\Bigr]\Delta t
@@ -111,13 +129,27 @@ L_{rt}(\mathbf x)\le\mathrm{MaxFacilityPower}_r,&&\forall r,t,\\
 \right.
 \label{eq:q2-summary-con}
 \end{equation}
-其中 SLA、Arrival、LatestFinish、RT 即时开工和 finish$\le2406$ 已由 $C_i$ 的定义进入可行域，任务不可拆分、不可抢占。
+网络时延、到达时间、最晚完成时间、实时推理即时开工和 2406 h 终止边界均已包含在 $C_i$ 的定义中；任务不可拆分、不可抢占。
 
-\subsection{模型求解：SFETA}
+\subsection{模型求解：时空灵活性与能源感知任务分配（SFETA）}
 
-REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电价互补性进行快速任务分配\cite{yang_repta_2026}。本题六区域逐时新能源可用量相同，不能直接照搬依次优先本地新能源、远端新能源和最低电价的候选规则，因此在其领域规则驱动思想上改造为 \textbf{SFETA（Spatio-temporal Flexibility and Energy-aware Task Assignment）}：保留完整隐式合法域，按 $|R_i|$ 升序、时间余量升序、GPU-hour 降序扫描；每次暂时移除任务，并在全部 $C_i$ 中依据 BMER 给出的边际 Cost、Carbon 与弃电后果检查候选及约束。完整合法域约含 $2.33\times10^8$ 个候选，SFETA 不使用 Top-k 或人工等待窗。
+REPTA 算法利用新能源与电价差异进行跨区域任务分配\cite{yang_repta_2026}。由于本题六区域逐时可用新能源相同，其“本地新能源--远端新能源--最低电价”候选规则不能直接使用，因此改为\textbf{时空灵活性与能源感知任务分配（Spatio-temporal Flexibility and Energy-aware Task Assignment，SFETA）算法}。
 
-首轮直接从附件“来源区域、到达即执行”状态出发，该状态含 44 个 GPU 超限区域--小时，故\textbf{首轮扫描同时完成可行化和目标改善}。之后重复完整扫描；主目标相对改善 $<10^{-3}$、无回退任务且审计通过时停止。SFETA 是本问的求解算法名称，不替代前述数学目标与约束系统。算法见算法\ref{alg:q2-sfeta}。
+设任务 $i$ 的时间余量为 $\sigma_i$，计算工作量为 $h_i=g_ip_i$。扫描顺序按下式的字典序从小到大确定：
+\begin{equation}
+\kappa_i=\bigl(|R_i|,\ \sigma_i,\ -h_i,\ \mathrm{ID}_i\bigr).
+\label{eq:q2-scan-key}
+\end{equation}
+这使合法区域较少、时间更紧、计算工作量更大的任务优先处理。
+
+对任务 $i$ 的候选位置 $(r,s)\in C_i$，计算其边际变化
+\begin{equation}
+\Phi_i(r,s)=\bigl(\Delta\mathrm{Cost},\ \Delta\mathrm{Carbon},\ \Delta\mathrm{Curtailment},\ s-a_i,\ \ell_{o_ir}\bigr).
+\label{eq:q2-candidate-score}
+\end{equation}
+成本优先时先比较 $\Delta\mathrm{Cost}$，碳排放优先时交换前两项顺序；其余项用于同值候选的进一步排序。所有候选均逐一检查 GPU、IT 功率、设施功率、电网购电、网络时延和完成时间约束。
+
+算法在约 $2.33\times10^8$ 个合法放置组成的隐式完整域上搜索，不设置 Top-k 候选或人工等待窗口。首轮同时消除附件初始排程中的 44 个 GPU 超限区域--小时；之后重复完整扫描，当主目标相对改善小于 $10^{-3}$ 且排程不再变化时停止。具体步骤见算法\ref{alg:q2-sfeta}。
 
 \input{\ProjectRoot/modules/30_q2/paper/q2_algorithm.tex}
 
@@ -125,13 +157,13 @@ REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电�
 
 \subsubsection{经济、低碳与新能源效益}
 
-全部 50000 个任务均获得合法排程。当前 Q2 经济核算覆盖 0--2405 h，因此绝对经济量仅用于本问内部比较；跨问并表时再统一第 2406 h 结算口径。
+50000 个任务均获得合法排程。问题二的成本统计范围为 0--2405 h，因此绝对成本仅在本问内比较；跨问比较前需统一第 2406 h 的终端结算方式。
 
 \begingroup
 \rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
-\caption{成本优先方案与附件参考状态对比（0--2405 h 口径）}
+\caption{成本优先方案与附件参考状态对比（0--2405 h）}
 \label{tab:q2-metrics}
 \begin{tabular}{lccc}
 \toprule
@@ -142,14 +174,14 @@ REPTA（RES and Electricity Price Aware Task Assignment）利用新能源和电�
 碳排放/tCO$_2$ & 2,045,367.48 & 1,826,774.35 & $-10.69\%$ \\
 新能源利用率 & 32.85\% & 37.29\% & $+4.44$ 个百分点 \\
 跨区迁移任务数 & 0 & 37,448 & 迁移率 74.90\% \\
-RT 迁移任务数 & 0 & 11,685 & 全部即时开工 \\
+实时推理迁移任务数 & 0 & 11,685 & 全部即时开工 \\
 最大 GPU 利用率 & 135.58\% & 100.00\% & 超限消除 \\
 \bottomrule
 \end{tabular}
 \end{table}
 \endgroup
 
-Cost、Carbon 同时下降且新能源利用率提高，说明收益来自逐时弃电、PUE、电价、碳强度和容量共同决定的动态迁移，而非机械迁往某一区域。成本优先方案的收敛轨迹见图\ref{fig:q2-convergence}，末遍相对改善率为 $5.77\times10^{-4}$。
+运行成本和碳排放同时下降，新能源利用率提高 4.44 个百分点，说明任务重排能够利用区域间的弃电、电价、碳强度和容量差异。成本优先方案的收敛轨迹见图\ref{fig:q2-convergence}，末遍相对改善率为 $5.77\times10^{-4}$。
 
 \begin{figure}[!htbp]
 \centering
@@ -182,7 +214,7 @@ RealTimeInference & 16,724 & 11,685 & 69.870\% & 0 & 0 & 0 \\
 \end{table}
 \endgroup
 
-RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；Batch/Training 同时利用空间和时间柔性。全体任务平均网络时延 26.75 ms、P95 为 \textbf{76 ms}、最大 82 ms，均满足任务级 SLA。代表性甘特图与迁移矩阵见图\ref{fig:q2-placement-pair}。
+实时推理任务均满足 $s_i=a_i$，其中 11685 个任务在网络时延允许的区域间迁移；批量推理和 AI 训练任务同时利用区域与时间调整空间。全体任务平均网络时延为 26.75 ms，P95 为 \textbf{76 ms}，最大值为 82 ms，均满足相应网络时延限制。代表性甘特图与迁移矩阵见图\ref{fig:q2-placement-pair}。
 
 \begin{figure}[!htbp]
 \centering
@@ -203,20 +235,20 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \end{figure}
 \FloatBarrier
 
-\subsubsection{成本与碳排边际冲突}
+\subsubsection{成本与碳排放的边际差异}
 
-碳排优先方案相对成本优先方案仅增加约 0.18\% 成本，而成本优先方案相对碳排优先方案增加约 0.62\% 碳排，表明二者高度同向但存在可测边际冲突。
+碳排放优先方案相对成本优先方案增加约 0.18\% 的运行成本；成本优先方案相对碳排放优先方案增加约 0.62\% 的碳排放。两项目标总体同向，但存在小幅差异。
 
 \begingroup
 \rowcolors{2}{gray!10}{white}
 \begin{table}[!htbp]
 \centering
-\caption{成本优先与碳排优先方案对照}
+\caption{成本优先与碳排放优先方案对照}
 \label{tab:q2-cmp}
 \begin{tabular}{lcc}
 \toprule
 \rowcolor{CumcmLightBlue}
-指标 & 成本优先方案 & 碳排优先方案 \\
+指标 & 成本优先方案 & 碳排放优先方案 \\
 \midrule
 运行成本/CNY & 1,555,371,304.13 & 1,558,153,356.53 \\
 碳排放/tCO$_2$ & 1,826,774.35 & 1,815,531.61 \\
@@ -227,16 +259,18 @@ RT 全部保持 $s_i=a_i$，但 11685 个任务在 SLA 合法区域间迁移；B
 \end{table}
 \endgroup
 
-计算柔性由此获得显著经济、低碳和新能源利用收益，但同时带来大规模迁移与长等待；这组收益与服务代价结果作为问题四联合释放储能柔性时的单侧基准。
+仅调整任务排程即可降低成本和碳排放并提高新能源利用率，但代价是较高的跨区迁移率和较长等待时间。该结果将在问题四中与任务--储能联合调度结果直接比较。
 
 \subsection{模型检验}
 
-\subsubsection{初始化与极端等待诊断}
+\subsubsection{初始化与极端等待检验}
 
-从附件参考状态与前一排程状态初始化，SFETA 最终成本分别约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，前者较后者低 1.34\%，故本文选取前者作为成本优先方案的代表解。但需要说明的是，SFETA 作为构造式启发式算法，其求解质量与初始排程选择有关，所得结果不声明为全局整数最优解。
+分别从附件参考排程和另一可行排程初始化，SFETA 最终成本约为 $1.555\times10^9$ 和 $1.576\times10^9$ CNY，前者较低 1.34\%，因此采用前者作为成本优先方案。SFETA 属于构造式启发式算法，结果受初始排程影响，不据此声明全局整数最优。
 
-在服务质量的极端情形方面，最大等待时长为 2016 h，对应 TaskID~13051 的 Batch 任务。该任务实际使用了约 86.45\% 的合法时间余量，网络时延为 22 ms，远低于 80 ms 的 SLA 上限。说明该极端等待值源于成本主目标对长时柔性裕度的充分利用，而非违反约束或算法异常。成本与 QoS 的联合权衡将在问题四中通过字典序优化进一步处理。
+最大等待时间为 2016 h，对应任务编号 13051 的批量推理任务。该任务使用约 86.45\% 的可等待时间，网络时延为 22 ms，小于 80 ms 的上限。该极端值来自成本优化对较长可等待时间的利用，并非约束违反；成本与服务质量的联合优化在问题四中处理。
 
-\subsubsection{硬约束与松弛探针}
+\subsubsection{约束检验与连续松弛比较}
 
-最终排程的 GPU、IT、Facility、GridImport、SLA、LatestFinish、2406 边界和 RT 即时开工均无违规；能量平衡最大残差约 $2.00\times10^{-4}$ MW，基准 AI IT 重构误差约 $3.33\times10^{-7}$ MW。连续松弛探针进一步表明，若放松任务不可拆分和逐任务时间约束，全部 Batch/Training 可被现有弃电和容量承接而不新增购电，支持“主要困难来自离散任务、SLA 和时间边界”的判断。全文横向比较时再统一第 2406 h 终端结算口径。
+最终排程满足 GPU、IT 功率、设施功率、电网购电、网络时延、最晚完成时间、2406 h 终止边界和实时推理即时开工等约束；能量平衡最大残差约为 $2.00\times10^{-4}$ MW，基准 AI IT 重构误差约为 $3.33\times10^{-7}$ MW。
+
+若将批量推理和 AI 训练任务放宽为可连续拆分，并取消逐任务时间约束，现有弃电和容量可承接全部任务而不新增购电。由此可见，本问的主要计算难点来自任务不可拆分、网络时延及时间边界。跨问成本比较前仍需统一第 2406 h 的终端结算方式。
