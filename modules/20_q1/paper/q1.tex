@@ -17,7 +17,7 @@
 \label{fig:q1-flow}
 \end{figure}
 
-\subsection{预备工作：需求随机结构与任务异质性}
+\subsection{预备工作}
 
 \noindent\textbf{（1）数据划分：}\hspace{0.5em}为避免测试信息进入模型选择过程，将时序数据划分为
 \begin{equation}
@@ -54,7 +54,7 @@ F=\frac{\operatorname{Var}(N_t)}{\mathbb E(N_t)}\approx0.97,
 \end{figure}
 \FloatBarrier
 
-\subsection{标记复合 Poisson（MCP）短期概率预测与基础调度模型}
+\subsection{模型建立：标记复合 Poisson（MCP）}
 
 采用\textbf{标记复合 Poisson（Marked Compound Poisson，MCP）模型}描述“任务到达数量--区域与类型--资源需求”的联合随机过程。训练段长度为 $T_{\mathrm{train}}=2352$，到达率、区域--类型联合概率及任务类型条件资源分布估计为
 \begin{align}
